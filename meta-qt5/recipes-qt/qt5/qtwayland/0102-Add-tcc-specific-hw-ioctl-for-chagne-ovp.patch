@@ -1,0 +1,30 @@
+From 88d125837204d653c1bdc869c4658e832ee45709 Mon Sep 17 00:00:00 2001
+From: YoungJun <youngjun@telechips.com>
+Date: Tue, 30 Aug 2016 14:13:54 +0900
+Subject: [PATCH] Add tcc specific hw ioctl for chagne ovp
+
+---
+ src/3rdparty/protocol/wayland.xml | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/src/3rdparty/protocol/wayland.xml b/src/3rdparty/protocol/wayland.xml
+index 016a272..325703f 100644
+--- a/src/3rdparty/protocol/wayland.xml
++++ b/src/3rdparty/protocol/wayland.xml
+@@ -893,6 +893,13 @@
+       <arg name="height" type="int"/>
+     </request>
+ 
++    <request name="set_overlay_priority">
++      <description summary="set the new window geometry">
++          Change tcc specific hw overlay order.
++      </description>
++      <arg name="ovp_order" type="uint"/>
++    </request>
++
+     <request name="set_maximized">
+       <description summary="make the surface a maximized surface">
+ 	Map the surface as a maximized surface.
+-- 
+1.9.3
+

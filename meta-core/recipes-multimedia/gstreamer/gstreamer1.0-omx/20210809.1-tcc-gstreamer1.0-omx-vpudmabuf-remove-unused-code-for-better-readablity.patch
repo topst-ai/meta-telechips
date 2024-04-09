@@ -1,0 +1,312 @@
+[fix] vpudmabuf: remove unused code for better readability
+
+Description :
+  When using waylandsink, alloc size and free size do not match, causing a segment fault.
+  The SEGV issue was fixed when this patch and '20210809.1-tcc-gstreamer1.0-plugins-base-add-tc-parameter-for-using-dma-buf.patch' were applied together.
+
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c after/omx/gstomxvideodec.c
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c	2021-08-09 14:11:28.480165633 +0900
++++ after/omx/gstomxvideodec.c	2021-08-09 14:22:36.628868269 +0900
+@@ -2352,10 +2352,15 @@
+         goto invalid_buffer;
+       }
+ 
+-      if (GST_OMX_BUFFER_POOL (self->out_port_pool)->need_copy)
++      if (GST_OMX_BUFFER_POOL (self->out_port_pool)->need_copy){
+         outbuf =
+             copy_frame (&GST_OMX_BUFFER_POOL (self->out_port_pool)->video_info,
+             outbuf);
++      }
++      else {
++        if (self->bTcV4l2Sink == FALSE)
++          outbuf = gst_omx_video_dec_omx_buf_to_dma_buf(self,outbuf);
++      }
+ 
+       buf = NULL;
+     } else {
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstvpudmabuf.c after/omx/gstvpudmabuf.c
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstvpudmabuf.c	2021-08-09 14:11:28.480165633 +0900
++++ after/omx/gstvpudmabuf.c	2021-08-09 14:27:39.648289685 +0900
+@@ -55,12 +55,6 @@
+ 	gint mmapping_flags;
+ 	gint mmap_count;
+ 	GMutex lock;
+-
+-	unsigned char* pBuffer;
+-	unsigned long offset;
+-	unsigned long phys_addr;
+-	unsigned long *map_ptr;
+-	unsigned long size;
+ 	int disp_index;
+ 	void *omx_buf;
+ };
+@@ -72,15 +66,11 @@
+ 	gboolean flag;
+ };
+ 
+-#define MAX_TRASH_COUNT 200
+-
+ struct _GstVpuDmaBufAllocator
+ {
+ 	GstFdAllocator parent;
+ 	GstVpuDmaAllocatorPrivate *priv;
+ 	vpudmabuf_clear_cb clear_cb;
+-	GstVpuDmaMemory *trash_mem[MAX_TRASH_COUNT];
+-	int trash_count;
+ 	void *user_data;
+ };
+ 
+@@ -92,138 +82,6 @@
+ 
+ #define vpumem_dbg //printf
+ #define ALIGN_MMAP_SHIFT (12)
+-#if 0
+-static inline GstMemory *_vpudma_mem_new (GstAllocator * allocator,
+-    									int dmafd,gsize size)
+-{
+-	GstMemory *memory = NULL;
+-	memory = gst_fd_allocator_alloc(allocator,dmafd,size,GST_FD_MEMORY_FLAG_MAP_PRIVATE); // GST_FD_MEMORY_FLAG_NONE // GST_FD_MEMORY_FLAG_MAP_PRIVATE // GST_FD_MEMORY_FLAG_KEEP_MAPPED
+-	GST_LOG("memory %p , dmafd %d, size 0x%lx",memory,dmafd,size);
+-
+-	return memory;
+-}
+-
+-
+-
+-static gpointer _vpudma_mem_map (GstVpuDmaMemory * mem, gsize maxsize, GstMapFlags flags)
+-{
+-	//gpointer data = NULL;
+-	#if 1
+-    unsigned long * map_ptr = MAP_FAILED;
+-
+-	//if(GST_IS_VPUDMABUF_ALLOCATOR (mem->mem.allocator), NULL)
+-	{
+-		GstVpuDmaBufAllocator *vpudmaallocator;
+-		GstVpuDmaAllocatorPrivate * priv;
+-		unsigned long alignedAddr = 0;
+-		unsigned long offset = 0;
+-		unsigned long alignUnit = (1<<ALIGN_MMAP_SHIFT);
+-		unsigned long *pl_phys_addr;
+-		gsize real_size = maxsize;
+-		alignedAddr = (mem->phys_addr >> ALIGN_MMAP_SHIFT) << ALIGN_MMAP_SHIFT;
+-		offset = mem->phys_addr - alignedAddr;
+-		real_size = ((maxsize + alignUnit - 1)>> ALIGN_MMAP_SHIFT) << ALIGN_MMAP_SHIFT;
+-		pl_phys_addr = (unsigned long *)alignedAddr;
+-
+-		vpudmaallocator = GST_VPUDMABUF_ALLOCATOR(mem->mem.allocator);
+-		priv = vpudmaallocator->priv;
+-
+-		//map_ptr = (unsigned long *)mmap((void *)pl_phys_addr, real_size, PROT_READ | PROT_WRITE, MAP_SHARED, mem->fd, pl_phys_addr);
+-		map_ptr = (unsigned long *)mmap(0, real_size, PROT_READ | PROT_WRITE, MAP_SHARED, priv->fd_vpu_mem, alignedAddr);
+-		//map_ptr = (unsigned long *)mmap((void *)pl_phys_addr, real_size, PROT_READ | PROT_WRITE, MAP_SHARED, priv->fd_mem, pl_phys_addr);
+-		if(MAP_FAILED == map_ptr)
+-		{
+-			printf("%s %d mmap failed. fd(%d), addr(0x%lx), size(0x%lx) error %d %s\n",
+-				__func__,__LINE__,
+-				priv->fd_vpu_mem, mem->phys_addr, maxsize, errno, strerror(errno));
+-			return NULL;
+-		}
+-		else
+-		{
+-			//printf("%s %d mem %p map_ptr %p \n",__func__,__LINE__,mem, map_ptr);
+-			mem->map_ptr = map_ptr;
+-			mem->size = real_size;
+-			mem->offset = offset;
+-			map_ptr = (unsigned long *)((unsigned char *)map_ptr + mem->offset);
+-			//
+-			GST_LOG("mem %p map_ptr(%p + 0x%lx = %p), size(0x%lx), maxsize 0x%lx, phys 0x%lx, aligned 0x%lx",
+-				mem, mem->map_ptr,offset,map_ptr, mem->size,maxsize,
+-				mem->phys_addr, alignedAddr);
+-		}
+-
+-	}
+-	#if 0
+-	else
+-	{
+-		printf("\x1b[47m \x1b[31m %s %d ... mem %p ... allocator(%p) is not vpudmabuf allocator \x1b[0m\n",
+-			__func__,__LINE__,mem, mem->mem.allocator);
+-	}
+-	#endif
+-
+-	return (gpointer)map_ptr;
+-	#else
+-
+-	return mem->pBuffer + mem->offset;
+-  	#endif
+-	//return data;
+-}
+-
+-static gboolean _vpudma_mem_unmap (GstVpuDmaMemory * mem)
+-{
+-	gboolean ret = TRUE;
+-	#if 1
+-    if(munmap(mem->map_ptr, (size_t )mem->size) < 0)
+-	{
+-        printf("%s %d munmap failed. addr(%p), size(0x%lx)\n",__func__,__LINE__, mem->map_ptr, mem->size);
+-	}
+-
+-	#else
+-	printf("%s %d mem %p\n",__func__,__LINE__,mem);
+-	#endif
+-	return ret;
+-}
+-
+-static GstMemory * _vpudma_mem_copy(GstMemory *mem, gssize offset, gssize size)
+-{
+-	printf("%s %d mem %p\n",__func__,__LINE__,mem);
+-	return NULL;
+-}
+-
+-static GstMemory * _vpudma_mem_share(GstMemory *mem, gssize offset, gssize size)
+-{
+-	printf("%s %d mem %p\n",__func__,__LINE__,mem);
+-	return NULL;
+-}
+-
+-static gboolean _vpudma_mem_is_span(GstMemory *mem1, GstMemory *mem2, gsize *offset)
+-{
+-	printf("%s %d mem1 %p, mem2 %p\n",__func__,__LINE__,mem1,mem2);
+-	return FALSE;
+-}
+-
+-int vpudmabuf_open_vpu_mem(void)
+-{
+-	int fd = -1;
+-	{
+-		fd = open(VPU_MEM_DEVICE, O_RDWR);
+-		GST_TRACE("fd %d",fd);
+-	}
+-	return fd;
+-}
+-
+-void vpudmabuf_close_vpu_mem(int fd_vpu_mem)
+-{
+-	if(fd_vpu_mem >= 0)
+-	{
+-		GST_TRACE("fd_vpu_mem %d\n",fd_vpu_mem);
+-		close(fd_vpu_mem);
+-	}
+-	else
+-	{
+-		GST_WARNING("priv is null");
+-	}
+-}
+-#endif
+ void vpudmabuf_open_vpu_mem_driver(GstVpuDmaAllocatorPrivate *priv)
+ {
+ 	if(priv)
+@@ -243,13 +101,6 @@
+ 			close(priv->fd_vpu_mem);
+ 			priv->fd_vpu_mem = -1;
+ 		}
+-		#if 0
+-		if(priv->fd_mem >= 0)
+-		{
+-			close(priv->fd_mem);
+-			priv->fd_mem = -1;
+-		}
+-		#endif
+ 	}
+ 	else
+ 	{
+@@ -320,27 +171,8 @@
+ 
+ GstVpuDmaMemory *gst_vpudmabuf_get_memory (GstVpuDmaBufAllocator *vpudma_allocator)
+ {
+-  gint trash_count = vpudma_allocator->trash_count;
+-  gint search_count = 0;
+   GstVpuDmaMemory *mem;
+   mem = g_slice_new0 (GstVpuDmaMemory);
+-
+-  while((trash_count < MAX_TRASH_COUNT) && (mem < 0x80000000))
+-  {
+-    GstVpuDmaMemory *before_mem = mem;
+-    vpudma_allocator->trash_mem[trash_count] = mem;
+-    mem = g_slice_new0 (GstVpuDmaMemory);
+-    GST_INFO("[%d] keep(%p), re-search(%d)",trash_count, before_mem, search_count);
+-    trash_count++;
+-    search_count++;
+-  }
+-
+-  if ((trash_count >= MAX_TRASH_COUNT) && (mem < 0x80000000))
+-  {
+-    GST_INFO("[%d] trash memory is full, final mem is %p",trash_count, mem);
+-  }
+-
+-  vpudma_allocator->trash_count = trash_count;
+   return mem;
+ }
+ 
+@@ -360,9 +192,6 @@
+   mem->fd = fd;
+   g_mutex_init (&mem->lock);
+ 
+-  mem->pBuffer = pBuffer;
+-  mem->offset = 0;
+-  mem->phys_addr = physical_addr;
+   mem->disp_index = disp_index;
+ 
+   GST_DEBUG ("mem: %p fd: %d size %" G_GSIZE_FORMAT " allocator(%p), physical_addr(%p) disp_index(%d)",
+@@ -490,13 +319,6 @@
+ {
+ 	GstAllocator *alloc = GST_ALLOCATOR_CAST (allocator);
+ 	GST_INFO("allocator %p",allocator);
+-#if 0
+-	alloc->mem_map = (GstMemoryMapFunction) _vpudma_mem_map;
+-	alloc->mem_unmap = (GstMemoryUnmapFunction) _vpudma_mem_unmap;
+-	alloc->mem_copy = (GstMemoryCopyFunction) _vpudma_mem_copy;
+-	alloc->mem_share = (GstMemoryShareFunction) _vpudma_mem_share;
+-	alloc->mem_is_span = (GstMemoryIsSpanFunction) _vpudma_mem_is_span;
+-#endif
+ 	alloc->mem_type = GST_ALLOCATOR_DMABUF;
+ 
+ 	allocator->priv = G_TYPE_INSTANCE_GET_PRIVATE (allocator,
+@@ -520,14 +342,6 @@
+ 		vpudmabuf_close_vpu_mem_driver(self->priv);
+ 	}
+ 	G_OBJECT_CLASS(gst_vpudmabuf_mem_parent_class)->finalize(object);
+-
+-	while(self->trash_count > 0 ) {
+-		GST_INFO("[%d] free(%p)",self->trash_count,self->trash_mem[self->trash_count-1]);
+-		g_slice_free (GstVpuDmaMemory, self->trash_mem[self->trash_count-1]);
+-		self->trash_mem[self->trash_count-1] = NULL;
+-		self->trash_count--;
+-	}
+-
+ 	GST_DEBUG("Done");
+ }
+ 
+@@ -541,7 +355,6 @@
+ 	self = GST_VPUDMABUF_ALLOCATOR(allocator);
+ 	self->clear_cb = clear_cb;
+ 	self->user_data = user_data;
+-	self->trash_count = 0;
+ 	gst_object_ref_sink (allocator);
+ 	return allocator;
+ }
+@@ -594,7 +407,10 @@
+ 				meta->offset[0] = 0;
+ 				meta->offset[1] = meta->pCurrOut[1] - meta->pCurrOut[0];
+ 				meta->offset[2] = meta->pCurrOut[2] - meta->pCurrOut[0]; //meta->offset[0] + (meta->offset[1]/4);
+-				GST_LOG("offset(%d - %d - %d) stride(%d - %d - %d) height(%d -> %d)",meta->offset[0],meta->offset[1],meta->offset[2],meta->stride[0],meta->stride[1],meta->stride[2],meta->height,meta->mTcCropHeight);
++				GST_LOG("offset(%d - %d - %d) stride(%d - %d - %d) height(%d -> %d)",
++					meta->offset[0],meta->offset[1],meta->offset[2],
++					meta->stride[0],meta->stride[1],meta->stride[2],
++					meta->height,meta->mTcCropHeight);
+ 				meta->width = meta->mTcCropWidth;
+ 				meta->height = meta->mTcCropHeight;
+ 			}
+@@ -664,8 +480,11 @@
+ 
+ 		GST_LOG("%d x %d, CropInfo[%d %d %d %d] Stride[%d %d] buffer_size[%d align(%d)] pCurrOut[%p:%p:%p]",
+ 				video_output->mWidth,video_output->mHeight,
+-				video_output->stCropInfo.iCropLeft,video_output->stCropInfo.iCropTop,video_output->stCropInfo.iCropWidth,video_output->stCropInfo.iCropHeight,
+-				video_output->stStride.iY,video_output->stStride.iCbCr,buffer_size,buffer_size_align,y_addr,u_addr,v_addr);
++				video_output->stCropInfo.iCropLeft,video_output->stCropInfo.iCropTop,
++				video_output->stCropInfo.iCropWidth,video_output->stCropInfo.iCropHeight,
++				video_output->stStride.iY,video_output->stStride.iCbCr,
++				buffer_size,buffer_size_align,
++				y_addr,u_addr,v_addr);
+ 
+ 		if(buf_size)
+ 		{

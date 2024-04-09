@@ -1,0 +1,68 @@
+From aaaf1866f30d9279ad44b159ac5e4da968005a3a Mon Sep 17 00:00:00 2001
+From: YoungJun <youngjun@telechips.com>
+Date: Mon, 4 Sep 2017 01:40:38 +0000
+Subject: [PATCH] Initialize the first wl_surface in the constructor of
+ QWaylandWindow
+
+This makes it possible to get a pointer to a wl_surface immediately after
+platform window creation.
+
+Task-number: QTBUG-58423
+https://codereview.qt-project.org/#/c/184278/
+
+Error Message:
+error marshalling arguments for get_subsurface (signature noo):
+null value passed for arg 2
+---
+ src/client/qwaylandwindow.cpp | 8 +++++++-
+ src/client/qwaylandwindow_p.h | 1 +
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/src/client/qwaylandwindow.cpp b/src/client/qwaylandwindow.cpp
+index ddd6644..512a141 100644
+--- a/src/client/qwaylandwindow.cpp
++++ b/src/client/qwaylandwindow.cpp
+@@ -87,6 +87,7 @@ QWaylandWindow::QWaylandWindow(QWindow *window)
+ {
+     static WId id = 1;
+     mWindowId = id++;
++    initializeWlSurface();
+ }
+ 
+ QWaylandWindow::~QWaylandWindow()
+@@ -119,7 +120,7 @@ void QWaylandWindow::initWindow()
+         return;
+ 
+     if (!isInitialized())
+-        init(mDisplay->createSurface(static_cast<QtWayland::wl_surface *>(this)));
++        initializeWlSurface();
+ 
+     if (shouldCreateSubSurface()) {
+         Q_ASSERT(!mSubSurfaceWindow);
+@@ -175,6 +176,11 @@ void QWaylandWindow::initWindow()
+     handleContentOrientationChange(window()->contentOrientation());
+ }
+ 
++void QWaylandWindow::initializeWlSurface()
++{
++    init(mDisplay->createSurface(static_cast<QtWayland::wl_surface *>(this)));
++}
++
+ bool QWaylandWindow::shouldCreateShellSurface() const
+ {
+     if (shouldCreateSubSurface())
+diff --git a/src/client/qwaylandwindow_p.h b/src/client/qwaylandwindow_p.h
+index 94aea73..211287b 100644
+--- a/src/client/qwaylandwindow_p.h
++++ b/src/client/qwaylandwindow_p.h
+@@ -238,6 +238,7 @@ private:
+     bool setWindowStateInternal(Qt::WindowState flags);
+     void setGeometry_helper(const QRect &rect);
+     void initWindow();
++    void initializeWlSurface();
+     bool shouldCreateShellSurface() const;
+     bool shouldCreateSubSurface() const;
+     void reset();
+-- 
+2.9.3
+

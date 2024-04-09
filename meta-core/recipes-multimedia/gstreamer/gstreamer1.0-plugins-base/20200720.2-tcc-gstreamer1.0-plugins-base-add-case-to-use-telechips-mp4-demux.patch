@@ -1,0 +1,266 @@
+diff -Naur before/gst/typefind/gsttypefindfunctions.c 1.16.2-r0/gst-plugins-base-1.16.2/gst/typefind/gsttypefindfunctions.c
+--- before/gst/typefind/gsttypefindfunctions.c	2020-07-20 16:24:13.646475757 +0900
++++ 1.16.2-r0/gst-plugins-base-1.16.2/gst/typefind/gsttypefindfunctions.c	2020-07-20 16:26:38.089676669 +0900
+@@ -43,6 +43,9 @@
+ #include <gst/pbutils/pbutils.h>
+ #include <gst/base/gstbytereader.h>
+ 
++/* Workaround for formats that can not be supported */
++#define USE_SNIFF_FUNCTION
++
+ GST_DEBUG_CATEGORY_STATIC (type_find_debug);
+ #define GST_CAT_DEFAULT type_find_debug
+ 
+@@ -58,6 +61,34 @@
+   guint size;
+ } DataScanCtx;
+ 
++#ifdef USE_SNIFF_FUNCTION
++
++// reason
++#define QT_NOT_SUPPORTED_SYNTAX  (1<<1)
++#define QT_NOT_SUPPORTED_AUDIO   (1<<2)
++typedef struct sniff_t {
++    struct _GstTypeFind *tf;
++    DataScanCtx  c;
++    guint32 u32Flags;
++    guint32 u32Reason;
++} sniff_t;
++static GstStaticCaps mp4_caps = GST_STATIC_CAPS ("video/mp4");
++#define MP4_CAPS gst_static_caps_get(&mp4_caps)
++
++
++#define FOURCC_moov     GST_MAKE_FOURCC('m','o','o','v')
++#define FOURCC_ftyp     GST_MAKE_FOURCC('f','t','y','p')
++#define FOURCC_trak     GST_MAKE_FOURCC('t','r','a','k')
++#define FOURCC_mvhd     GST_MAKE_FOURCC('m','v','h','d')
++#define FOURCC_edts     GST_MAKE_FOURCC('e','d','t','s')
++#define FOURCC_elst     GST_MAKE_FOURCC('e','l','s','t')
++#define FOURCC_mdia     GST_MAKE_FOURCC('m','d','i','a')
++#define FOURCC_minf     GST_MAKE_FOURCC('m','i','n','f')
++#define FOURCC_stbl     GST_MAKE_FOURCC('s','t','b','l')
++#define FOURCC_stsd     GST_MAKE_FOURCC('s','t','s','d')
++
++#endif
++
+ static inline void
+ data_scan_ctx_advance (GstTypeFind * tf, DataScanCtx * c, guint bytes_to_skip)
+ {
+@@ -3569,7 +3600,196 @@
+       gst_type_find_suggest (tf, tip, QT_CAPS);
+     }
+   }
+-};
++}
++
++#ifdef USE_SNIFF_FUNCTION
++#define ENDPOS_ON_SUBBOX(pos) (pos-4)
++#define BOX_SIZE_LEN 4
++#define BOX_ID_LEN   4
++#define GST_GINT64_CONSTANT(val) (val##L)
++#define GST_MAXUINT64 GST_GINT64_CONSTANT(0xffffffffffffffffU)
++#define GST_MAXUINT32 ((guint32) 0xffffffff)
++gboolean
++mp4_parse_box(sniff_t *pstSniff, guint32 u32BoxLen)
++{
++    guint64 u64_box_size, u64_gap, u64_startpos, u64_endpos;
++    guint32 u32_box_id;
++
++    u64_endpos = pstSniff->c.offset + u32BoxLen;
++
++    while (data_scan_ctx_ensure_data(pstSniff->tf, &pstSniff->c, 16) && pstSniff->c.offset < ENDPOS_ON_SUBBOX(u64_endpos)) {
++        u64_box_size = GST_READ_UINT32_BE(pstSniff->c.data + 0);
++        u32_box_id   = GST_READ_UINT32_LE(pstSniff->c.data + 4);
++
++        GST_INFO("| %c%c%c%c | BoxLen: %10llu | Offset: %10llu |"
++                 , pstSniff->c.data[4]
++                 , pstSniff->c.data[5]
++                 , pstSniff->c.data[6]
++                 , pstSniff->c.data[7]
++                 , u64_box_size
++                 , pstSniff->c.offset);
++
++        u64_box_size -= (BOX_SIZE_LEN + BOX_ID_LEN);
++        data_scan_ctx_advance (pstSniff->tf, &pstSniff->c, BOX_SIZE_LEN + BOX_ID_LEN);
++        u64_startpos = pstSniff->c.offset;
++
++        switch (u32_box_id) {
++        case FOURCC_trak:
++        case FOURCC_mdia:
++        case FOURCC_minf:
++        case FOURCC_stbl:
++        case FOURCC_edts:
++            if (mp4_parse_box (pstSniff, u64_box_size)) {
++                return 1;
++            }
++            break;
++        case FOURCC_elst:
++            {
++                guint32 i, cur_offset = 0;
++                guint32 version, entry_count;
++
++                version = (guint32)(GST_READ_UINT8(pstSniff->c.data));// (32) version & flags
++                cur_offset += 4;
++                entry_count = GST_READ_UINT32_BE(pstSniff->c.data + cur_offset);
++                cur_offset += 4;
++
++                GST_ERROR("| %d: version (%d) |", __LINE__, version);
++                GST_ERROR("| %d: entry_count (%d) |", __LINE__, entry_count);
++
++                for (i = 0; i < entry_count; i++) {
++                    if (version == 1) {
++                        guint64 segment_duration = GST_READ_UINT64_BE(pstSniff->c.data + cur_offset);
++                        guint64 segment_mediatime = GST_READ_UINT64_BE(pstSniff->c.data + cur_offset + 8);
++
++                        /* [QTDEMUX] there is a problem in the elst box,
++                           so we don't use qtdemux until a solution is available. */
++                        if (segment_duration == 0 || segment_mediatime == GST_MAXUINT64) {
++                            pstSniff->u32Reason = QT_NOT_SUPPORTED_SYNTAX;
++                            GST_ERROR("| %d: QT_NOT_SUPPORTED_SYNTAX |", __LINE__);
++                            return 1; // early termination, no more check
++                        }
++                        cur_offset += 8;
++                        //gint64 media_time = (gint64)(GST_READ_UINT64_BE(pstSniff->c.data + cur_offset));
++                        cur_offset += 8;
++                    } else {
++                        guint32 segment_duration = GST_READ_UINT32_BE(pstSniff->c.data + cur_offset);
++                        guint32 segment_mediatime = GST_READ_UINT32_BE(pstSniff->c.data + cur_offset + 4);
++                        if (segment_duration == 0 || segment_mediatime == GST_MAXUINT32) {
++                            pstSniff->u32Reason = QT_NOT_SUPPORTED_SYNTAX;
++                            GST_ERROR("| %d: QT_NOT_SUPPORTED_SYNTAX |", __LINE__);
++                            return 1; // early termination, no more check
++                        }
++                        cur_offset += 4;
++                        //gint32 media_time = (gint64)(GST_READ_UINT32_BE(pstSniff->c.data + cur_offset));
++                        cur_offset += 4;
++                    }
++                }
++            }
++            break;
++        case FOURCC_stsd:
++            {
++                // (32) version & flags
++                // (32) entry count
++                // (32) size
++                // (32) id
++                guint32 u32_stsd_id = GST_READ_UINT32_LE(pstSniff->c.data +12);
++
++                switch (u32_stsd_id) {
++                case GST_MAKE_FOURCC ('N', 'O', 'N', 'E'):
++                case GST_MAKE_FOURCC ('r', 'a', 'w', ' '):
++                case GST_MAKE_FOURCC ('t', 'w', 'o', 's'):
++                case GST_MAKE_FOURCC ('s', 'o', 'w', 't'):
++                case GST_MAKE_FOURCC ('f', 'l', '6', '4'):
++                case GST_MAKE_FOURCC ('f', 'l', '3', '2'):
++                case GST_MAKE_FOURCC ('i', 'n', '2', '4'):
++                case GST_MAKE_FOURCC ('i', 'n', '3', '2'):
++                    pstSniff->u32Reason = QT_NOT_SUPPORTED_AUDIO;
++                    GST_ERROR("| %d: QT_NOT_SUPPORTED_AUDIO |", __LINE__);
++                    return 1; // check audio track done, no more check
++                default:
++                    break;
++                }
++            }
++            break;
++        case FOURCC_mvhd:
++        default:
++            data_scan_ctx_advance (pstSniff->tf, &pstSniff->c, u64_box_size);
++            break;
++        }
++        u64_gap = pstSniff->c.offset - u64_startpos;
++        if (u64_gap < u64_box_size) {
++            data_scan_ctx_advance (pstSniff->tf, &pstSniff->c, u64_box_size - u64_gap);
++        }
++    }
++    return 0;
++}
++
++static void
++mp4_type_find (GstTypeFind *tf, gpointer unused)
++{
++    sniff_t sniff;
++    guint64 u64_box_size, u64_gap, u64_startpos;
++    guint32 u32_box_id;
++
++    // initialize
++    sniff.c.data = NULL;
++    sniff.c.offset = 0;
++    sniff.c.size = 0;
++    sniff.tf = tf;
++    sniff.u32Flags = 0;
++    sniff.u32Reason = 0;
++
++    GST_INFO("| The start of SNIFF for MP4 |");
++
++    while (data_scan_ctx_ensure_data(sniff.tf, &sniff.c, 16)) {
++        u64_box_size = GST_READ_UINT32_BE(sniff.c.data + 0);
++        u32_box_id   = GST_READ_UINT32_LE(sniff.c.data + 4);
++
++        GST_INFO("| %c%c%c%c | BoxLen: %10llu | Offset: %10llu |"
++                 , sniff.c.data[4]
++                 , sniff.c.data[5]
++                 , sniff.c.data[6]
++                 , sniff.c.data[7]
++                 , u64_box_size
++                 , sniff.c.offset);
++
++        u64_box_size -= (BOX_SIZE_LEN + BOX_ID_LEN);
++        data_scan_ctx_advance (sniff.tf, &sniff.c, BOX_SIZE_LEN + BOX_ID_LEN);
++        u64_startpos = sniff.c.offset;
++
++        switch (u32_box_id) {
++        case FOURCC_moov:
++            mp4_parse_box (&sniff, u64_box_size);
++            goto DONE;
++            //break;
++        case FOURCC_ftyp:
++        default:
++            data_scan_ctx_advance (sniff.tf, &sniff.c, u64_box_size);
++            break;
++        }
++        u64_gap = sniff.c.offset - u64_startpos;
++        if (u64_gap < u64_box_size) {
++            data_scan_ctx_advance (sniff.tf, &sniff.c, u64_box_size - u64_gap);
++        }
++    }
++
++DONE:
++    if (sniff.u32Reason > 0) {
++        switch (sniff.u32Reason) {
++        case QT_NOT_SUPPORTED_SYNTAX:
++            GST_ERROR("| Reason:%d (%s) |", sniff.u32Reason, "QT_NOT_SUPPORTED_SYNTAX");
++            break;
++        case QT_NOT_SUPPORTED_AUDIO:
++            GST_ERROR("| Reason:%d (%s) |", sniff.u32Reason, "QT_NOT_SUPPORTED_AUDIO");
++            break;
++        default:
++            break;
++        }
++        gst_type_find_suggest (sniff.tf, GST_TYPE_FIND_MAXIMUM, MP4_CAPS);
++    }
++    GST_INFO("| The end of SNIFF for MP4 |");
++}
++#endif
+ 
+ 
+ /*** image/x-quicktime ***/
+@@ -4189,6 +4409,8 @@
+     return;
+   }
+ 
++  if (h > 0xffff)	h = (~h) + 1;      //support TopDown image
++
+   /* image sizes sanity check */
+   GST_LOG ("w=%u, h=%u, planes=%u, bpp=%u", w, h, planes, bpp);
+   if (w == 0 || w > 0xfffff || h == 0 || h > 0xfffff || planes != 1 ||
+@@ -6049,6 +6271,10 @@
+       "m4a", M4A_CAPS, NULL, NULL);
+   TYPE_FIND_REGISTER (plugin, "application/x-3gp", GST_RANK_PRIMARY,
+       q3gp_type_find, "3gp", Q3GP_CAPS, NULL, NULL);
++#ifdef USE_SNIFF_FUNCTION
++  TYPE_FIND_REGISTER (plugin, "video/mp4", GST_RANK_PRIMARY + 2,
++      mp4_type_find, "mov,mp4,3gp,m4v", MP4_CAPS, NULL, NULL);
++#endif
+   TYPE_FIND_REGISTER (plugin, "video/quicktime", GST_RANK_PRIMARY + 1,
+       qt_type_find, "mov,mp4", QT_CAPS, NULL, NULL);
+   TYPE_FIND_REGISTER (plugin, "image/x-quicktime", GST_RANK_SECONDARY,

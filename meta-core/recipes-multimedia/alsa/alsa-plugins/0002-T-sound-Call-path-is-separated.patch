@@ -1,0 +1,26 @@
+From 065b0fb4801feac3de5f8b5f2439bf083093a931 Mon Sep 17 00:00:00 2001
+From: "Eunhee Kim (B120055)" <ehk23@telechips.com>
+Date: Mon, 11 Nov 2019 21:42:43 +0900
+Subject: [PATCH] [T-sound] Call path is separated.
+
+Change-Id: I11ac1f9faab4978a6ce71d1b0761af7b52e3b201
+---
+ pulse/50-pulseaudio.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/pulse/50-pulseaudio.conf b/pulse/50-pulseaudio.conf
+index 70b8218..906cca5 100644
+--- a/pulse/50-pulseaudio.conf
++++ b/pulse/50-pulseaudio.conf
+@@ -44,7 +44,7 @@ ctl.pulsetext {
+ 
+ pcm.pulsecall {
+     type pulse
+-	device Secondary
++	device Calling
+ 	role call
+     hint {
+         show on
+-- 
+1.9.3
+

@@ -1,0 +1,8 @@
+[Unit]
+Description=Telechips EGL Sample Application path when weston ready
+
+[Path]
+PathExists=/var/run/user/root/wayland-0
+
+[Install]
+WantedBy=multi-user.target

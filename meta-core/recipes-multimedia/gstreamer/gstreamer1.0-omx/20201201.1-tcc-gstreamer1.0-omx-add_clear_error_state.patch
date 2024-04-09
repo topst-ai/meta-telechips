@@ -1,0 +1,57 @@
+
+In case of spec-out error, it is judged as invalide state and flushing operation cannot be performed.
+
+diff -Naur before/omx/gstomxaudiodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxaudiodec.c
+--- before/omx/gstomxaudiodec.c	2020-11-30 10:51:38.394819978 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxaudiodec.c	2020-12-01 13:56:22.686966905 +0900
+@@ -788,6 +788,8 @@
+ 
+   GST_DEBUG_OBJECT (self, "Stopping decoder");
+ 
++  gst_omx_component_clear_error_state(self->dec);
++
+   gst_omx_port_set_flushing (self->dec_in_port, 5 * GST_SECOND, TRUE);
+   gst_omx_port_set_flushing (self->dec_out_port, 5 * GST_SECOND, TRUE);
+ 
+diff -Naur before/omx/gstomx.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomx.c
+--- before/omx/gstomx.c	2020-11-30 10:51:38.335819558 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomx.c	2020-12-01 13:55:37.565516090 +0900
+@@ -1385,6 +1385,15 @@
+   return gst_omx_error_to_string (gst_omx_component_get_last_error (comp));
+ }
+ 
++void gst_omx_component_clear_error_state(GstOMXComponent *comp)
++{
++	g_return_val_if_fail(comp != NULL, OMX_ErrorUndefined);
++	if (comp->last_error != OMX_ErrorNone) {
++		gst_omx_component_flush_messages(comp);
++		comp->last_error = OMX_ErrorNone;
++	}
++}
++
+ #ifndef GST_DISABLE_GST_DEBUG
+ static const gchar *
+ omx_index_type_to_str (OMX_INDEXTYPE index)
+diff -Naur before/omx/gstomx.h 1.16.2-r0/gst-omx-1.16.2/omx/gstomx.h
+--- before/omx/gstomx.h	2019-12-03 05:08:20.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomx.h	2020-12-01 13:55:58.184133092 +0900
+@@ -432,6 +432,7 @@
+ 
+ OMX_ERRORTYPE     gst_omx_component_get_last_error (GstOMXComponent * comp);
+ const gchar *     gst_omx_component_get_last_error_string (GstOMXComponent * comp);
++void              gst_omx_component_clear_error_state(GstOMXComponent *comp);
+ 
+ GstOMXPort *      gst_omx_component_add_port (GstOMXComponent * comp, guint32 index);
+ GstOMXPort *      gst_omx_component_get_port (GstOMXComponent * comp, guint32 index);
+diff -Naur before/omx/gstomxvideodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c
+--- before/omx/gstomxvideodec.c	2020-11-30 10:51:38.556821129 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c	2020-12-01 13:57:13.934275526 +0900
+@@ -2376,6 +2376,8 @@
+ 
+   GST_DEBUG_OBJECT (self, "Stopping decoder");
+ 
++  gst_omx_component_clear_error_state(self->dec);
++
+   gst_omx_port_set_flushing (self->dec_in_port, 5 * GST_SECOND, TRUE);
+   gst_omx_port_set_flushing (self->dec_out_port, 5 * GST_SECOND, TRUE);
+ 

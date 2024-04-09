@@ -1,0 +1,11 @@
+diff -Naur before/gst/audioparsers/gstflacparse.c after/gst/audioparsers/gstflacparse.c
+--- before/gst/audioparsers/gstflacparse.c	2016-03-24 20:36:37.000000000 +0900
++++ after/gst/audioparsers/gstflacparse.c	2020-03-24 11:18:34.983783409 +0900
+@@ -1239,6 +1239,7 @@
+   caps = gst_caps_new_simple ("audio/x-flac",
+       "channels", G_TYPE_INT, flacparse->channels,
+       "framed", G_TYPE_BOOLEAN, TRUE,
++      "depth", G_TYPE_INT, flacparse->bps,
+       "rate", G_TYPE_INT, flacparse->samplerate, NULL);
+ 
+   if (!flacparse->headers)

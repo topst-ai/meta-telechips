@@ -1,0 +1,23 @@
+#DHCP Setting
+[Match]
+Name=eth*
+KernelCommandLine=!nfsroot
+
+[Network]
+DHCP=yes
+
+[DHCP]
+RouteMetric=10
+ClientIdentifier=mac
+
+#Static Setting
+#[Match]
+#Name=eth*
+
+#[Link]
+#MACAddress=FF:FF:FF:FF:FF:FF
+#MTUBytes=1500
+
+#[Network]
+#Address=192.168.1.1/24
+#Gateway=192.168.1.1

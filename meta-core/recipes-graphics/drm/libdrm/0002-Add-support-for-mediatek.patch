@@ -1,0 +1,1023 @@
+From a3acda3fb920ac5de40cb3d90140aed10fbc7187 Mon Sep 17 00:00:00 2001
+From: Cawa Cheng <cawa.cheng@mediatek.com>
+Date: Wed, 25 Mar 2015 09:04:16 +0800
+Subject: [PATCH 2/6] Add support for mediatek
+
+Signed-off-by: Brendan King <Brendan.King@imgtec.com>
+---
+ Makefile.am                    |   5 +
+ configure.ac                   |  15 +++
+ libkms/Makefile.am             |   5 +
+ libkms/Makefile.sources        |   3 +
+ libkms/internal.h              |   2 +
+ libkms/linux.c                 |   5 +
+ libkms/mediatek.c              | 222 +++++++++++++++++++++++++++++++++
+ libkms/meson.build             |   4 +
+ mediatek/Makefile.am           |  24 ++++
+ mediatek/libdrm_mediatek.pc.in |  11 ++
+ mediatek/mediatek-symbol-check |  25 ++++
+ mediatek/mediatek_drm.c        | 276 +++++++++++++++++++++++++++++++++++++++++
+ mediatek/mediatek_drm.h        |  57 +++++++++
+ mediatek/mediatek_drmif.h      |  76 ++++++++++++
+ mediatek/meson.build           |  53 ++++++++
+ meson.build                    |   7 ++
+ meson_options.txt              |   7 ++
+ 17 files changed, 797 insertions(+)
+ create mode 100644 libkms/mediatek.c
+ create mode 100644 mediatek/Makefile.am
+ create mode 100644 mediatek/libdrm_mediatek.pc.in
+ create mode 100755 mediatek/mediatek-symbol-check
+ create mode 100644 mediatek/mediatek_drm.c
+ create mode 100644 mediatek/mediatek_drm.h
+ create mode 100644 mediatek/mediatek_drmif.h
+ create mode 100644 mediatek/meson.build
+
+diff --git a/Makefile.am b/Makefile.am
+index 730de1f..eaf9d7d 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -90,6 +90,10 @@ if HAVE_ETNAVIV
+ ETNAVIV_SUBDIR = etnaviv
+ endif
+ 
++if HAVE_MEDIATEK
++MEDIATEK_SUBDIR = mediatek
++endif
++
+ if BUILD_MANPAGES
+ if HAVE_MANPAGES_STYLESHEET
+ MAN_SUBDIR = man
+@@ -109,6 +113,7 @@ SUBDIRS = \
+ 	$(TEGRA_SUBDIR) \
+ 	$(VC4_SUBDIR) \
+ 	$(ETNAVIV_SUBDIR) \
++	$(MEDIATEK_SUBDIR) \
+ 	data \
+ 	tests \
+ 	$(MAN_SUBDIR)
+diff --git a/configure.ac b/configure.ac
+index 955dbad..56c0386 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -148,6 +148,11 @@ AC_ARG_ENABLE(tegra-experimental-api,
+ 	      [Enable support for Tegra's experimental API (default: disabled)]),
+ 	      [TEGRA=$enableval], [TEGRA=no])
+ 
++AC_ARG_ENABLE(mediatek-experimental-api,
++	      AS_HELP_STRING([--enable-mediatek-experimental-api],
++	      [Enable support for Mediatek's experimental API (default: disabled)]),
++	      [MEDIATEK=$enableval], [MEDIATEK=no])
++
+ AC_ARG_ENABLE(vc4,
+ 	      AS_HELP_STRING([--disable-vc4],
+ 	      [Enable support for vc4's API (default: auto, enabled on arm)]),
+@@ -457,6 +462,13 @@ fi
+ 
+ AM_CONDITIONAL(HAVE_ETNAVIV, [test "x$ETNAVIV" = xyes])
+ 
++AM_CONDITIONAL(HAVE_MEDIATEK, [test "x$MEDIATEK" = xyes])
++if test "x$MEDIATEK" = xyes; then
++	AC_DEFINE(HAVE_MEDIATEK, 1, [Have MEDIATEK support])
++else
++	AC_DEFINE(HAVE_MEDIATEK, 0)
++fi
++
+ AM_CONDITIONAL(HAVE_INSTALL_TESTS, [test "x$INSTALL_TESTS" = xyes])
+ 
+ AC_ARG_ENABLE([cairo-tests],
+@@ -569,6 +581,8 @@ AC_CONFIG_FILES([
+ 	vc4/libdrm_vc4.pc
+ 	etnaviv/Makefile
+ 	etnaviv/libdrm_etnaviv.pc
++	mediatek/Makefile
++	mediatek/libdrm_mediatek.pc
+ 	tests/Makefile
+ 	tests/modeprint/Makefile
+ 	tests/modetest/Makefile
+@@ -602,4 +616,5 @@ echo "  Freedreno API  $FREEDRENO (kgsl: $FREEDRENO_KGSL)"
+ echo "  Tegra API      $TEGRA"
+ echo "  VC4 API        $VC4"
+ echo "  Etnaviv API    $ETNAVIV"
++echo "  Mediatek API   $MEDIATEK"
+ echo ""
+diff --git a/libkms/Makefile.am b/libkms/Makefile.am
+index ff4c1b2..32a2bbe 100644
+--- a/libkms/Makefile.am
++++ b/libkms/Makefile.am
+@@ -34,6 +34,11 @@ libkms_la_SOURCES += $(LIBKMS_EXYNOS_FILES)
+ AM_CFLAGS += -I$(top_srcdir)/exynos
+ endif
+ 
++if HAVE_MEDIATEK
++libkms_la_SOURCES += $(LIBKMS_MEDIATEK_FILES)
++AM_CFLAGS += -I$(top_srcdir)/mediatek
++endif
++
+ libkmsincludedir = ${includedir}/libkms
+ libkmsinclude_HEADERS = $(LIBKMS_H_FILES)
+ 
+diff --git a/libkms/Makefile.sources b/libkms/Makefile.sources
+index 3191f51..a2268e3 100644
+--- a/libkms/Makefile.sources
++++ b/libkms/Makefile.sources
+@@ -19,5 +19,8 @@ LIBKMS_RADEON_FILES := \
+ LIBKMS_EXYNOS_FILES := \
+ 	exynos.c
+ 
++LIBKMS_MEDIATEK_FILES := \
++	mediatek.c
++
+ LIBKMS_H_FILES := \
+ 	libkms.h
+diff --git a/libkms/internal.h b/libkms/internal.h
+index 8b386db..0c8a22b 100644
+--- a/libkms/internal.h
++++ b/libkms/internal.h
+@@ -77,4 +77,6 @@ drm_private int radeon_create(int fd, struct kms_driver **out);
+ 
+ drm_private int exynos_create(int fd, struct kms_driver **out);
+ 
++drm_private int mediatek_create(int fd, struct kms_driver **out);
++
+ #endif
+diff --git a/libkms/linux.c b/libkms/linux.c
+index 5620505..9116473 100644
+--- a/libkms/linux.c
++++ b/libkms/linux.c
+@@ -131,6 +131,11 @@ linux_from_sysfs(int fd, struct kms_driver **out)
+ 		ret = exynos_create(fd, out);
+ 	else
+ #endif
++#if HAVE_MEDIATEK
++        if (!strcmp(name, "mediatek"))
++                ret = mediatek_create(fd, out);
++        else
++#endif
+ 		ret = -ENOSYS;
+ 
+ 	free(name);
+diff --git a/libkms/mediatek.c b/libkms/mediatek.c
+new file mode 100644
+index 0000000..b1a54c0
+--- /dev/null
++++ b/libkms/mediatek.c
+@@ -0,0 +1,222 @@
++/*
++ * Copyright (c) 2015 MediaTek Inc.
++ * Author:JB TSAI <jb.tsai@mediatek.com>
++ *
++ * based on rockchip_drm.c
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the "Software"),
++ * to deal in the Software without restriction, including without limitation
++ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
++ * and/or sell copies of the Software, and to permit persons to whom the
++ * Software is furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice (including the next
++ * paragraph) shall be included in all copies or substantial portions of the
++ * Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
++ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++ * SOFTWARE.
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++#include <errno.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "internal.h"
++
++#include <sys/mman.h>
++#include <sys/ioctl.h>
++#include "xf86drm.h"
++
++#include "mediatek_drm.h"
++
++struct mediatek_bo
++{
++	struct kms_bo base;
++	unsigned map_count;
++};
++
++static int
++mediatek_get_prop(struct kms_driver *kms, unsigned key, unsigned *out)
++{
++	switch (key) {
++	case KMS_BO_TYPE:
++		*out = KMS_BO_TYPE_SCANOUT_X8R8G8B8 | KMS_BO_TYPE_CURSOR_64X64_A8R8G8B8;
++		break;
++	default:
++		return -EINVAL;
++	}
++	return 0;
++}
++
++static int
++mediatek_destroy(struct kms_driver *kms)
++{
++	free(kms);
++	return 0;
++}
++
++static int
++mediatek_bo_create(struct kms_driver *kms,
++		 const unsigned width, const unsigned height,
++		 const enum kms_bo_type type, const unsigned *attr,
++		 struct kms_bo **out)
++{
++	struct drm_mtk_gem_create arg;
++	unsigned size, pitch;
++	struct mediatek_bo *bo;
++	int i, ret;
++
++	for (i = 0; attr[i]; i += 2) {
++		switch (attr[i]) {
++		case KMS_WIDTH:
++		case KMS_HEIGHT:
++		case KMS_BO_TYPE:
++			break;
++		default:
++			return -EINVAL;
++		}
++	}
++
++	bo = calloc(1, sizeof(*bo));
++	if (!bo)
++		return -ENOMEM;
++
++	if (type == KMS_BO_TYPE_CURSOR_64X64_A8R8G8B8) {
++		pitch = 64 * 4;
++		size = 64 * 64 * 4;
++	} else if (type == KMS_BO_TYPE_SCANOUT_X8R8G8B8) {
++		pitch = width * 4;
++		pitch = (pitch + 512 - 1) & ~(512 - 1);
++		size = pitch * ((height + 4 - 1) & ~(4 - 1));
++	} else {
++		return -EINVAL;
++	}
++
++	memset(&arg, 0, sizeof(arg));
++	arg.size = size;
++
++	ret = drmCommandWriteRead(kms->fd, DRM_MTK_GEM_CREATE, &arg, sizeof(arg));
++	if (ret)
++		goto err_free;
++
++	bo->base.kms = kms;
++	bo->base.handle = arg.handle;
++	bo->base.size = size;
++	bo->base.pitch = pitch;
++
++	*out = &bo->base;
++
++	return 0;
++
++err_free:
++	free(bo);
++	return ret;
++}
++
++static int
++mediatek_bo_get_prop(struct kms_bo *bo, unsigned key, unsigned *out)
++{
++	switch (key) {
++	default:
++		return -EINVAL;
++	}
++}
++
++static int
++mediatek_bo_map(struct kms_bo *_bo, void **out)
++{
++	struct mediatek_bo *bo = (struct mediatek_bo *)_bo;
++	struct drm_mtk_gem_map_off arg;
++	void *map = NULL;
++	int ret;
++
++	if (bo->base.ptr) {
++		bo->map_count++;
++		*out = bo->base.ptr;
++		return 0;
++	}
++
++	memset(&arg, 0, sizeof(arg));
++	arg.handle = bo->base.handle;
++
++	ret = drmCommandWriteRead(bo->base.kms->fd, DRM_MTK_GEM_MAP_OFFSET, &arg, sizeof(arg));
++	if (ret)
++		return ret;
++
++	map = mmap(0, bo->base.size, PROT_READ | PROT_WRITE, MAP_SHARED, bo->base.kms->fd, arg.offset);
++	if (map == MAP_FAILED)
++		return -errno;
++
++	bo->base.ptr = map;
++	bo->map_count++;
++	*out = bo->base.ptr;
++
++	return 0;
++}
++
++static int
++mediatek_bo_unmap(struct kms_bo *_bo)
++{
++	struct mediatek_bo *bo = (struct mediatek_bo *)_bo;
++	bo->map_count--;
++	return 0;
++}
++
++static int
++mediatek_bo_destroy(struct kms_bo *_bo)
++{
++	struct mediatek_bo *bo = (struct mediatek_bo *)_bo;
++	struct drm_gem_close arg;
++	int ret;
++
++	if (bo->base.ptr) {
++		/* XXX Sanity check map_count */
++		munmap(bo->base.ptr, bo->base.size);
++		bo->base.ptr = NULL;
++	}
++
++	memset(&arg, 0, sizeof(arg));
++	arg.handle = bo->base.handle;
++
++	ret = drmIoctl(bo->base.kms->fd, DRM_IOCTL_GEM_CLOSE, &arg);
++	if (ret)
++		return -errno;
++
++	free(bo);
++	return 0;
++}
++
++int
++mediatek_create(int fd, struct kms_driver **out)
++{
++	struct kms_driver *kms;
++
++	kms = calloc(1, sizeof(*kms));
++	if (!kms)
++		return -ENOMEM;
++
++	kms->fd = fd;
++
++	kms->bo_create = mediatek_bo_create;
++	kms->bo_map = mediatek_bo_map;
++	kms->bo_unmap = mediatek_bo_unmap;
++	kms->bo_get_prop = mediatek_bo_get_prop;
++	kms->bo_destroy = mediatek_bo_destroy;
++	kms->get_prop = mediatek_get_prop;
++	kms->destroy = mediatek_destroy;
++	*out = kms;
++
++	return 0;
++}
+diff --git a/libkms/meson.build b/libkms/meson.build
+index 04f018a..7a5788f 100644
+--- a/libkms/meson.build
++++ b/libkms/meson.build
+@@ -40,6 +40,10 @@ if with_exynos
+   files_libkms += files('exynos.c')
+   libkms_include += include_directories('../exynos')
+ endif
++if with_mediatek
++  files_libkms += files('mediatek.c')
++  libkms_include += include_directories('../mediatek')
++endif
+ 
+ libkms = shared_library(
+   'kms',
+diff --git a/mediatek/Makefile.am b/mediatek/Makefile.am
+new file mode 100644
+index 0000000..80f6c29
+--- /dev/null
++++ b/mediatek/Makefile.am
+@@ -0,0 +1,24 @@
++AM_CFLAGS = \
++	$(WARN_CFLAGS) \
++	-fvisibility=hidden \
++	-I$(top_srcdir) \
++	-I$(top_srcdir)/mediatek \
++	$(PTHREADSTUBS_CFLAGS) \
++	-I$(top_srcdir)/include/drm
++
++libdrm_mediatek_la_LTLIBRARIES = libdrm_mediatek.la
++libdrm_mediatek_ladir = $(libdir)
++libdrm_mediatek_la_LDFLAGS = -version-number 1:0:0 -no-undefined
++libdrm_mediatek_la_LIBADD = ../libdrm.la @PTHREADSTUBS_LIBS@
++
++libdrm_mediatek_la_SOURCES = \
++	mediatek_drm.c
++
++libdrm_mediatekincludedir = ${includedir}/libdrm
++libdrm_mediatekinclude_HEADERS = mediatek_drmif.h mediatek_drm.h
++
++pkgconfigdir = @pkgconfigdir@
++pkgconfig_DATA = libdrm_mediatek.pc
++
++TESTS = mediatek-symbol-check
++EXTRA_DIST = $(TESTS)
+diff --git a/mediatek/libdrm_mediatek.pc.in b/mediatek/libdrm_mediatek.pc.in
+new file mode 100644
+index 0000000..eaba97e
+--- /dev/null
++++ b/mediatek/libdrm_mediatek.pc.in
+@@ -0,0 +1,11 @@
++prefix=@prefix@
++exec_prefix=@exec_prefix@
++libdir=@libdir@
++includedir=@includedir@
++
++Name: libdrm_mediatek
++Description: Userspace interface to mediatek kernel DRM services
++Version: 0.1
++Libs: -L${libdir} -ldrm_mediatek
++Cflags: -I${includedir} -I${includedir}/libdrm
++Requires.private: libdrm
+diff --git a/mediatek/mediatek-symbol-check b/mediatek/mediatek-symbol-check
+new file mode 100755
+index 0000000..a68bba9
+--- /dev/null
++++ b/mediatek/mediatek-symbol-check
+@@ -0,0 +1,25 @@
++#!/bin/bash
++
++# The following symbols (past the first five) are taken from the public headers.
++# A list of the latter should be available Makefile.am/libdrm_mediatek*_HEADERS
++
++FUNCS=$($NM -D --format=bsd --defined-only ${1-.libs/libdrm_mediatek.so} | awk '{print $3}'| while read func; do
++( grep -q "^$func$" || echo $func )  <<EOF
++__bss_start
++_edata
++_end
++_fini
++_init
++mediatek_bo_create
++mediatek_bo_destroy
++mediatek_bo_from_name
++mediatek_bo_get_name
++mediatek_bo_handle
++mediatek_bo_map
++mediatek_device_create
++mediatek_device_destroy
++EOF
++done)
++
++test ! -n "$FUNCS" || echo $FUNCS
++test ! -n "$FUNCS"
+diff --git a/mediatek/mediatek_drm.c b/mediatek/mediatek_drm.c
+new file mode 100644
+index 0000000..d2305c5
+--- /dev/null
++++ b/mediatek/mediatek_drm.c
+@@ -0,0 +1,276 @@
++/*
++ * Copyright (c) 2015 MediaTek Inc.
++ * Author:JB TSAI <jb.tsai@mediatek.com>
++ *
++ * based on rockchip_drm.c
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the "Software"),
++ * to deal in the Software without restriction, including without limitation
++ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
++ * and/or sell copies of the Software, and to permit persons to whom the
++ * Software is furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice (including the next
++ * paragraph) shall be included in all copies or substantial portions of the
++ * Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
++ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++ * SOFTWARE.
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++#include <stdlib.h>
++#include <stdio.h>
++#include <string.h>
++#include <errno.h>
++
++#include <sys/mman.h>
++#include <linux/stddef.h>
++
++#include <xf86drm.h>
++
++#include "libdrm_macros.h"
++
++#include "mediatek_drm.h"
++#include "mediatek_drmif.h"
++
++/*
++ * Create mediatek drm device object.
++ *
++ * @fd: file descriptor to mediatek drm driver opened.
++ *
++ * if true, return the device object else NULL.
++ */
++drm_public struct mediatek_device *mediatek_device_create(int fd)
++{
++	struct mediatek_device *dev;
++
++	dev = calloc(1, sizeof(*dev));
++	if (!dev) {
++		fprintf(stderr, "failed to create device[%s].\n",
++				strerror(errno));
++		return NULL;
++	}
++
++	dev->fd = fd;
++
++	return dev;
++}
++
++/*
++ * Destroy mediatek drm device object
++ *
++ * @dev: mediatek drm device object.
++ */
++drm_public void mediatek_device_destroy(struct mediatek_device *dev)
++{
++	free(dev);
++}
++
++/*
++ * Create a mediatek buffer object to mediatek drm device.
++ *
++ * @dev: mediatek drm device object.
++ * @size: user-desired size.
++ * flags: user-desired memory type.
++ *	user can set one or more types among several types to memory
++ *	allocation and cache attribute types. and as default,
++ *	MEDIATEK_BO_NONCONTIG and MEDIATEK-BO_NONCACHABLE types would
++ *	be used.
++ *
++ * if true, return a mediatek buffer object else NULL.
++ */
++drm_public struct mediatek_bo *mediatek_bo_create(struct mediatek_device *dev,
++						  size_t size, uint32_t flags)
++{
++	struct mediatek_bo *bo;
++	struct drm_mtk_gem_create req = {
++		.size = size,
++		.flags = flags,
++	};
++
++	if (size == 0) {
++		fprintf(stderr, "invalid size.\n");
++		return NULL;
++	}
++
++	bo = calloc(1, sizeof(*bo));
++	if (!bo) {
++		fprintf(stderr, "failed to create bo[%s].\n",
++				strerror(errno));
++		goto fail;
++	}
++
++	bo->dev = dev;
++
++	if (drmIoctl(dev->fd, DRM_IOCTL_MTK_GEM_CREATE, &req)){
++		fprintf(stderr, "failed to create gem object[%s].\n",
++				strerror(errno));
++		goto err_free_bo;
++	}
++
++	bo->handle = req.handle;
++	bo->size = size;
++	bo->flags = flags;
++
++	return bo;
++
++err_free_bo:
++	free(bo);
++fail:
++	return NULL;
++}
++
++/*
++ * Destroy a mediatek buffer object.
++ *
++ * @bo: a mediatek buffer object to be destroyed.
++ */
++drm_public void mediatek_bo_destroy(struct mediatek_bo *bo)
++{
++	if (!bo)
++		return;
++
++	if (bo->vaddr)
++		munmap(bo->vaddr, bo->size);
++
++	if (bo->handle) {
++		struct drm_gem_close req = {
++			.handle = bo->handle,
++		};
++
++		drmIoctl(bo->dev->fd, DRM_IOCTL_GEM_CLOSE, &req);
++	}
++
++	free(bo);
++}
++
++
++/*
++ * Get a mediatek buffer object from a gem global object name.
++ *
++ * @dev: a mediatek device object.
++ * @name: a gem global object name exported by another process.
++ *
++ * this interface is used to get a mediatek buffer object from a gem
++ * global object name sent by another process for buffer sharing.
++ *
++ * if true, return a mediatek buffer object else NULL.
++ *
++ */
++drm_public struct mediatek_bo *
++mediatek_bo_from_name(struct mediatek_device *dev, uint32_t name)
++{
++	struct mediatek_bo *bo;
++	struct drm_gem_open req = {
++		.name = name,
++	};
++
++	bo = calloc(1, sizeof(*bo));
++	if (!bo) {
++		fprintf(stderr, "failed to allocate bo[%s].\n",
++				strerror(errno));
++		return NULL;
++	}
++
++	if (drmIoctl(dev->fd, DRM_IOCTL_GEM_OPEN, &req)) {
++		fprintf(stderr, "failed to open gem object[%s].\n",
++				strerror(errno));
++		goto err_free_bo;
++	}
++
++	bo->dev = dev;
++	bo->name = name;
++	bo->handle = req.handle;
++
++	return bo;
++
++err_free_bo:
++	free(bo);
++	return NULL;
++}
++
++/*
++ * Get a gem global object name from a gem object handle.
++ *
++ * @bo: a mediatek buffer object including gem handle.
++ * @name: a gem global object name to be got by kernel driver.
++ *
++ * this interface is used to get a gem global object name from a gem object
++ * handle to a buffer that wants to share it with another process.
++ *
++ * if true, return 0 else negative.
++ */
++drm_public int mediatek_bo_get_name(struct mediatek_bo *bo, uint32_t *name)
++{
++	if (!bo->name) {
++		struct drm_gem_flink req = {
++			.handle = bo->handle,
++		};
++		int ret;
++
++		ret = drmIoctl(bo->dev->fd, DRM_IOCTL_GEM_FLINK, &req);
++		if (ret) {
++			fprintf(stderr, "failed to get gem global name[%s].\n",
++					strerror(errno));
++			return ret;
++		}
++
++		bo->name = req.name;
++	}
++
++	*name = bo->name;
++
++	return 0;
++}
++
++drm_public uint32_t mediatek_bo_handle(struct mediatek_bo *bo)
++{
++	return bo->handle;
++}
++
++/*
++ * Mmap a buffer to user space.
++ *
++ * @bo: a mediatek buffer object including a gem object handle to be mmapped
++ *	to user space.
++ *
++ * if true, user pointer mmaped else NULL.
++ */
++drm_public void *mediatek_bo_map(struct mediatek_bo *bo)
++{
++	if (!bo->vaddr) {
++		struct mediatek_device *dev = bo->dev;
++		struct drm_mtk_gem_map_off req = {
++			.handle = bo->handle,
++		};
++		int ret;
++
++		ret = drmIoctl(dev->fd, DRM_IOCTL_MTK_GEM_MAP_OFFSET, &req);
++		if (ret) {
++			fprintf(stderr, "failed to ioctl gem map offset[%s].\n",
++				strerror(errno));
++			return NULL;
++		}
++
++		bo->vaddr = mmap(0, bo->size, PROT_READ | PROT_WRITE,
++			   MAP_SHARED, dev->fd, req.offset);
++		if (bo->vaddr == MAP_FAILED) {
++			fprintf(stderr, "failed to mmap buffer[%s].\n",
++				strerror(errno));
++			return NULL;
++		}
++	}
++
++	return bo->vaddr;
++}
+diff --git a/mediatek/mediatek_drm.h b/mediatek/mediatek_drm.h
+new file mode 100644
+index 0000000..0fdf74e
+--- /dev/null
++++ b/mediatek/mediatek_drm.h
+@@ -0,0 +1,57 @@
++/*
++ * Copyright (c) 2015 MediaTek Inc.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#ifndef _UAPI_MEDIATEK_DRM_H
++#define _UAPI_MEDIATEK_DRM_H
++
++#include "drm.h"
++
++/**
++ * User-desired buffer creation information structure.
++ *
++ * @size: user-desired memory allocation size.
++ *      - this size value would be page-aligned internally.
++ * @flags: user request for setting memory type or cache attributes.
++ * @handle: returned a handle to created gem object.
++ *	- this handle will be set by gem module of kernel side.
++ */
++struct drm_mtk_gem_create {
++	uint64_t size;
++	uint32_t flags;
++	uint32_t handle;
++};
++
++/**
++ * A structure for getting buffer offset.
++ *
++ * @handle: a pointer to gem object created.
++ * @pad: just padding to be 64-bit aligned.
++ * @offset: relatived offset value of the memory region allocated.
++ *	- this value should be set by user.
++ */
++struct drm_mtk_gem_map_off {
++	uint32_t handle;
++	uint32_t pad;
++	uint64_t offset;
++};
++
++#define DRM_MTK_GEM_CREATE              0x00
++#define DRM_MTK_GEM_MAP_OFFSET          0x01
++
++#define DRM_IOCTL_MTK_GEM_CREATE        DRM_IOWR(DRM_COMMAND_BASE + \
++                DRM_MTK_GEM_CREATE, struct drm_mtk_gem_create)
++
++#define DRM_IOCTL_MTK_GEM_MAP_OFFSET    DRM_IOWR(DRM_COMMAND_BASE + \
++                DRM_MTK_GEM_MAP_OFFSET, struct drm_mtk_gem_map_off)
++
++#endif /* _UAPI_MEDIATEK_DRM_H */
+diff --git a/mediatek/mediatek_drmif.h b/mediatek/mediatek_drmif.h
+new file mode 100644
+index 0000000..3b01293
+--- /dev/null
++++ b/mediatek/mediatek_drmif.h
+@@ -0,0 +1,76 @@
++/*
++ * Copyright (c) 2015 MediaTek Inc.
++ * Author:JB TSAI <jb.tsai@mediatek.com>
++ *
++ * based on rockchip_drmif.h
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the "Software"),
++ * to deal in the Software without restriction, including without limitation
++ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
++ * and/or sell copies of the Software, and to permit persons to whom the
++ * Software is furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice (including the next
++ * paragraph) shall be included in all copies or substantial portions of the
++ * Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
++ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++ * SOFTWARE.
++ *
++ */
++
++#ifndef MEDIATEK_DRMIF_H_
++#define MEDIATEK_DRMIF_H_
++
++#include <xf86drm.h>
++#include <stdint.h>
++#include "mediatek_drm.h"
++
++struct mediatek_device {
++	int fd;
++};
++
++/*
++ * Mediatek Buffer Object structure.
++ *
++ * @dev: mediatek device object allocated.
++ * @handle: a gem handle to gem object created.
++ * @flags: indicate memory allocation and cache attribute types.
++ * @size: size to the buffer created.
++ * @vaddr: user space address to a gem buffer mmaped.
++ * @name: a gem global handle from flink request.
++ */
++struct mediatek_bo {
++	struct mediatek_device	*dev;
++	uint32_t		handle;
++	uint32_t		flags;
++	size_t			size;
++	void			*vaddr;
++	uint32_t		name;
++};
++
++/*
++ * device related functions:
++ */
++struct mediatek_device *mediatek_device_create(int fd);
++void mediatek_device_destroy(struct mediatek_device *dev);
++
++/*
++ * buffer-object related functions:
++ */
++struct mediatek_bo *mediatek_bo_create(struct mediatek_device *dev,
++				       size_t size, uint32_t flags);
++void mediatek_bo_destroy(struct mediatek_bo *bo);
++struct mediatek_bo *mediatek_bo_from_name(struct mediatek_device *dev,
++					  uint32_t name);
++int mediatek_bo_get_name(struct mediatek_bo *bo, uint32_t *name);
++uint32_t mediatek_bo_handle(struct mediatek_bo *bo);
++void *mediatek_bo_map(struct mediatek_bo *bo);
++
++#endif /* MEDIATEK_DRMIF_H_ */
+diff --git a/mediatek/meson.build b/mediatek/meson.build
+new file mode 100644
+index 0000000..47dc5ad
+--- /dev/null
++++ b/mediatek/meson.build
+@@ -0,0 +1,53 @@
++# Copyright © 2017-2018 Intel Corporation
++
++# Permission is hereby granted, free of charge, to any person obtaining a copy
++# of this software and associated documentation files (the "Software"), to deal
++# in the Software without restriction, including without limitation the rights
++# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++# copies of the Software, and to permit persons to whom the Software is
++# furnished to do so, subject to the following conditions:
++
++# The above copyright notice and this permission notice shall be included in
++# all copies or substantial portions of the Software.
++
++# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++# SOFTWARE.
++
++libdrm_mediatek = shared_library(
++  'drm_mediatek',
++  [files('mediatek_drm.c'), config_file],
++  c_args : libdrm_c_args,
++  include_directories : [inc_root, inc_drm],
++  link_with : libdrm,
++  dependencies : [dep_pthread_stubs],
++  version : '1.0.0',
++  install : true,
++)
++
++install_headers('mediatek_drm.h', 'mediatek_drmif.h', subdir : 'libdrm')
++
++ext_libdrm_mediatek = declare_dependency(
++  link_with : [libdrm, libdrm_mediatek],
++  include_directories : [inc_drm, include_directories('.')],
++)
++
++pkg.generate(
++  name : 'libdrm_mediatek',
++  libraries : libdrm_mediatek,
++  subdirs : ['.', 'libdrm'],
++  version : '0.1',
++  requires_private : 'libdrm',
++  description : 'Userspace interface to mediatek kernel DRM services',
++)
++
++test(
++  'mediatek-symbol-check',
++  find_program('mediatek-symbol-check'),
++  env : env_test,
++  args : libdrm_mediatek,
++)
+diff --git a/meson.build b/meson.build
+index fc02f55..923854e 100644
+--- a/meson.build
++++ b/meson.build
+@@ -157,6 +157,8 @@ if _vc4 != 'false'
+   with_vc4 = _vc4 == 'true' or ['arm', 'aarch64'].contains(host_machine.cpu_family())
+ endif
+ 
++with_mediatek = get_option('mediatek') == 'true'
++
+ # XXX: Apparently only freebsd and dragonfly bsd actually need this (and
+ # gnu/kfreebsd), not openbsd and netbsd
+ with_libkms = false
+@@ -264,6 +266,7 @@ foreach t : [
+              [with_exynos, 'EXYNOS'],
+              [with_freedreno_kgsl, 'FREEDRENO_KGSL'],
+              [with_intel, 'INTEL'],
++             [with_mediatek, 'MEDIATEK'],
+              [with_nouveau, 'NOUVEAU'],
+              [with_radeon, 'RADEON'],
+              [with_vc4, 'VC4'],
+@@ -364,6 +367,9 @@ endif
+ if with_vc4
+   subdir('vc4')
+ endif
++if with_mediatek
++  subdir('mediatek')
++endif
+ if with_etnaviv
+   subdir('etnaviv')
+ endif
+@@ -388,4 +394,5 @@ message('  Freedreno API  @0@ (kgsl: @1@)'.format(with_freedreno, with_freedreno
+ message('  Tegra API      @0@'.format(with_tegra))
+ message('  VC4 API        @0@'.format(with_vc4))
+ message('  Etnaviv API    @0@'.format(with_etnaviv))
++message('  Mediatek API   @0@'.format(with_mediatek))
+ message('')
+diff --git a/meson_options.txt b/meson_options.txt
+index 8af33f1..6f07962 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -103,6 +103,13 @@ option(
+   description : '''Enable support for etnaviv's experimental KMS API.''',
+ )
+ option(
++  'mediatek',
++  type : 'combo',
++  value : 'false',
++  choices : ['true', 'false', 'auto'],
++  description : '''Enable support for Mediatek's experimental KMS API.''',
++)
++option(
+   'cairo-tests',
+   type : 'combo',
+   value : 'auto',
+-- 
+2.7.4
+

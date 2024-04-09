@@ -1,0 +1,12 @@
+diff -Naur 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2object.c after/sys/v4l2/gstv4l2object.c
+--- 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2object.c	2020-10-05 14:39:30.481422573 +0900
++++ after/sys/v4l2/gstv4l2object.c	2020-10-05 14:42:33.622441105 +0900
+@@ -3209,7 +3209,7 @@
+ 
+   padded_height = info->height + align->padding_top + align->padding_bottom;
+ 
+-  for (i = 0; i < finfo->n_planes; i++) {
++  for (i = 0; i < 1/*finfo->n_planes*/; i++) {
+     estride = gst_v4l2_object_extrapolate_stride (finfo, i, stride);
+ 
+     gst_v4l2_object_set_stride (info, align, i, estride);

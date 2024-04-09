@@ -1,0 +1,73 @@
+diff -Naur before/gst-libs/gst/video/gstvideometa.c 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/video/gstvideometa.c
+--- before/gst-libs/gst/video/gstvideometa.c	2019-04-19 18:16:20.000000000 +0900
++++ 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/video/gstvideometa.c	2020-09-23 11:18:04.049758615 +0900
+@@ -107,6 +107,27 @@
+       }
+       dmeta->map = smeta->map;
+       dmeta->unmap = smeta->unmap;
++
++      dmeta->mDispIdx = smeta->mDispIdx;
++      dmeta->mType = smeta->mType;
++      dmeta->mFlags = smeta->mFlags;
++      dmeta->pCurrOut[0] = smeta->pCurrOut[0];
++      dmeta->pCurrOut[1] = smeta->pCurrOut[1];
++      dmeta->pCurrOut[2] = smeta->pCurrOut[2];
++      //
++      dmeta->mTcWidth = smeta->mTcWidth;
++      dmeta->mTcHeight = smeta->mTcHeight;
++      // Crop
++      dmeta->mTcCropLeft = smeta->mTcCropLeft;
++      dmeta->mTcCropTop = smeta->mTcCropTop;
++      dmeta->mTcCropWidth = smeta->mTcCropWidth;
++      dmeta->mTcCropHeight = smeta->mTcCropHeight;
++      // stride
++      dmeta->iY = smeta->iY;
++      dmeta->iCbCr = smeta->iCbCr;
++
++      dmeta->mColorFormat = smeta->mColorFormat;
++      dmeta->mDolbyHDREnable = smeta->mDolbyHDREnable;
+     }
+   } else {
+     /* return FALSE, if transform type is not supported */
+diff -Naur before/gst-libs/gst/video/gstvideometa.h 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/video/gstvideometa.h
+--- before/gst-libs/gst/video/gstvideometa.h	2019-04-19 18:16:20.000000000 +0900
++++ 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/video/gstvideometa.h	2020-09-23 11:17:25.520903436 +0900
+@@ -74,6 +74,38 @@
+   gboolean (*map)    (GstVideoMeta *meta, guint plane, GstMapInfo *info,
+                       gpointer *data, gint * stride, GstMapFlags flags);
+   gboolean (*unmap)  (GstVideoMeta *meta, guint plane, GstMapInfo *info);
++
++  gint mDispIdx;
++  gint mType;                   // 0:Image, 1:Video
++  gint mFlags;
++  gulong pCurrOut[3];
++  //
++  gint mTcWidth;
++  gint mTcHeight;
++  // Crop
++  gint mTcCropLeft;
++  gint mTcCropTop;
++  gint mTcCropWidth;
++  gint mTcCropHeight;
++  // stride
++  gint iY;
++  gint iCbCr;
++  //
++  gint mColorFormat;
++  gint mDolbyHDREnable;
++
++  #if 0
++  gint m_CompressedY[2];
++  gint m_CompressedCb[2];
++  gint m_FbcYOffsetAddr[2];
++  gint m_FbcCOffsetAddr[2];
++  //
++  gint m_uiLumaStride;
++  gint m_uiChromaStride;
++  gint m_uiLumaBitDepth;
++  gint m_uiChromaBitDepth;
++  gint m_uiFrameEndian;
++  #endif
+ };
+ 
+ GST_VIDEO_API

@@ -1,0 +1,14 @@
+ctrl_interface=/var/run/wpa_supplicant
+ctrl_interface_group=0
+update_config=1
+
+network={
+		ssid="c3-g1-2t_2GHz"
+		#scan_ssid=1
+		psk="invite1234"
+        key_mgmt=WPA-PSK
+		proto=WPA
+		pairwise=CCMP
+		group=CCMP
+}
+

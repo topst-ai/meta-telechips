@@ -1,0 +1,25 @@
+audioringbuffer: we don't provide GstClockTime when gstbuffer comming to sink element but gst_audio_ring_buffer_acquire() is not finished
+
+IS004A-10349
+
+diff -rNu before/gst-libs/gst/audio/gstaudioringbuffer.c after/gst-libs/gst/audio/gstaudioringbuffer.c
+--- before/gst-libs/gst/audio/gstaudioringbuffer.c	2020-10-14 22:27:34.433293600 +0800
++++ after/gst-libs/gst/audio/gstaudioringbuffer.c	2020-10-15 01:55:04.735585162 +0800
+@@ -563,12 +563,15 @@
+   if (G_UNLIKELY (buf->acquired))
+     goto was_acquired;
+ 
+-  buf->acquired = TRUE;
+-  buf->need_reorder = FALSE;
++  //buf->acquired = TRUE;
++  //buf->need_reorder = FALSE;
+ 
+   rclass = GST_AUDIO_RING_BUFFER_GET_CLASS (buf);
+   if (G_LIKELY (rclass->acquire))
+     res = rclass->acquire (buf, spec);
++	
++  buf->acquired = TRUE;
++  buf->need_reorder = FALSE;
+ 
+   /* Only reorder for raw audio */
+   buf->need_reorder = (buf->need_reorder

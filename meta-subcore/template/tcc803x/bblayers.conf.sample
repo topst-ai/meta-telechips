@@ -1,0 +1,26 @@
+# LAYER_CONF_VERSION is increased each time build/conf/bblayers.conf
+# changes incompatibly
+LCONF_VERSION = "6"
+
+BBPATH = "${TOPDIR}"
+BBFILES ?= ""
+
+BBLAYERS ?= " \
+  ##OEROOT##/meta \
+  ##OEROOT##/meta-poky \
+  ##OEROOT##/meta-qt5 \
+  ##OEROOT##/meta-gplv2 \
+  ##OEROOT##/meta-arm/meta-arm-toolchain \
+  ##OEROOT##/meta-telechips-bsp \
+  ##OEROOT##/meta-telechips/meta-qt5 \
+  ##OEROOT##/meta-telechips/meta-core \
+  ##OEROOT##/meta-telechips/meta-extra \
+  ##OEROOT##/meta-telechips/meta-subcore \
+  ##OEROOT##/meta-telechips/meta-ivi \
+  "
+BBLAYERS_NON_REMOVABLE ?= " \
+  ##OEROOT##/meta \
+  ##OEROOT##/meta-poky \
+  ##OEROOT##/meta-telechips-bsp \
+  ##OEROOT##/meta-telechips/meta-core \
+  "

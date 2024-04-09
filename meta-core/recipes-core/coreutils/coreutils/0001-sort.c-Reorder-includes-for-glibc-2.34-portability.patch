@@ -1,0 +1,35 @@
+From e241a55767c4eaac7d14c412d880037cb6d2ee33 Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Tue, 29 Jun 2021 22:43:16 -0700
+Subject: [PATCH] sort.c: Reorder includes for glibc 2.34 portability
+
+With glibc 2.34 config.h will include stdlib.h and that would disable
+sys/wait.h to include needed definitions from bits/waitflags.h since
+_STDLIB_H would have been defined already and sys/wait.h would think
+these paths are included already, this is fixed with newer gnulib and
+configure so this is to get this old version to compile with latest
+glibc headers
+
+Upstream-Status: Inappropriate [OE-Specific]
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+ src/sort.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- a/src/sort.c
++++ b/src/sort.c
+@@ -21,12 +21,12 @@
+ 
+    Ørn E. Hansen added NLS support in 1997.  */
+ 
++#include <sys/types.h>
++#include <sys/wait.h>
+ #include <config.h>
+ 
+ #include <assert.h>
+ #include <getopt.h>
+-#include <sys/types.h>
+-#include <sys/wait.h>
+ #include <signal.h>
+ #if HAVE_WCHAR_H
+ # include <wchar.h>

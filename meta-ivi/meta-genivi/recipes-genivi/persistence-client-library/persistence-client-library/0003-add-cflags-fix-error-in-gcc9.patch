@@ -1,0 +1,26 @@
+From 6b5e2f5672cf1337441014f4b84595536f14ce94 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=EC=9E=84=EC=98=81=ED=98=84=28Lim=20Young=20Hyun=29?=
+ <limdh3@telechips.com>
+Date: Thu, 5 Mar 2020 14:49:17 +0900
+Subject: [PATCH] add cflags -Wno-stringop-truncation to fix error in gcc 9.2
+
+---
+ src/Makefile.am | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 9e7d464..6e988bb 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -4,7 +4,7 @@ AUTOMAKE_OPTIONS = foreign
+ if DEBUG
+ AM_CFLAGS = -fprofile-arcs -ftest-coverage $(DEPS_CFLAGS) -g -I$(top_srcdir)/include
+ else
+-AM_CFLAGS = $(DEPS_CFLAGS) -I$(top_srcdir)/include
++AM_CFLAGS = $(DEPS_CFLAGS) -I$(top_srcdir)/include -Wno-stringop-truncation
+ #AM_CFLAGS = -fprofile-arcs -ftest-coverage  $(DEPS_CFLAGS) -I$(top_srcdir)/include
+ endif
+ 
+-- 
+1.9.3
+

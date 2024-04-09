@@ -1,0 +1,76 @@
+[mod] v4l2sink - don't use map converter define
+
+Description:
+ It was supposed to refer to the kernel header file, but as the kernel version was updated (v5.4.159),
+ the content of the header file was changed and it is no longer valid.
+
+diff -Naur before/sys/v4l2/gstv4l2bufferpool.c 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2bufferpool.c
+--- before/sys/v4l2/gstv4l2bufferpool.c	2021-11-30 14:01:30.143921860 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2bufferpool.c	2021-11-30 14:05:57.351103656 +0900
+@@ -1282,29 +1282,20 @@
+           vbuffer->m.planes[0].reserved[9] = meta->mTcCropHeight;
+         }
+ 
+-#if defined(_MAP_COMP_SUPPORT_)
+         if(meta->mFlags & DEC_FLAGS_USE_MAP_CONV)
+         {
+           vbuffer->m.planes[0].reserved[10] = 1;
+           // CHECK
+         }
+-        else
+-#endif
+-#if defined(_DTRC_COMP_SUPPORT_) // X
+-        if(meta->mFlags & DEC_FLAGS_USE_DTRC)
++        else if(meta->mFlags & DEC_FLAGS_USE_DTRC)
+         {
+           // CHECK
+         }
+         else
+-#endif
+         {
+           vbuffer->m.planes[0].reserved[10] = 0;
+         }
+ 
+-#if defined(_HEVC_USER_DATA_SUPPORT_) //
+-        // CHECK
+-#endif
+-
+         vbuffer->m.planes[0].reserved[46] = meta->mColorFormat;
+         vbuffer->m.planes[0].reserved[64] = meta->mDolbyHDREnable;
+ 
+@@ -1430,7 +1421,6 @@
+     vbuffer->m.planes[0].reserved[9] = tccvoutput.stCropInfo.iCropHeight;
+     }
+ 
+-#if defined(_MAP_COMP_SUPPORT_)
+     if(tccvoutput.mFlags & DEC_FLAGS_USE_MAP_CONV)
+     {
+       vbuffer->m.planes[0].reserved[10] = 1;
+@@ -1474,26 +1464,20 @@
+                 );
+         }
+     }
+-    else
+-#endif
+-#if defined(_DTRC_COMP_SUPPORT_)
+-    if(tccvoutput.mFlags & DEC_FLAGS_USE_DTRC)
++    else if(tccvoutput.mFlags & DEC_FLAGS_USE_DTRC)
+     {
+         vbuffer->m.planes[0].reserved[10] = 2;
+         memcpy(vbuffer->m.planes[0].reserved[11], &tccvoutput.stDTRCInfo, sizeof(vp9_compressed_info_t));
+     }
+     else
+-#endif
+     {
+       vbuffer->m.planes[0].reserved[10] = 0;
+     }
+ 
+-#if defined(_HEVC_USER_DATA_SUPPORT_)
+     if(tccvoutput.mHEVCUserDataEnalbe != 0)
+     {
+       memcpy(vbuffer->m.planes[0].reserved[26], &tccvoutput.stHEVCUserInfo, sizeof(hevc_userdata_output_t));
+     }
+-#endif
+ 
+     vbuffer->m.planes[0].reserved[46] = tccvoutput.mColorFormat;
+     vbuffer->m.planes[0].reserved[64] = tccvoutput.mDolbyHDREnable;

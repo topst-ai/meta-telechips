@@ -1,0 +1,207 @@
+diff -Naur before/omx/gstomxh263dec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxh263dec.c
+--- before/omx/gstomxh263dec.c	2020-08-10 14:46:49.289596615 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxh263dec.c	2020-08-12 20:50:09.230784670 +0900
+@@ -26,6 +26,8 @@
+ 
+ #include "gstomxh263dec.h"
+ 
++#define GST_TC_OMX_VIDEO_SIZE_RANGE_H263 "width=(int) [48,1920], height=(int) [16,1088]"
++
+ GST_DEBUG_CATEGORY_STATIC (gst_omx_h263_dec_debug_category);
+ #define GST_CAT_DEFAULT gst_omx_h263_dec_debug_category
+ 
+@@ -61,7 +63,7 @@
+ 
+   videodec_class->cdata.default_sink_template_caps = "video/x-h263, "
+       "variant=(string) itu, "
+-      "parsed=(boolean) true, " "width=(int) [1,MAX], " "height=(int) [1,MAX]";
++      "parsed=(boolean) true, " GST_TC_OMX_VIDEO_SIZE_RANGE_H263;
+ 
+   gst_element_class_set_static_metadata (element_class,
+       "OpenMAX H.263 Video Decoder",
+diff -Naur before/omx/gstomxh264dec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxh264dec.c
+--- before/omx/gstomxh264dec.c	2020-08-10 14:46:49.289596615 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxh264dec.c	2020-08-12 20:48:32.807756349 +0900
+@@ -63,7 +63,7 @@
+   videodec_class->cdata.default_sink_template_caps = "video/x-h264, "
+       "alignment=(string) au, "
+       "stream-format=(string) byte-stream, "
+-      "width=(int) [1,MAX], " "height=(int) [1,MAX]";
++      GST_TC_OMX_VIDEO_SIZE_RANGE;
+ 
+   gst_element_class_set_static_metadata (element_class,
+       "OpenMAX H.264 Video Decoder",
+diff -Naur before/omx/gstomxh265dec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxh265dec.c
+--- before/omx/gstomxh265dec.c	2020-08-10 14:46:49.290596623 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxh265dec.c	2020-08-12 20:50:29.054151161 +0900
+@@ -37,6 +37,12 @@
+ static gboolean gst_omx_h265_dec_set_format (GstOMXVideoDec * dec,
+     GstOMXPort * port, GstVideoCodecState * state);
+ 
++#if defined(SUPPORT_4K_VIDEO)
++#define GST_TC_OMX_H265_SIZE_RANGE	"width=(int) [48,3840], height=(int) [32,2160]"
++#else // 2K
++#define GST_TC_OMX_H265_SIZE_RANGE	"width=(int) [48,1920], height=(int) [32,1088]"
++#endif
++
+ enum
+ {
+   PROP_0
+@@ -66,7 +72,7 @@
+       "alignment=(string) au, "
+       "stream-format=(string) byte-stream, "
+ #endif
+-      "width=(int) [1,MAX], " "height=(int) [1,MAX]";
++      GST_TC_OMX_H265_SIZE_RANGE;
+ 
+   gst_element_class_set_static_metadata (element_class,
+       "OpenMAX H.265 Video Decoder",
+diff -Naur before/omx/gstomxmpeg2videodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxmpeg2videodec.c
+--- before/omx/gstomxmpeg2videodec.c	2020-08-10 14:46:49.290596623 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxmpeg2videodec.c	2020-08-12 20:35:54.587701731 +0900
+@@ -63,7 +63,8 @@
+   videodec_class->cdata.default_sink_template_caps = "video/mpeg, "
+       "mpegversion=(int) [1, 2], "
+       "systemstream=(boolean) false, "
+-      "parsed=(boolean) true, " "width=(int) [1,MAX], " "height=(int) [1,MAX]";
++      "parsed=(boolean) true, "
++      GST_TC_OMX_VIDEO_SIZE_RANGE;
+ 
+   gst_element_class_set_static_metadata (element_class,
+       "OpenMAX MPEG2 Video Decoder",
+diff -Naur before/omx/gstomxmpeg4videodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxmpeg4videodec.c
+--- before/omx/gstomxmpeg4videodec.c	2020-08-10 14:46:49.290596623 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxmpeg4videodec.c	2020-08-12 20:40:47.488117072 +0900
+@@ -64,7 +64,19 @@
+   videodec_class->cdata.default_sink_template_caps = "video/mpeg, "
+       "mpegversion=(int) 4, "
+       "systemstream=(boolean) false, "
+-      "parsed=(boolean) true, " "width=(int) [1,MAX], " "height=(int) [1,MAX]";
++      "parsed=(boolean) true, "
++      GST_TC_OMX_VIDEO_SIZE_RANGE
++      ";"
++      "video/x-msmpeg, "
++      "msmpegversion=(int) 43, "
++      GST_TC_OMX_VIDEO_SIZE_RANGE
++      ";"
++      "video/x-xvid, "
++      GST_TC_OMX_VIDEO_SIZE_RANGE
++      ";"
++      "video/x-3ivx, "
++      GST_TC_OMX_VIDEO_SIZE_RANGE
++      ;
+ 
+   gst_element_class_set_static_metadata (element_class,
+       "OpenMAX MPEG4 Video Decoder",
+@@ -92,13 +104,40 @@
+     GstVideoCodecState * state)
+ {
+   gboolean ret;
++  gint32 msmpegversion = 0;
++  guint32 foramt = OMX_VIDEO_CodingMPEG4;
++  const gchar *mime;
+   OMX_PARAM_PORTDEFINITIONTYPE port_def;
+ 
++  GstStructure *structure = gst_caps_get_structure(state->caps, 0);
++  gst_structure_get_int(structure,      "msmpegversion", &msmpegversion);
++
++  mime = gst_structure_get_name(structure);
++  if (strcmp(mime, "video/x-msmpeg") == 0)
++    foramt = OMX_VIDEO_CodingMSMPEG4;
++
+   gst_omx_port_get_port_definition (port, &port_def);
+-  port_def.format.video.eCompressionFormat = OMX_VIDEO_CodingMPEG4;
++  port_def.format.video.eCompressionFormat = foramt;
+   ret = gst_omx_port_update_port_definition (port, &port_def) == OMX_ErrorNone;
+ 
++  // MS MPEG-4
++  if (msmpegversion)  {
++    OMX_VIDEO_PARAM_MSMPEG4VERSIONTYPE param;
++    GST_OMX_INIT_STRUCT (&param);
++
++    param.nPortIndex = port->index;
++
++    switch (msmpegversion) {
++      case 41:  param.eVersion = OMX_VIDEO_MSMPEG4Version1;  break;
++      case 42:  param.eVersion = OMX_VIDEO_MSMPEG4Version2;  break;
++      case 43:  param.eVersion = OMX_VIDEO_MSMPEG4Version3;  break;
++      default:  param.eVersion = OMX_VIDEO_MSMPEG4VersionUnused;  break;
++    }
++
++    gst_omx_component_set_parameter (dec->dec, OMX_IndexParamVideoMsMpeg4Version, &param);
++  }
++
+   gst_omx_video_dec_set_property_config (dec);
+ 
+-  return ret;
++  return TRUE;
+ }
+diff -Naur before/omx/gstomxvideodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c
+--- before/omx/gstomxvideodec.c	2020-08-10 14:46:49.290596623 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c	2020-08-12 20:33:34.804863837 +0900
+@@ -103,14 +103,14 @@
+ #define GST_OMX_VIDEO_DEC_INTERNAL_ENTROPY_BUFFERS_DEFAULT (5)
+ 
+ /* properties */
+-#define DEFAULT_THUMBNAIL_MODE        FALSE
++#define DEFAULT_THUMBNAIL_MODE          FALSE
+ #define DEFAULT_CURRENT_FRAME_OUTPUT    FALSE
+-#define DEFAULT_CURRENT_KEYFRAME_OUTPUT   FALSE
+-#define DEFAULT_SEQ_INIT_FAIL_MAX     300
++#define DEFAULT_CURRENT_KEYFRAME_OUTPUT FALSE
++#define DEFAULT_SEQ_INIT_FAIL_MAX       300
+ #define DEFAULT_MB_ERROR_REPORTING      FALSE
+ #define DEFAULT_DEC_ERROR_REPORTING     FALSE
+-#define DEFAULT_DEC_ERROR_REPORT_REPEAT   FALSE
+-#define DEFAULT_DEC_ERROR_REPORT_PERIOD   150
++#define DEFAULT_DEC_ERROR_REPORT_REPEAT FALSE
++#define DEFAULT_DEC_ERROR_REPORT_PERIOD 150
+ #define DEFAULT_DEC_ENABLE_RING_MODE    FALSE
+ 
+ /* class initialization */
+diff -Naur before/omx/gstomxvp8dec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvp8dec.c
+--- before/omx/gstomxvp8dec.c	2020-08-10 14:46:49.291596631 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvp8dec.c	2020-08-12 20:37:48.388975733 +0900
+@@ -60,7 +60,7 @@
+   videodec_class->set_format = GST_DEBUG_FUNCPTR (gst_omx_vp8_dec_set_format);
+ 
+   videodec_class->cdata.default_sink_template_caps = "video/x-vp8, "
+-      "width=(int) [1,MAX], " "height=(int) [1,MAX]";
++      GST_TC_OMX_VIDEO_SIZE_RANGE;
+ 
+   gst_element_class_set_static_metadata (element_class,
+       "OpenMAX VP8 Video Decoder",
+diff -Naur before/omx/gstomxvp9dec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvp9dec.c
+--- before/omx/gstomxvp9dec.c	2020-08-10 14:46:49.291596631 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvp9dec.c	2020-08-12 20:49:30.127367672 +0900
+@@ -37,7 +37,7 @@
+ static gboolean gst_omx_vp9_dec_set_format (GstOMXVideoDec * dec,
+     GstOMXPort * port, GstVideoCodecState * state);
+ 
+-#if defined(TCC_898x_INCLUDE)
++#if defined(SUPPORT_4K_VIDEO)
+ #define GST_TC_OMX_VP9_SIZE_RANGE	"width=(int) [48,3840], height=(int) [32,2160]"
+ #else
+ #define GST_TC_OMX_VP9_SIZE_RANGE	"width=(int) [48,1920], height=(int) [32,1200]"
+@@ -68,8 +68,7 @@
+   videodec_class->set_format = GST_DEBUG_FUNCPTR (gst_omx_vp9_dec_set_format);
+ 
+   videodec_class->cdata.default_sink_template_caps = "video/x-vp9, "
+-      GST_TC_OMX_VP9_SIZE_RANGE
+-      ;
++      GST_TC_OMX_VP9_SIZE_RANGE;
+ 
+   videodec_class->cdata.default_src_template_caps =
+       "video/x-raw, "
+diff -Naur before/omx/gstomxwmvdec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxwmvdec.c
+--- before/omx/gstomxwmvdec.c	2020-08-10 14:46:49.291596631 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxwmvdec.c	2020-08-12 20:36:19.504293046 +0900
+@@ -69,7 +69,7 @@
+ #else
+ 	  "wmvversion=(int) -1, "
+ #endif
+-      "width=(int) [1,MAX], " "height=(int) [1,MAX]";
++      GST_TC_OMX_VIDEO_SIZE_RANGE;
+ 
+   gst_element_class_set_static_metadata (element_class,
+       "OpenMAX WMV Video Decoder",

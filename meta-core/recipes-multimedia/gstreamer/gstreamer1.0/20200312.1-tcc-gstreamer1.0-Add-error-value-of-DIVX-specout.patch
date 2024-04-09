@@ -1,0 +1,73 @@
+diff -Naur before/gst/gsterror.c gstreamer-1.8.3/gst/gsterror.c
+--- before/gst/gsterror.c	2016-03-24 20:36:30.000000000 +0900
++++ gstreamer-1.8.3/gst/gsterror.c	2020-03-09 15:00:24.187521110 +0900
+@@ -181,6 +181,8 @@
+       return _("Could not configure supporting library.");
+     case GST_LIBRARY_ERROR_ENCODE:
+       return _("Encoding error.");
++    case GST_LIBRARY_ERROR_SPEC_OUT:
++      return _("Could not support this codec or profile.");
+     case GST_LIBRARY_ERROR_NUM_ERRORS:
+     default:
+       break;
+@@ -264,7 +266,9 @@
+     case GST_STREAM_ERROR_DECRYPT_NOKEY:
+       return _("The stream is encrypted and can't be decrypted because no "
+           "suitable key has been supplied.");
+-    case GST_STREAM_ERROR_NUM_ERRORS:
++    case GST_STREAM_ERROR_DIVX_NOT_SUPPORT:
++      return _("Could not decode the DIVX stream because of license issue.");
++	case GST_STREAM_ERROR_NUM_ERRORS:
+     default:
+       break;
+   }
+diff -Naur before/gst/gsterror.h gstreamer-1.8.3/gst/gsterror.h
+--- before/gst/gsterror.h	2016-03-24 20:36:30.000000000 +0900
++++ gstreamer-1.8.3/gst/gsterror.h	2020-03-09 15:02:57.341541007 +0900
+@@ -102,6 +102,7 @@
+   GST_LIBRARY_ERROR_SHUTDOWN,
+   GST_LIBRARY_ERROR_SETTINGS,
+   GST_LIBRARY_ERROR_ENCODE,
++  GST_LIBRARY_ERROR_SPEC_OUT,
+   GST_LIBRARY_ERROR_NUM_ERRORS
+ } GstLibraryError;
+ 
+@@ -177,6 +178,8 @@
+  * decrypted because this is not supported by the element.
+  * @GST_STREAM_ERROR_DECRYPT_NOKEY: used when the stream is encrypted and
+  * can't be decrypted because no suitable key is available.
++ * @GST_STREAM_ERROR_DIVX_NOT_SUPPORT: used when the demuxer doesn't handle
++ * divx stream.
+  * @GST_STREAM_ERROR_NUM_ERRORS: the number of stream error types.
+  *
+  * Stream errors are for anything related to the stream being processed:
+@@ -198,6 +201,7 @@
+   GST_STREAM_ERROR_FORMAT,
+   GST_STREAM_ERROR_DECRYPT,
+   GST_STREAM_ERROR_DECRYPT_NOKEY,
++  GST_STREAM_ERROR_DIVX_NOT_SUPPORT,
+   GST_STREAM_ERROR_NUM_ERRORS
+ } GstStreamError;
+ 
+diff -Naur before/gst/gstpad.c gstreamer-1.8.3/gst/gstpad.c
+--- before/gst/gstpad.c	2016-07-25 19:17:36.000000000 +0900
++++ gstreamer-1.8.3/gst/gstpad.c	2020-03-09 15:02:29.692716064 +0900
+@@ -216,6 +216,7 @@
+   {GST_FLOW_NOT_NEGOTIATED, "not-negotiated", 0},
+   {GST_FLOW_ERROR, "error", 0},
+   {GST_FLOW_NOT_SUPPORTED, "not-supported", 0},
++  { GST_FLOW_ERROR_NOT_SUPPORT_DIVX, "not-support-divx", 0 },
+   {GST_FLOW_CUSTOM_ERROR, "custom-error", 0}
+ };
+ 
+diff -Naur before/gst/gstpad.h gstreamer-1.8.3/gst/gstpad.h
+--- before/gst/gstpad.h	2016-05-20 15:04:42.000000000 +0900
++++ gstreamer-1.8.3/gst/gstpad.h	2020-03-09 15:02:48.631596151 +0900
+@@ -175,6 +175,7 @@
+   GST_FLOW_ERROR	  = -5,
+   GST_FLOW_NOT_SUPPORTED  = -6,
+ 
++  GST_FLOW_ERROR_NOT_SUPPORT_DIVX = -90,
+   /* custom error starts here */
+   GST_FLOW_CUSTOM_ERROR   = -100,
+   GST_FLOW_CUSTOM_ERROR_1 = -101,

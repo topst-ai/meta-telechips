@@ -1,0 +1,24 @@
+From 55482c10a2f2e767363a23dc43d9e609071c62c1 Mon Sep 17 00:00:00 2001
+From: Brendan King <Brendan.King@imgtec.com>
+Date: Thu, 24 May 2018 10:54:41 +0100
+Subject: [PATCH] dri2: allow the DRM platform to use swrast
+
+---
+ src/egl/drivers/dri2/platform_drm.c | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/src/egl/drivers/dri2/platform_drm.c b/src/egl/drivers/dri2/platform_drm.c
+index d0ab172..3350697 100644
+--- a/src/egl/drivers/dri2/platform_drm.c
++++ b/src/egl/drivers/dri2/platform_drm.c
+@@ -695,10 +695,6 @@ dri2_initialize_drm(_EGLDriver *drv, _EGLDisplay *disp)
+    struct gbm_device *gbm;
+    const char *err;
+ 
+-   /* Not supported yet */
+-   if (disp->Options.ForceSoftware)
+-      return EGL_FALSE;
+-
+    dri2_dpy = calloc(1, sizeof *dri2_dpy);
+    if (!dri2_dpy)
+       return _eglError(EGL_BAD_ALLOC, "eglInitialize");

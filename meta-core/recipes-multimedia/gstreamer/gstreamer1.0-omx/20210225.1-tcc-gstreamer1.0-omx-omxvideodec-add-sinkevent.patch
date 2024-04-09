@@ -1,0 +1,64 @@
+omxvideodec: Fix problem with respect to timing between EOS and flush-start event.
+
+TCS: ID086A-677
+
+diff -Naur before/omx/gstomxvideodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c
+--- before/omx/gstomxvideodec.c	2021-02-19 11:39:00.532668040 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c	2021-02-25 15:37:03.118173448 +0900
+@@ -77,6 +77,8 @@
+ static gboolean gst_omx_video_dec_propose_allocation (GstVideoDecoder * bdec,
+     GstQuery * query);
+ 
++static gboolean gst_omx_video_dec_sink_event(GstVideoDecoder *decoder, GstEvent *event);
++
+ static GstFlowReturn gst_omx_video_dec_drain (GstVideoDecoder * decoder);
+ 
+ static OMX_ERRORTYPE gst_omx_video_dec_allocate_output_buffers (GstOMXVideoDec *
+@@ -456,6 +458,10 @@
+   video_decoder_class->propose_allocation =
+       GST_DEBUG_FUNCPTR (gst_omx_video_dec_propose_allocation);
+ 
++	// for pre/post processing of sink event
++	klass->parent_sink_event = video_decoder_class->sink_event;
++	video_decoder_class->sink_event = gst_omx_video_dec_sink_event;
++
+   klass->cdata.type = GST_OMX_COMPONENT_TYPE_FILTER;
+   klass->cdata.default_src_template_caps =
+ #if defined (HAVE_GST_GL)
+@@ -879,6 +885,25 @@
+   return ret;
+ }
+ 
++static gboolean gst_omx_video_dec_sink_event(GstVideoDecoder *decoder, GstEvent *event)
++{
++	GstOMXVideoDec *self = GST_OMX_VIDEO_DEC(decoder);
++	GstOMXVideoDecClass *klass = GST_OMX_VIDEO_DEC_GET_CLASS(self);
++
++	if(GST_EVENT_TYPE(event) == GST_EVENT_FLUSH_START)
++	{
++		int flushStart = 1; // if 0, flush stop
++		gst_omx_component_set_config(self->dec, OMX_IndexConfigEventFlush, &flushStart);
++
++		g_mutex_lock(&self->drain_lock);
++		self->draining = FALSE;
++		g_cond_broadcast(&self->drain_cond);
++		g_mutex_unlock(&self->drain_lock);
++	}
++
++	return klass->parent_sink_event(decoder, event);
++}
++
+ static gboolean
+ gst_omx_video_dec_fill_buffer (GstOMXVideoDec * self,
+     GstOMXBuffer * inbuf, GstBuffer * outbuf)
+diff -Naur before/omx/gstomxvideodec.h 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.h
+--- before/omx/gstomxvideodec.h	2021-02-19 11:39:00.129664904 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.h	2021-02-25 15:36:34.606510389 +0900
+@@ -124,6 +124,7 @@
+ 
+   gboolean (*is_format_change) (GstOMXVideoDec * self, GstOMXPort * port, GstVideoCodecState * state);
+   gboolean (*set_format)       (GstOMXVideoDec * self, GstOMXPort * port, GstVideoCodecState * state);
++  gboolean (*parent_sink_event) (GstVideoDecoder * decoder, GstEvent * event);
+ };
+ 
+ GType gst_omx_video_dec_get_type (void);

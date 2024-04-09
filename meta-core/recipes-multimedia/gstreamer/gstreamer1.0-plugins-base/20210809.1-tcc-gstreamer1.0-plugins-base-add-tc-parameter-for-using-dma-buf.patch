@@ -1,0 +1,18 @@
+[add] add tc parameter for using dma-buf
+
+Description : 
+  When using waylandsink, alloc size and free size do not match, causing a segment fault.
+  The SEGV issue was fixed when this patch and '20210809.1-tcc-gstreamer1.0-omx-vpudmabuf-remove-unused-code-for-better-readablity.patch' were applied together.
+
+diff -Naur 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/allocators/gstfdmemory.c after/gst-libs/gst/allocators/gstfdmemory.c
+--- 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/allocators/gstfdmemory.c	2019-04-19 18:16:20.000000000 +0900
++++ after/gst-libs/gst/allocators/gstfdmemory.c	2021-08-06 13:54:56.254708667 +0900
+@@ -51,6 +51,8 @@
+   gint mmapping_flags;
+   gint mmap_count;
+   GMutex lock;
++  int disp_index;
++  void *omx_buf;
+ } GstFdMemory;
+ 
+ static void

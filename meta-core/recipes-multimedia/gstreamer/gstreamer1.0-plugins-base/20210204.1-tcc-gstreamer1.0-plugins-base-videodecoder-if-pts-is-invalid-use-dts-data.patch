@@ -1,0 +1,135 @@
+videodecoder: Gstomxvideodec need pts.if pts is invalid, use dts data.(TCS: ID086A-673)
+   Fix deadlock when videodecoder failed to decode first frame (except the case of GST_FLOW_FLUSHING)
+   When pipeline is freed, critical assertion occurs because the pool is already unreferenced.(TIMS : ID017A-1947)
+   Play stop when seeking (TIMS : ID060A-27)   
+audiobasesink: 'DEFAULT_ALIGNMENT_THRESHOLD' and 'DEFAULT_DRIFT_TOLERANCE' (40ms -> 200ms) for wma seek test
+audiodecoder: Some files generate audio noise therefore don't check adapter pts
+id3v2frames: Can dispaly special file's album art (TIMS : ID056A-80)
+
+diff -Naur before/gst/audioresample/gstaudioresample.c 1.16.2-r0/gst-plugins-base-1.16.2/gst/audioresample/gstaudioresample.c
+--- before/gst/audioresample/gstaudioresample.c	2019-04-19 18:16:20.000000000 +0900
++++ 1.16.2-r0/gst-plugins-base-1.16.2/gst/audioresample/gstaudioresample.c	2021-02-04 14:24:02.118881799 +0900
+@@ -686,7 +686,8 @@
+   /* allow even up to more samples, since sink is not so strict anyway,
+    * so give that one a chance to handle this as configured */
+   delta = ABS ((gint64) (offset - resample->samples_in));
+-  if (delta <= (resample->in.rate >> 5))
++  //we had changed DEFAULT_ALIGNMENT_THRESHOLD (in gstaudiobasesink) from 40ms to 200ms, so we changed this at a similar rate
++  if (delta <= (resample->in.rate >> 2))
+     return FALSE;
+ 
+   GST_WARNING_OBJECT (resample,
+diff -Naur before/gst-libs/gst/audio/gstaudiobasesink.c 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/audio/gstaudiobasesink.c
+--- before/gst-libs/gst/audio/gstaudiobasesink.c	2019-04-19 18:16:20.000000000 +0900
++++ 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/audio/gstaudiobasesink.c	2021-02-04 14:22:08.518590006 +0900
+@@ -95,11 +95,11 @@
+ 
+ /* when timestamps drift for more than 40ms we resync. This should
+  * be enough to compensate for timestamp rounding errors. */
+-#define DEFAULT_ALIGNMENT_THRESHOLD   (40 * GST_MSECOND)
++#define DEFAULT_ALIGNMENT_THRESHOLD   (200 * GST_MSECOND)
+ 
+ /* when clock slaving drift for more than 40ms we resync. This is
+  * a reasonable default */
+-#define DEFAULT_DRIFT_TOLERANCE   ((40 * GST_MSECOND) / GST_USECOND)
++#define DEFAULT_DRIFT_TOLERANCE   ((200 * GST_MSECOND) / GST_USECOND)
+ 
+ /* allow for one second before resyncing to see if the timestamps drift will
+  * fix itself, or is a permanent offset */
+diff -Naur before/gst-libs/gst/audio/gstaudiodecoder.c 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/audio/gstaudiodecoder.c
+--- before/gst-libs/gst/audio/gstaudiodecoder.c	2021-01-20 14:13:13.066165043 +0900
++++ 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/audio/gstaudiodecoder.c	2021-02-04 14:14:28.715042774 +0900
+@@ -1687,7 +1687,7 @@
+       }
+       /* track upstream ts, but do not get stuck if nothing new upstream */
+       ts = gst_adapter_prev_pts (priv->adapter, &distance);
+-      if (ts != priv->prev_ts || distance <= priv->prev_distance) {
++      if (ts != priv->prev_ts /*|| distance <= priv->prev_distance*/) {
+         priv->prev_ts = ts;
+         priv->prev_distance = distance;
+       } else {
+diff -Naur before/gst-libs/gst/tag/id3v2frames.c 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/tag/id3v2frames.c
+--- before/gst-libs/gst/tag/id3v2frames.c	2019-04-19 18:16:20.000000000 +0900
++++ 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/tag/id3v2frames.c	2021-02-04 11:29:06.669321211 +0900
+@@ -592,8 +592,10 @@
+     mime_str = g_strndup ((gchar *) work->parse_data, 3);
+     len = 3;
+   } else {
+-    if (!parse_id_string (work, &mime_str, &len, &datalen))
+-      return FALSE;
++    if (!parse_id_string (work, &mime_str, &len, &datalen)) {
++      len--;
++      //return FALSE;
++    }
+     ++len;                      /* for string terminator */
+   }
+ 
+diff -Naur before/gst-libs/gst/video/gstvideodecoder.c 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/video/gstvideodecoder.c
+--- before/gst-libs/gst/video/gstvideodecoder.c	2021-01-20 14:13:12.805162816 +0900
++++ 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/video/gstvideodecoder.c	2021-02-04 10:42:06.275212980 +0900
+@@ -772,7 +772,10 @@
+     gst_video_codec_state_unref (decoder->priv->output_state);
+ 
+   if (decoder->priv->pool) {
+-    gst_object_unref (decoder->priv->pool);
++    if(GST_OBJECT_REFCOUNT(decoder->priv->pool) > 0)
++    {
++      gst_object_unref (decoder->priv->pool);
++    }
+     decoder->priv->pool = NULL;
+   }
+ 
+@@ -2001,7 +2004,8 @@
+ 
+     priv->error_count = 0;
+     priv->max_errors = GST_VIDEO_DECODER_MAX_ERRORS;
+-    priv->had_output_data = FALSE;
++    if (full)
++      priv->had_output_data = FALSE;
+     priv->had_input_data = FALSE;
+ 
+     GST_OBJECT_LOCK (decoder);
+@@ -2101,6 +2105,11 @@
+   if (priv->current_frame == NULL)
+     priv->current_frame = gst_video_decoder_new_frame (decoder);
+ 
++  if(!GST_BUFFER_PTS_IS_VALID(buf) && GST_BUFFER_DTS_IS_VALID(buf))
++  {
++    GST_BUFFER_PTS(buf) = GST_BUFFER_DTS(buf);
++  }
++
+   if (!priv->packetized)
+     gst_video_decoder_add_buffer_info (decoder, buf);
+ 
+@@ -2959,7 +2968,9 @@
+ 
+   GST_VIDEO_DECODER_STREAM_LOCK (decoder);
+ 
+-  needs_reconfigure = gst_pad_check_reconfigure (decoder->srcpad);
++  if(!frame->output_buffer) {
++    needs_reconfigure = gst_pad_check_reconfigure (decoder->srcpad);
++  }
+   if (G_UNLIKELY (priv->output_state_changed || (priv->output_state
+               && needs_reconfigure))) {
+     if (!gst_video_decoder_negotiate_unlocked (decoder)) {
+@@ -3401,7 +3412,20 @@
+   /* do something with frame */
+   ret = decoder_class->handle_frame (decoder, frame);
+   if (ret != GST_FLOW_OK)
++  {
+     GST_DEBUG_OBJECT (decoder, "flow error %s", gst_flow_get_name (ret));
++    if(ret != GST_FLOW_FLUSHING)
++    {
++      if(priv->max_errors < ++priv->error_count || priv->base_picture_number == 0)
++      {
++        gst_element_message_full(GST_ELEMENT(decoder), GST_MESSAGE_ERROR, GST_STREAM_ERROR, GST_STREAM_ERROR_DECODE,
++            g_strdup("Reached maximum number of decoding errors tolerated."), NULL,
++            ("gstvideodecoder.c"), ("gst_video_decoder_decode_frame"), 0);
++        return GST_FLOW_ERROR;
++      }
++    }
++  }
++  priv->error_count = 0;
+ 
+   /* the frame has either been added to parse_gather or sent to
+      handle frame so there is no need to unref it */

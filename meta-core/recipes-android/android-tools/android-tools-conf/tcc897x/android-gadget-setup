@@ -1,0 +1,70 @@
+#!/bin/sh
+
+#
+# android gadget
+# USB File-backed Storage Gadget
+# ON/OFF script
+#
+
+if [ ! -d /dev/cfg ]; then
+	# 1. Creating the gadgets
+	mkdir -p /dev/cfg
+	mount -t configfs none /dev/cfg
+	mkdir /dev/cfg/usb_gadget/g1
+
+	echo "0x18d1" > /dev/cfg/usb_gadget/g1/idVendor
+	echo "0xd00d" > /dev/cfg/usb_gadget/g1/idProduct
+	echo "0x0210" > /dev/cfg/usb_gadget/g1/bcdUSB
+
+	mkdir /dev/cfg/usb_gadget/g1/strings/0x409
+
+	echo "Telechips" > /dev/cfg/usb_gadget/g1/strings/0x409/manufacturer
+	echo "tcc897x" > /dev/cfg/usb_gadget/g1/strings/0x409/product
+	echo "ABC-0123456789" > /dev/cfg/usb_gadget/g1/strings/0x409/serialnumber
+
+	# 2. Creating the configurations
+	mkdir /dev/cfg/usb_gadget/g1/configs/c.1
+	mkdir /dev/cfg/usb_gadget/g1/configs/c.1/strings/0x409
+
+	echo Conf 1 > /dev/cfg/usb_gadget/g1/configs/c.1/strings/0x409/configuration
+	echo 0 > /dev/cfg/usb_gadget/g1/configs/c.1/MaxPower
+
+	# 3. Creating the functions
+	mkdir /dev/cfg/usb_gadget/g1/functions/ffs.adb
+	mkdir /dev/cfg/usb_gadget/g1/functions/mass_storage.usb0
+
+	# 4. FFS mount
+	mkdir -p /dev/usb-ffs/adb
+	mount -t functionfs adb /dev/usb-ffs/adb
+fi
+
+if [ $1 == "on" ]; then
+	# 1. Gadget disable
+	echo "" > /dev/cfg/usb_gadget/g1/UDC
+	# 2. id setup
+	echo "0x18d1" > /dev/cfg/usb_gadget/g1/idVendor
+	echo "0xd00d" > /dev/cfg/usb_gadget/g1/idProduct
+	# 3. Associating the functions with their configurations
+	rm -f /dev/cfg/usb_gadget/g1/configs/c.1/f1
+	rm -f /dev/cfg/usb_gadget/g1/configs/c.1/f2
+	ln -s /dev/cfg/usb_gadget/g1/functions/ffs.adb /dev/cfg/usb_gadget/g1/configs/c.1/f1
+elif [ $1 == "off" ]; then
+	# 1. Gadget disable
+	echo "" > /dev/cfg/usb_gadget/g1/UDC
+	# 2. id setup
+	echo "0x2b69" > /dev/cfg/usb_gadget/g1/idVendor
+	echo "0x0001" > /dev/cfg/usb_gadget/g1/idProduct
+	# 3. Associating the functions with their configurations
+	rm -f /dev/cfg/usb_gadget/g1/configs/c.1/f1
+	rm -f /dev/cfg/usb_gadget/g1/configs/c.1/f2
+	# 4. change host mode
+	echo on > /sys/devices/platform/71b00000.dwc_otg/vbus
+	echo host > /sys/devices/platform/71b00000.dwc_otg/drdmode
+elif [ $1 == "device" ]; then
+	sleep 1
+	# 1. Enabling the gadget
+	echo "71b00000.dwc_otg" > /dev/cfg/usb_gadget/g1/UDC
+	# 2. change device mode
+	echo off > /sys/devices/platform/71b00000.dwc_otg/vbus
+	echo device > /sys/devices/platform/71b00000.dwc_otg/drdmode
+fi

@@ -1,0 +1,10 @@
+diff -Naur before/gst-libs/gst/allocators/gstdmabuf.c 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/allocators/gstdmabuf.c
+--- before/gst-libs/gst/allocators/gstdmabuf.c	2019-04-19 18:16:20.000000000 +0900
++++ 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/allocators/gstdmabuf.c	2020-10-12 15:16:04.272608572 +0900
+@@ -218,5 +218,5 @@
+ {
+   g_return_val_if_fail (mem != NULL, FALSE);
+ 
+-  return GST_IS_DMABUF_ALLOCATOR (mem->allocator);
++  return (GST_IS_DMABUF_ALLOCATOR (mem->allocator) || gst_memory_is_type (mem, GST_ALLOCATOR_DMABUF));
+ }

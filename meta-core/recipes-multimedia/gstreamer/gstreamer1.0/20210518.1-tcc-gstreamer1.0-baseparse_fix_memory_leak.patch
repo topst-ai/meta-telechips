@@ -1,0 +1,17 @@
+baseparse: fix memory leak
+A buffer to be skipped wasn't unref'd in gst_base_parse_chain().
+
+Fixes #406
+
+diff --git a/libs/gst/base/gstbaseparse.c b/libs/gst/base/gstbaseparse.c
+index 5c9e5c5ee..9c42fea80 100644
+--- a/libs/gst/base/gstbaseparse.c
++++ b/libs/gst/base/gstbaseparse.c
+@@ -3085,6 +3085,7 @@ gst_base_parse_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
+       GST_DEBUG ("All the buffer is skipped");
+       parse->priv->offset += bsize;
+       parse->priv->sync_offset = parse->priv->offset;
++      gst_buffer_unref (buffer);
+       return GST_FLOW_OK;
+     }
+     buffer = gst_buffer_make_writable (buffer);

@@ -1,0 +1,79 @@
+diff -Naur before/omx/gstomxaudiodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxaudiodec.c
+--- before/omx/gstomxaudiodec.c	2020-07-20 10:56:17.099251368 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxaudiodec.c	2020-07-20 18:04:30.676009922 +0900
+@@ -502,6 +502,8 @@
+   GST_AUDIO_DECODER_STREAM_LOCK (self);
+ 
+   spf = klass->get_samples_per_frame (self, self->dec_out_port);
++  GST_LOG_OBJECT (self, "original spf is %d, set to -1", spf);
++  spf = -1;
+ 
+   if (buf->omx_buf->nFilledLen > 0) {
+     GstBuffer *outbuf;
+diff -Naur before/omx/gstomxvideodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c
+--- before/omx/gstomxvideodec.c	2020-07-20 10:56:17.198252177 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c	2020-07-20 18:32:04.429837007 +0900
+@@ -1869,7 +1869,30 @@
+ 
+ component_error:
+   {
+-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED, (NULL),
++    if (gst_omx_component_get_last_error(self->dec) > 0x8f000001)
++    {
++      unsigned int last_error = gst_omx_component_get_last_error(self->dec);
++      switch (last_error) {
++        case OMX_ErrorUnSupportedDivxHD:
++          GST_ELEMENT_ERROR(self, STREAM, DIVX_NOT_SUPPORT, (NULL), ("OpenMAX component in error state %s (0x%08x)", gst_omx_component_get_last_error_string(self->dec),
++            gst_omx_component_get_last_error(self->dec)));
++          break;
++        case OMX_ErrorUnSupportedDivxPlusHD:
++          GST_ELEMENT_ERROR(self, STREAM, DIVX_NOT_SUPPORT, (NULL), ("OpenMAX component in error state %s (0x%08x)", gst_omx_component_get_last_error_string(self->dec),
++            gst_omx_component_get_last_error(self->dec)));
++          break;
++        case OMX_ErrorUnSupportedCodec:
++          GST_ELEMENT_ERROR(self, LIBRARY, SPEC_OUT, (NULL), ("OpenMAX component in error state %s (0x%08x)", gst_omx_component_get_last_error_string(self->dec),
++            gst_omx_component_get_last_error(self->dec)));
++          break;
++        default:
++          GST_ELEMENT_ERROR(self, LIBRARY, FAILED, (NULL), ("OpenMAX component in error state %s (0x%08x)", gst_omx_component_get_last_error_string(self->dec),
++            gst_omx_component_get_last_error(self->dec)));
++          break;
++      }
++    }
++    else
++      GST_ELEMENT_ERROR (self, LIBRARY, FAILED, (NULL),
+         ("OpenMAX component in error state %s (0x%08x)",
+             gst_omx_component_get_last_error_string (self->dec),
+             gst_omx_component_get_last_error (self->dec)));
+@@ -3062,7 +3085,30 @@
+ component_error:
+   {
+     gst_video_codec_frame_unref (frame);
+-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED, (NULL),
++    if (gst_omx_component_get_last_error(self->dec) > 0x8f000001)
++    {
++      unsigned int last_error = gst_omx_component_get_last_error(self->dec);
++      switch (last_error) {
++        case OMX_ErrorUnSupportedDivxHD:
++          GST_ELEMENT_ERROR(self, STREAM, DIVX_NOT_SUPPORT, (NULL), ("OpenMAX component in error state %s (0x%08x)", gst_omx_component_get_last_error_string(self->dec),
++            gst_omx_component_get_last_error(self->dec)));
++          break;
++        case OMX_ErrorUnSupportedDivxPlusHD:
++          GST_ELEMENT_ERROR(self, STREAM, DIVX_NOT_SUPPORT, (NULL), ("OpenMAX component in error state %s (0x%08x)", gst_omx_component_get_last_error_string(self->dec),
++            gst_omx_component_get_last_error(self->dec)));
++          break;
++        case OMX_ErrorUnSupportedCodec:
++          GST_ELEMENT_ERROR(self, LIBRARY, SPEC_OUT, (NULL), ("OpenMAX component in error state %s (0x%08x)", gst_omx_component_get_last_error_string(self->dec),
++            gst_omx_component_get_last_error(self->dec)));
++          break;
++        default:
++          GST_ELEMENT_ERROR(self, LIBRARY, FAILED, (NULL), ("OpenMAX component in error state %s (0x%08x)", gst_omx_component_get_last_error_string(self->dec),
++            gst_omx_component_get_last_error(self->dec)));
++          break;
++      }
++    }
++    else
++      GST_ELEMENT_ERROR (self, LIBRARY, FAILED, (NULL),
+         ("OpenMAX component in error state %s (0x%08x)",
+             gst_omx_component_get_last_error_string (self->dec),
+             gst_omx_component_get_last_error (self->dec)));

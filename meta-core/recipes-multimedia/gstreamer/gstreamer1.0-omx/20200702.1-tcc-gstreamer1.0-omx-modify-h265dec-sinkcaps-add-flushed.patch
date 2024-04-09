@@ -1,0 +1,58 @@
+diff -Naur before/omx/gstomxh265dec.c after/omx/gstomxh265dec.c
+--- before/omx/gstomxh265dec.c	2019-12-03 05:08:10.000000000 +0900
++++ after/omx/gstomxh265dec.c	2020-07-02 10:59:28.196842730 +0900
+@@ -62,8 +62,10 @@
+   videodec_class->set_format = GST_DEBUG_FUNCPTR (gst_omx_h265_dec_set_format);
+ 
+   videodec_class->cdata.default_sink_template_caps = "video/x-h265, "
++#if 0
+       "alignment=(string) au, "
+       "stream-format=(string) byte-stream, "
++#endif
+       "width=(int) [1,MAX], " "height=(int) [1,MAX]";
+ 
+   gst_element_class_set_static_metadata (element_class,
+diff -Naur before/omx/gstomxvideodec.c after/omx/gstomxvideodec.c
+--- before/omx/gstomxvideodec.c	2020-07-02 14:54:04.144456230 +0900
++++ after/omx/gstomxvideodec.c	2020-07-02 15:05:17.923237708 +0900
+@@ -1984,6 +1984,7 @@
+ 
+   self = GST_OMX_VIDEO_DEC (decoder);
+ 
++  self->flushed = TRUE;
+   self->last_upstream_ts = 0;
+   self->downstream_flow_ret = GST_FLOW_OK;
+   self->use_buffers = FALSE;
+@@ -2735,6 +2736,7 @@
+   }
+ 
+   /* Reset our state */
++  self->flushed = TRUE;
+   self->last_upstream_ts = 0;
+   self->downstream_flow_ret = GST_FLOW_OK;
+   self->started = FALSE;
+@@ -2988,6 +2990,12 @@
+     if (done)
+       buf->omx_buf->nFlags |= OMX_BUFFERFLAG_ENDOFFRAME;
+ 
++
++    if(self->flushed) {
++      buf->omx_buf->nFlags |= OMX_BUFFERFLAG_STARTTIME;
++      self->flushed = FALSE;
++    }
++
+     self->started = TRUE;
+     err = gst_omx_port_release_buffer (port, buf);
+     if (err != OMX_ErrorNone)
+diff -Naur before/omx/gstomxvideodec.h after/omx/gstomxvideodec.h
+--- before/omx/gstomxvideodec.h	2020-07-02 14:54:04.144456230 +0900
++++ after/omx/gstomxvideodec.h	2020-07-02 13:43:25.836977858 +0900
+@@ -70,6 +70,8 @@
+    /* TRUE if the ports where disabled after being activated the first time. */
+   gboolean disabled;
+ 
++  gboolean flushed;
++
+   GstClockTime last_upstream_ts;
+ 
+   /* Draining state */

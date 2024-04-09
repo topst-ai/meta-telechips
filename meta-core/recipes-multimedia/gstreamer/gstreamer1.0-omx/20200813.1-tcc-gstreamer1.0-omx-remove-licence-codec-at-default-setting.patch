@@ -1,0 +1,178 @@
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/meson.build before/meson.build
+--- 1.16.2-r0/gst-omx-1.16.2/meson.build	2020-08-13 16:52:11.488283960 +0900
++++ before/meson.build	2020-08-13 16:50:00.935480971 +0900
+@@ -304,6 +304,39 @@
+   cdata.set('HAVE_HEVC', 1)
+ endif
+ 
++
++have_omx_ac3 = false
++have_omx_divx = false
++have_omx_wma = false
++have_omx_wmv = false
++have_omx_wmv78 = false
++have_omx_wmv9 = false
++
++if get_option('enable-ac3dec')
++  have_omx_ac3 = true
++endif
++
++if get_option('enable-divxdec')
++  have_omx_divx = true
++endif
++
++if get_option('enable-wmadec')
++  have_omx_wma = true
++endif
++
++wmv_type = get_option('enable-wmvdec')
++if wmv_type == '789'
++  have_omx_wmv = true
++  have_omx_wmv9 = true
++  have_omx_wmv78 = true
++elif wmv_type == '78'
++  have_omx_wmv = true
++  have_omx_wmv78 = true
++elif wmv_type == '9'
++  have_omx_wmv = true
++  have_omx_wmv9 = true
++endif
++
+ if gstgl_dep.found()
+   cdata.set ('HAVE_GST_GL', 1)
+ endif
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/meson_options.txt before/meson_options.txt
+--- 1.16.2-r0/gst-omx-1.16.2/meson_options.txt	2019-12-03 05:08:20.000000000 +0900
++++ before/meson_options.txt	2020-08-13 16:49:44.084734522 +0900
+@@ -11,3 +11,9 @@
+ option('examples', type : 'feature', value : 'auto', yield : true)
+ option('tests', type : 'feature', value : 'auto', yield : true)
+ option('tools', type : 'feature', value : 'auto', yield : true)
++
++option('enable-ac3dec', type : 'boolean', value : false, description : 'enable AC3 decoder element')
++option('enable-wmadec', type : 'boolean', value : false, description : 'enable WMA decoder element')
++option('enable-wmvdec', type : 'combo', choices : ['0', '789', '78', '9'], value : '0', description : 'enable WMV decoder element')
++option('enable-divxdec', type : 'boolean', value : false, description : 'enable DIVX decoder element')
++
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstomx.c before/omx/gstomx.c
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomx.c	2020-08-13 16:52:11.489283968 +0900
++++ before/omx/gstomx.c	2020-08-13 14:59:35.171570333 +0900
+@@ -37,9 +37,13 @@
+ #include "gstomxh265dec.h"
+ #include "gstomxvp8dec.h"
+ #include "gstomxvp9dec.h"
++#ifdef INCLUDE_DIVX_DEC
+ #include "gstomxdivxdec.h"
++#endif
+ #include "gstomxtheoradec.h"
++#if defined(INCLUDE_WMV78_DEC) || defined(INCLUDE_WMV9_DEC)
+ #include "gstomxwmvdec.h"
++#endif
+ #include "gstomxmpeg4videoenc.h"
+ #include "gstomxh264enc.h"
+ #include "gstomxh263enc.h"
+@@ -55,6 +59,12 @@
+ #include "gstomxamrnbdec.h"
+ #include "gstomxanalogaudiosink.h"
+ #include "gstomxhdmiaudiosink.h"
++#ifdef INCLUDE_AC3_DEC
++#include "gstomxac3dec.h"
++#endif
++#ifdef INCLUDE_WMA_DEC
++#include "gstomxwmadec.h"
++#endif
+ 
+ GST_DEBUG_CATEGORY (gstomx_debug);
+ #define GST_CAT_DEFAULT gstomx_debug
+@@ -3417,7 +3427,10 @@
+   gst_omx_analog_audio_sink_get_type, gst_omx_hdmi_audio_sink_get_type,
+   gst_omx_mpeg2_video_dec_get_type, gst_omx_mpeg4_video_dec_get_type,
+   gst_omx_h264_dec_get_type, gst_omx_h263_dec_get_type,
+-  gst_omx_wmv_dec_get_type, gst_omx_mpeg4_video_enc_get_type,
++#if defined(INCLUDE_WMV78_DEC) || defined(INCLUDE_WMV9_DEC)
++  gst_omx_wmv_dec_get_type,
++#endif
++  gst_omx_mpeg4_video_enc_get_type,
+   gst_omx_h264_enc_get_type, gst_omx_h263_enc_get_type,
+   gst_omx_aac_enc_get_type, gst_omx_mjpeg_dec_get_type,
+   gst_omx_aac_dec_get_type, gst_omx_mp3_dec_get_type,
+@@ -3425,14 +3438,20 @@
+   gst_omx_flac_dec_get_type, gst_omx_ape_dec_get_type,
+   gst_omx_opus_dec_get_type, gst_omx_wav_dec_get_type,
+   gst_omx_amrnb_dec_get_type, gst_omx_vp9_dec_get_type
++#ifdef INCLUDE_AC3_DEC
++  , gst_omx_ac3_dec_get_type
++#endif
++#ifdef INCLUDE_WMA_DEC
++  , gst_omx_wma_dec_get_type
++#endif
+ #ifdef HAVE_VP8
+-      , gst_omx_vp8_dec_get_type
++  , gst_omx_vp8_dec_get_type
+ #endif
+ #ifdef HAVE_THEORA
+-      , gst_omx_theora_dec_get_type
++  , gst_omx_theora_dec_get_type
+ #endif
+ #ifdef HAVE_HEVC
+-      , gst_omx_h265_enc_get_type, gst_omx_h265_dec_get_type
++  , gst_omx_h265_enc_get_type, gst_omx_h265_dec_get_type
+ #endif
+ };
+ 
+@@ -3541,6 +3560,12 @@
+     case OMX_ErrorContentPipeCreationFailed:
+       return "Content pipe creation failed";
+ #endif
++	case OMX_ErrorUnSupportedCodec:
++		return "Unsupported codec";
++	case OMX_ErrorUnSupportedDivxHD:
++		return "Not support DivxHD profile";
++	case OMX_ErrorUnSupportedDivxPlusHD:
++		return "Not support DivxPlusHD profile";
+     default:
+       if (err_u >= (guint) OMX_ErrorKhronosExtensions
+           && err_u < (guint) OMX_ErrorVendorStartUnused) {
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/meson.build before/omx/meson.build
+--- 1.16.2-r0/gst-omx-1.16.2/omx/meson.build	2020-08-13 16:52:11.489283968 +0900
++++ before/omx/meson.build	2020-08-13 16:27:38.179594387 +0900
+@@ -12,7 +12,6 @@
+   'gstomxh264dec.c',
+   'gstomxh264utils.c',
+   'gstomxh263dec.c',
+-  'gstomxwmvdec.c',
+   'gstomxmpeg4videoenc.c',
+   'gstomxh264enc.c',
+   'gstomxh263enc.c',
+@@ -48,6 +47,31 @@
+ 
+ omx_sources += 'gstomxvp9dec.c'
+ 
++if have_omx_wmv
++  omx_sources += 'gstomxwmvdec.c'
++if have_omx_wmv78
++  extra_c_args += ['-DINCLUDE_WMV78_DEC']
++endif
++if have_omx_wmv9
++  extra_c_args += ['-DINCLUDE_WMV9_DEC']
++endif
++endif
++
++if have_omx_divx
++  omx_sources += 'gstomxdivxdec.c'
++  extra_c_args += ['-DINCLUDE_DIVX_DEC']
++endif
++
++if have_omx_wma
++  omx_sources += 'gstomxwmadec.c'
++  extra_c_args += ['-DINCLUDE_WMA_DEC']
++endif
++
++if have_omx_ac3
++  omx_sources += 'gstomxac3dec.c'
++  extra_c_args += ['-DINCLUDE_AC3_DEC']
++endif
++
+ optional_deps = []
+ if gstgl_dep.found()
+   optional_deps += gstgl_dep

@@ -1,0 +1,48 @@
+diff -Naur before/gst-libs/gst/riff/riff-ids.h after/gst-libs/gst/riff/riff-ids.h
+--- before/gst-libs/gst/riff/riff-ids.h	2016-03-24 20:36:33.000000000 +0900
++++ after/gst-libs/gst/riff/riff-ids.h	2020-03-23 16:36:01.498796499 +0900
+@@ -446,6 +446,7 @@
+ #define GST_RIFF_WAVE_FORMAT_SONIC          (0x2048)
+ #define GST_RIFF_WAVE_FORMAT_SONIC_LS       (0x2048)
+ #define GST_RIFF_WAVE_FORMAT_AAC_AC         (0x4143)
++#define GST_RIFF_WAVE_FORMAT_VORBIS         (0x566f)
+ #define GST_RIFF_WAVE_FORMAT_VORBIS1        (0x674f)
+ #define GST_RIFF_WAVE_FORMAT_VORBIS2        (0x6750)
+ #define GST_RIFF_WAVE_FORMAT_VORBIS3        (0x6751)
+diff -Naur before/gst-libs/gst/riff/riff-media.c after/gst-libs/gst/riff/riff-media.c
+--- before/gst-libs/gst/riff/riff-media.c	2016-03-24 20:36:33.000000000 +0900
++++ after/gst-libs/gst/riff/riff-media.c	2020-03-23 16:39:55.451479714 +0900
+@@ -353,6 +353,20 @@
+         *codec_name = g_strdup ("ITU H.264");
+       break;
+ 
++    case GST_MAKE_FOURCC ('h', '2', '6', '5'):
++    case GST_MAKE_FOURCC ('H', '2', '6', '5'):
++    case GST_MAKE_FOURCC ('h', 'e', 'v', 'c'):
++    case GST_MAKE_FOURCC ('H', 'E', 'V', 'C'):
++    case GST_MAKE_FOURCC ('h', 'e', 'v', '1'):
++    case GST_MAKE_FOURCC ('H', 'E', 'V', '1'):
++    case GST_MAKE_FOURCC ('h', 'v', 'c', '1'):
++    case GST_MAKE_FOURCC ('H', 'V', 'C', '1'):
++      caps = gst_caps_new_simple ("video/x-h265",
++          "variant", G_TYPE_STRING, "itu", NULL);
++      if (codec_name)
++        *codec_name = g_strdup ("ITU H.265");
++      break;
++
+     case GST_RIFF_VSSH:
+       caps = gst_caps_new_simple ("video/x-h264",
+           "variant", G_TYPE_STRING, "videosoft", NULL);
+@@ -1502,6 +1516,12 @@
+         *codec_name = g_strdup ("AMR Wide Band (WB)");
+       break;
+ 
++    case GST_RIFF_WAVE_FORMAT_FLAC:
++      caps = gst_caps_new_simple ("audio/x-flac", NULL);
++      if (codec_name)
++        *codec_name = g_strdup ("FLAC Audio");
++      break;
++    case GST_RIFF_WAVE_FORMAT_VORBIS:  /* ogg/vorbis */
+     case GST_RIFF_WAVE_FORMAT_VORBIS1: /* ogg/vorbis mode 1 */
+     case GST_RIFF_WAVE_FORMAT_VORBIS2: /* ogg/vorbis mode 2 */
+     case GST_RIFF_WAVE_FORMAT_VORBIS3: /* ogg/vorbis mode 3 */

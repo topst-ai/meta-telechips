@@ -1,0 +1,15 @@
+[Unit]
+Description=micom manager daemon
+DefaultDependencies=no
+
+[Service]
+Type=forking
+BusName=telechips.micom_manager.process
+PIDFile=/var/run/tc-micom-manager.pid
+ExecStart=/usr/bin/TCMicomManager -d 1 -D /dev/tcc_ipc_micom -A /dev/tcc_ipc_ap
+ExecStop=/usr/bin/killall -9 TCMicomManager
+RestartSec=1sec
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

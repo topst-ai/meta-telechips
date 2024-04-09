@@ -1,0 +1,13 @@
+[Unit]
+Description=glmark2 is a benchmark for OpenGL (ES) 2.0.
+ConditionPathExists=/var/run/user/root/wayland-0
+Requires=dbus.socket
+After=dbus.socket
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/sysconfig/weston
+ExecStart=/usr/bin/glmark2-es2-wayland --fullscreen --run-forever
+
+[Install]
+WantedBy=multi-user.target

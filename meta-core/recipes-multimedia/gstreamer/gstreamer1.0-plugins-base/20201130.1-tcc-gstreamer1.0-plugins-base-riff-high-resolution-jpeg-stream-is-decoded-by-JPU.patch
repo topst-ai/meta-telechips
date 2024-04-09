@@ -1,0 +1,30 @@
+Subject: [mod] only high resolution jpeg stream is decoded by JPU
+
+diff --git a/gst-libs/gst/riff/riff-media.c b/gst-libs/gst/riff/riff-media.c
+index 9f4ce8b..309326e 100644
+--- a/gst-libs/gst/riff/riff-media.c
++++ b/gst-libs/gst/riff/riff-media.c
+@@ -172,7 +172,10 @@ gst_riff_create_video_caps (guint32 codec_fcc,
+     case GST_RIFF_dmb1:
+     case GST_MAKE_FOURCC ('A', 'C', 'D', 'V'):
+     case GST_MAKE_FOURCC ('Q', 'I', 'V', 'G'):
+-      caps = gst_caps_new_empty_simple ("video/x-jpeg");
++	  if ((strf) && (strf->width >= 640))
++        caps = gst_caps_new_empty_simple ("video/x-jpeg");
++	  else
++        caps = gst_caps_new_empty_simple ("image/jpeg");
+       if (codec_name)
+         *codec_name = g_strdup ("Motion JPEG");
+       break;
+@@ -180,7 +183,10 @@ gst_riff_create_video_caps (guint32 codec_fcc,
+     case GST_RIFF_JPEG:        /* generic (mostly RGB) MJPEG */
+     case GST_RIFF_jpeg:
+     case GST_MAKE_FOURCC ('j', 'p', 'e', 'g'): /* generic (mostly RGB) MJPEG */
+-      caps = gst_caps_new_empty_simple ("video/x-jpeg");
++	  if ((strf) && (strf->width >= 640))
++        caps = gst_caps_new_empty_simple ("video/x-jpeg");
++	  else
++        caps = gst_caps_new_empty_simple ("image/jpeg");
+       if (codec_name)
+         *codec_name = g_strdup ("JPEG Still Image");
+       break;

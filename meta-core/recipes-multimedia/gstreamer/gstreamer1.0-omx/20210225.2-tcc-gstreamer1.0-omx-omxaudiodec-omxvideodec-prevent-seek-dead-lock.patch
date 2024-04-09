@@ -1,0 +1,91 @@
+1)omxaudiodec: set STARTTIME flag into the omxbuffer after flushing to flush codec library
+2)omxaudiodec: add codes to prevent deadlock on seeking
+3)omxvideodec: fix delay issue of video seeking
+4)omxvideodec: omx buffer pool causes time-out problem on waiting for complete output buffer flushing
+
+diff -Naur before/omx/gstomxaudiodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxaudiodec.c
+--- before/omx/gstomxaudiodec.c	2021-02-25 15:48:40.532620637 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxaudiodec.c	2021-02-25 17:19:59.619472964 +0900
+@@ -126,6 +126,7 @@
+       klass->cdata.component_name, klass->cdata.component_role,
+       klass->cdata.hacks);
+   self->started = FALSE;
++  self->flushed = FALSE;
+ 
+   if (!self->dec)
+     return FALSE;
+@@ -1029,6 +1030,10 @@
+     gst_omx_component_get_state (self->dec, GST_CLOCK_TIME_NONE);
+   }
+ 
++  // signal to loop function thread if waiting buffer 2)
++  self->dec_out_port->flushing = TRUE;
++  g_cond_broadcast(&self->dec_out_port->comp->messages_cond);
++
+   /* 1) Flush the ports */
+   GST_DEBUG_OBJECT (self, "flushing ports");
+   gst_omx_port_set_flushing (self->dec_in_port, 5 * GST_SECOND, TRUE);
+@@ -1063,6 +1068,8 @@
+   self->last_upstream_ts = 0;
+   self->downstream_flow_ret = GST_FLOW_OK;
+   self->started = FALSE;
++  self->flushed 				= TRUE;
++
+   GST_DEBUG_OBJECT (self, "Flush finished");
+ }
+ 
+@@ -1266,6 +1273,12 @@
+       buf->omx_buf->nFlags |= OMX_BUFFERFLAG_ENDOFFRAME;
+ 
+     self->started = TRUE;
++
++    if(self->flushed) {
++      buf->omx_buf->nFlags |= OMX_BUFFERFLAG_STARTTIME;
++      self->flushed = FALSE;
++    }
++
+     err = gst_omx_port_release_buffer (port, buf);
+     if (err != OMX_ErrorNone)
+       goto release_error;
+diff -Naur before/omx/gstomxaudiodec.h 1.16.2-r0/gst-omx-1.16.2/omx/gstomxaudiodec.h
+--- before/omx/gstomxaudiodec.h	2019-12-03 05:08:10.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxaudiodec.h	2021-02-25 17:21:34.138375857 +0900
+@@ -67,6 +67,7 @@
+   /* TRUE if the component is configured and saw
+    * the first buffer */
+   gboolean started;
++  gboolean flushed;
+ 
+   GstClockTime last_upstream_ts;
+ 
+diff -Naur before/omx/gstomxvideodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c
+--- before/omx/gstomxvideodec.c	2021-02-25 16:29:40.539700152 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c	2021-02-25 17:18:35.869495603 +0900
+@@ -2289,13 +2289,14 @@
+   {
+     g_mutex_lock (&self->drain_lock);
+     if (self->draining) {
++#if 0 // This query causes block pipeline on specific complicated condition. 4)
+       GstQuery *query = gst_query_new_drain ();
+ 
+       /* Drain the pipeline to reclaim all memories back to the pool */
+       if (!gst_pad_peer_query (GST_VIDEO_DECODER_SRC_PAD (self), query))
+         GST_DEBUG_OBJECT (self, "drain query failed");
+       gst_query_unref (query);
+-
++#endif
+       GST_DEBUG_OBJECT (self, "Drained");
+       self->draining = FALSE;
+       g_cond_broadcast (&self->drain_cond);
+@@ -3091,6 +3092,11 @@
+   }
+ #endif
+ 
++
++  // signal to loop function thread if waiting buffer 3)
++  self->dec_out_port->flushing = TRUE;
++  g_cond_broadcast(&self->dec_out_port->comp->messages_cond);
++
+   /* 1) Flush the ports */
+   GST_DEBUG_OBJECT (self, "flushing ports");
+   gst_omx_port_set_flushing (self->dec_in_port, 5 * GST_SECOND, TRUE);

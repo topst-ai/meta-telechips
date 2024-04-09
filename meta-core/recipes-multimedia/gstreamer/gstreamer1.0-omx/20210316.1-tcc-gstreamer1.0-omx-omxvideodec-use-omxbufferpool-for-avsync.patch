@@ -1,0 +1,137 @@
+diff -Naur before/omx/gstomxbufferpool.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxbufferpool.c
+--- before/omx/gstomxbufferpool.c	2019-12-03 05:08:20.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxbufferpool.c	2021-03-16 15:52:44.198390209 +0900
+@@ -404,6 +404,7 @@
+   GstBuffer *buf;
+   GstOMXBuffer *omx_buf;
+ 
++  g_return_val_if_fail (pool->allocating, GST_FLOW_ERROR);
+   omx_buf = g_ptr_array_index (pool->port->buffers, pool->current_buffer_index);
+   g_return_val_if_fail (omx_buf != NULL, GST_FLOW_ERROR);
+ 
+@@ -496,6 +497,8 @@
+       case GST_VIDEO_FORMAT_NV12_10LE32:
+       case GST_VIDEO_FORMAT_NV16:
+       case GST_VIDEO_FORMAT_NV16_10LE32:
++      case GST_VIDEO_FORMAT_I420_TC:
++      case GST_VIDEO_FORMAT_NV12_TC:
+         stride[1] = nstride;
+         offset[1] = offset[0] + stride[0] * nslice;
+         break;
+@@ -656,7 +659,7 @@
+ 
+   g_assert (pool->component && pool->port);
+ 
+-  if (gst_buffer_pool_is_active (bpool)) {
++  if (!pool->allocating && !pool->deactivated) {
+     omx_buf = gst_omx_buffer_get_omx_buf (buffer);
+     if (pool->port->port_def.eDir == OMX_DirOutput && !omx_buf->used &&
+         !pool->deactivated) {
+diff -Naur before/omx/gstomxbufferpool.h 1.16.2-r0/gst-omx-1.16.2/omx/gstomxbufferpool.h
+--- before/omx/gstomxbufferpool.h	2019-12-03 05:08:20.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxbufferpool.h	2021-03-16 12:00:07.516066467 +0900
+@@ -68,6 +68,8 @@
+   GstAllocator *allocator;
+ 
+   /* Set from outside this pool */
++  /* TRUE if we're currently allocating all our buffers */
++  gboolean allocating;
+   /* TRUE if the pool is not used anymore */
+   gboolean deactivated;
+ 
+diff -Naur before/omx/gstomxvideodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c
+--- before/omx/gstomxvideodec.c	2021-03-15 15:57:54.909138812 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c	2021-03-16 15:55:15.417782178 +0900
+@@ -1581,13 +1581,15 @@
+ gst_omx_video_dec_deallocate_output_buffers (GstOMXVideoDec * self)
+ {
+   if (self->out_port_pool) {
+-    /* Pool will free buffers when stopping */
+-    gst_buffer_pool_set_active (self->out_port_pool, FALSE);
++    if(GST_OBJECT_REFCOUNT(self->out_port_pool) > 0) {
++      /* Pool will free buffers when stopping */
++      gst_buffer_pool_set_active (self->out_port_pool, FALSE);
+ #if 0
+-    gst_buffer_pool_wait_released (self->out_port_pool);
++      gst_buffer_pool_wait_released (self->out_port_pool);
+ #endif
+-    GST_OMX_BUFFER_POOL (self->out_port_pool)->deactivated = TRUE;
+-    gst_object_unref (self->out_port_pool);
++      GST_OMX_BUFFER_POOL (self->out_port_pool)->deactivated = TRUE;
++      gst_object_unref (self->out_port_pool);
++    }
+     self->out_port_pool = NULL;
+   } else {
+     OMX_ERRORTYPE err;
+@@ -3674,6 +3677,7 @@
+ 
+   self->use_buffers = FALSE;
+ 
++#if 0
+   /* Importing OMX buffers from downstream isn't supported.
+    * That wouldn't bring us much as the dynamic buffer mode already
+    * prevent copies between OMX components. */
+@@ -3702,13 +3706,62 @@
+   gst_query_parse_nth_allocation_pool (query, 0, &pool, NULL, NULL, NULL);
+   g_assert (pool != NULL);
+ 
++#else
++  GstCaps *outcaps;
++  GstVideoInfo vinfo;
++  GstAllocator *allocator;
++  GstAllocationParams params;
++  guint size, min, max;
++
++  gst_query_parse_allocation (query, &outcaps, NULL);
++  gst_video_info_init(&vinfo);
++  gst_video_info_from_caps(&vinfo, outcaps);
++
++  gst_allocation_params_init(&params);
++
++  size = vinfo.size;
++  min = max = 4;
++
++  GST_INFO_OBJECT (self,"outcaps %" GST_PTR_FORMAT ", size %d", outcaps,size);
++
++  if(pool == NULL) {
++    /* no pool, we can make our own */
++    pool = gst_omx_buffer_pool_new(GST_ELEMENT_CAST(self), self->dec, self->dec_out_port,
++            self->dmabuf ? GST_OMX_BUFFER_MODE_DMABUF : GST_OMX_BUFFER_MODE_SYSTEM_MEMORY);
++  }
++#endif
++
+   config = gst_buffer_pool_get_config (pool);
++
++  gst_buffer_pool_config_set_params(config, outcaps, size, min, max);
++  gst_buffer_pool_config_set_allocator(config, allocator, &params);
++
+   if (gst_query_find_allocation_meta (query, GST_VIDEO_META_API_TYPE, NULL)) {
+     gst_buffer_pool_config_add_option (config,
+         GST_BUFFER_POOL_OPTION_VIDEO_META);
+   }
+   gst_buffer_pool_set_config (pool, config);
+-  gst_object_unref (pool);
++
++  if(gst_query_get_n_allocation_params(query) > 0)
++    gst_query_set_nth_allocation_param(query, 0, allocator, &params);
++  else
++    gst_query_add_allocation_param(query, allocator, &params);
++
++  if(allocator)
++    gst_object_unref(allocator);
++
++  if(gst_query_get_n_allocation_pools(query) > 0)
++    gst_query_set_nth_allocation_pool(query, 0, pool, size, min, max);
++  else
++    gst_query_add_allocation_pool(query, pool, size, min, max);
++
++  GST_OMX_BUFFER_POOL(pool)->allocating = TRUE;
++  gst_buffer_pool_set_active(pool, TRUE);
++  GST_OMX_BUFFER_POOL(pool)->allocating = FALSE;
++
++  self->out_port_pool = pool;
++  if (pool)
++    gst_object_unref (pool);
+ 
+   return TRUE;
+ }

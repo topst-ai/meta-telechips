@@ -1,0 +1,34 @@
+From 50bd314162514bfa975444713d0571ff0242fd71 Mon Sep 17 00:00:00 2001
+From: YoungJun <youngjun@telechips.com>
+Date: Sun, 27 May 2018 07:17:16 +0000
+Subject: [PATCH] Check surface exists when setting textinput focus
+
+QWaylandWindow resets the surface on various events.
+Handling focus comes in a posted event, so this can be after we've
+hidden a window and lost a surface.
+
+Task-number: QTBUG-61704
+Change-Id: I535ff78c6bc2b86816696a08f8eebc47186d1225
+Reviewed-by: Johan Helsing <johan.helsing@qt.io>
+---
+ src/client/qwaylandinputcontext.cpp | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/client/qwaylandinputcontext.cpp b/src/client/qwaylandinputcontext.cpp
+index 6a72950..1d6e46c 100644
+--- a/src/client/qwaylandinputcontext.cpp
++++ b/src/client/qwaylandinputcontext.cpp
+@@ -265,7 +265,9 @@ void QWaylandInputContext::setFocusObject(QObject *object)
+         return;
+ 
+     struct ::wl_surface *surface = static_cast<QWaylandWindow *>(window->handle())->object();
+-    mTextInput->activate(mDisplay->defaultInputDevice()->wl_seat(), surface);
++    if (surface) {
++	mTextInput->activate(mDisplay->defaultInputDevice()->wl_seat(), surface);
++    }
+ }
+ 
+ bool QWaylandInputContext::ensureTextInput()
+-- 
+2.9.3
+

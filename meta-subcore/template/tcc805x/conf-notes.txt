@@ -1,0 +1,20 @@
+Yocto Project common targets are:
+    core-image-minimal
+    core-image-sato
+    meta-toolchain
+    adt-installer
+    meta-ide-support
+
+
+Telechips subcore targets are:
+    meta-toolchain-telechips(Application Development Toolkit)
+    telechips-subcore-image(minimal rootfs for Cortex-A53)
+
+You can also run generated qemu images with a command like 'runqemu qemux86'
+ or
+You can also run generated Telechips images on Telechips EVB Boards
+
+Other commonly useful commands are:
+ - 'devtool' and 'recipetool' handle common recipe tasks
+ - 'bitbake-layers' handles common layer tasks
+ - 'oe-pkgdata-util' handles common target package tasks

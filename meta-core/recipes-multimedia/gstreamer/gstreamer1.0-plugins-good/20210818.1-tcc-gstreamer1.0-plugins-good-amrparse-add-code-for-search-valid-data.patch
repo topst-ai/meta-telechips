@@ -1,0 +1,99 @@
+From 3bcff4041a655528090cb05b283ed66772d148ab Mon Sep 17 00:00:00 2001
+From: Helena Kim <kyh@telechips.com>
+Date: Wed, 18 Aug 2021 07:24:36 +0000
+Subject: [PATCH] [fix] amrparse: add code for search valid data
+
+TCS: QSD805XL1-293
+---
+ gst/audioparsers/gstamrparse.c | 65 ++++++++++++++++++++++++++----------------
+ 1 file changed, 40 insertions(+), 25 deletions(-)
+
+diff --git a/gst/audioparsers/gstamrparse.c b/gst/audioparsers/gstamrparse.c
+index 5bc84d4..662ce6d 100644
+--- a/gst/audioparsers/gstamrparse.c
++++ b/gst/audioparsers/gstamrparse.c
+@@ -258,7 +258,7 @@ gst_amr_parse_handle_frame (GstBaseParse * parse,
+ {
+   GstBuffer *buffer;
+   GstMapInfo map;
+-  gint fsize = 0, mode, dsize;
++  gint fsize = 0, mode, dsize, off = 0;
+   GstAmrParse *amrparse;
+   GstFlowReturn ret = GST_FLOW_OK;
+   gboolean found = FALSE;
+@@ -285,33 +285,48 @@ gst_amr_parse_handle_frame (GstBaseParse * parse,
+   }
+ 
+   *skipsize = 1;
+-  /* Does this look like a possible frame header candidate? */
+-  if ((map.data[0] & 0x83) == 0) {
+-    /* Yep. Retrieve the frame size */
+-    mode = (map.data[0] >> 3) & 0x0F;
+-    fsize = amrparse->block_size[mode] + 1;     /* +1 for the header byte */
+-
+-    /* We recognize this data as a valid frame when:
+-     *     - We are in sync. There is no need for extra checks then
+-     *     - We are in EOS. There might not be enough data to check next frame
+-     *     - Sync is lost, but the following data after this frame seem
+-     *       to contain a valid header as well (and there is enough data to
+-     *       perform this check)
+-     */
+-    if (fsize) {
+-      *skipsize = 0;
+-      /* in sync, no further check */
+-      if (!GST_BASE_PARSE_LOST_SYNC (parse)) {
+-        found = TRUE;
+-      } else if (dsize > fsize) {
+-        /* enough data, check for next sync */
+-        if ((map.data[fsize] & 0x83) == 0)
++  while ((found == FALSE) && (off < dsize)) {
++    /* Does this look like a possible frame header candidate? */
++    if ((map.data[off] & 0x83) == 0) {
++      /* Yep. Retrieve the frame size */
++      mode = (map.data[off] >> 3) & 0x0F;
++      fsize = amrparse->block_size[mode] + 1;     /* +1 for the header byte */
++
++      /* We recognize this data as a valid frame when:
++       *     - We are in sync. There is no need for extra checks then
++       *     - We are in EOS. There might not be enough data to check next frame
++       *     - Sync is lost, but the following data after this frame seem
++       *       to contain a valid header as well (and there is enough data to
++       *       perform this check)
++       */
++      if (fsize) {
++        *skipsize = off;
++        /* in sync, no further check */
++        if (!GST_BASE_PARSE_LOST_SYNC (parse)) {
++          found = TRUE;
++        } else if (dsize > (fsize+off)) {
++          /* enough data, check for next sync */
++          if ((map.data[fsize+off] & 0x83) == 0)
++            found = TRUE;
++#if 0
++        } else if (GST_BASE_PARSE_DRAINING (parse)) {
++          /* not enough, but draining, so ok */
+           found = TRUE;
+-      } else if (GST_BASE_PARSE_DRAINING (parse)) {
+-        /* not enough, but draining, so ok */
+-        found = TRUE;
++#endif
++        }
+       }
+     }
++    if (found == FALSE)
++      off++;
++  }
++
++  if (off != 0) {
++    GST_DEBUG ("buffer: %d bytes (sync offset: %d, skipsize: %d, fsize: %d, found: %d)", dsize, off, *skipsize, fsize, found);
++    if (found == FALSE)
++      *skipsize = dsize;
++    else
++      *skipsize = off;
++    found = FALSE;
+   }
+ 
+ done:
+-- 
+2.13.3
+

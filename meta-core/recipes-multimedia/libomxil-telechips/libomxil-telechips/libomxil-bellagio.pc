@@ -1,0 +1,12 @@
+prefix=/usr
+exec_prefix=/usr
+libdir=/usr/lib
+includedir=/usr/include
+toolsdir=/usr/bin
+
+Name: libomxil-telechips
+Description: OpenMAX Integration Layer library
+Version: 0.9.3
+Libs: -L${libdir} -lomxil-tcc
+Cflags: -I${includedir}
+

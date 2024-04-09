@@ -1,0 +1,1 @@
+FEATURES_append = "-subcore"

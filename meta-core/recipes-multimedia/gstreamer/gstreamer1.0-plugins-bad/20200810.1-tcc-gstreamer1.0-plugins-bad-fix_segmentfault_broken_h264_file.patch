@@ -1,0 +1,12 @@
+diff -Naur before/gst/videoparsers/gsth264parse.c after/gst/videoparsers/gsth264parse.c
+--- before/gst/videoparsers/gsth264parse.c	2019-09-03 09:03:36.000000000 +0900
++++ after/gst/videoparsers/gsth264parse.c	2020-08-10 11:39:04.150781899 +0900
+@@ -822,7 +822,7 @@
+   GstH264ParserResult pres;
+ 
+   /* nothing to do for broken input */
+-  if (G_UNLIKELY (nalu->size < 2)) {
++  if (G_UNLIKELY (nalu->size < 2) || (nalu->size == -1)) {
+     GST_DEBUG_OBJECT (h264parse, "not processing nal size %u", nalu->size);
+     return TRUE;
+   }

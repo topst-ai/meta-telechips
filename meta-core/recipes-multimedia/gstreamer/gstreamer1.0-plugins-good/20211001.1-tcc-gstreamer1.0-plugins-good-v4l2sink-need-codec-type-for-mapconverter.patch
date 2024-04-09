@@ -1,0 +1,11 @@
+diff -Naur before/sys/v4l2/gstv4l2bufferpool.c 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2bufferpool.c
+--- before/sys/v4l2/gstv4l2bufferpool.c	2021-09-30 17:58:10.077766724 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2bufferpool.c	2021-10-01 16:35:54.852747695 +0900
+@@ -1452,6 +1452,7 @@
+         vbuffer->m.planes[0].reserved[21] = tccvoutput.stHEVCMapConv.m_uiLumaBitDepth;
+         vbuffer->m.planes[0].reserved[22] = tccvoutput.stHEVCMapConv.m_uiChromaBitDepth;
+         vbuffer->m.planes[0].reserved[23] = tccvoutput.stHEVCMapConv.m_uiFrameEndian;
++        vbuffer->m.planes[0].reserved[24] = tccvoutput.stHEVCMapConv.m_Reserved[0]; //Codec Type (HEVC:15, VP9:16)
+ #endif
+         if (0)
+         {

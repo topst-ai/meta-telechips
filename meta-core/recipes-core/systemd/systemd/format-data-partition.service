@@ -1,0 +1,12 @@
+[Unit]
+Description=Format User Data Partition
+DefaultDependencies=no
+Before=sockets.target systemd-fsck-root.service systemd-journald.service systemd-udev-trigger.service systemd-udevd.service sysinit.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/sysconfig/system-config-users
+ExecStart=/usr/bin/format-data-partition.sh
+
+[Install]
+WantedBy=sockets.target

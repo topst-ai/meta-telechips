@@ -1,0 +1,171 @@
+diff -Naur 1st_patch/meson.build 1.16.2-r0/gst-omx-1.16.2/meson.build
+--- 1st_patch/meson.build	2019-12-03 20:19:31.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/meson.build	2020-06-22 13:41:36.761096733 +0900
+@@ -278,6 +278,7 @@
+     prefix : extra_video_headers, 
+     args : gst_omx_args,
+     include_directories : [omx_inc])
++have_omx_vp8 = true
+ if have_omx_vp8
+   cdata.set('HAVE_VP8', 1)
+ endif
+@@ -298,6 +299,7 @@
+     prefix : extra_video_headers,
+     args : gst_omx_args,
+     include_directories : [omx_inc])
++have_omx_hevc = true
+ if have_omx_hevc
+   cdata.set('HAVE_HEVC', 1)
+ endif
+diff -Naur 1st_patch/omx/gstomx.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomx.c
+--- 1st_patch/omx/gstomx.c	2020-06-22 13:39:43.411239934 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomx.c	2020-06-22 13:41:21.878632546 +0900
+@@ -3424,7 +3424,7 @@
+   gst_omx_aac_dec_get_type, gst_omx_mp3_enc_get_type,
+   gst_omx_flac_dec_get_type, gst_omx_ape_dec_get_type,
+   gst_omx_opus_dec_get_type, gst_omx_wav_dec_get_type,
+-  gst_omx_amrnb_dec_get_type
++  gst_omx_amrnb_dec_get_type, gst_omx_vp9_dec_get_type
+ #ifdef HAVE_VP8
+       , gst_omx_vp8_dec_get_type
+ #endif
+diff -Naur 1st_patch/omx/meson.build 1.16.2-r0/gst-omx-1.16.2/omx/meson.build
+--- 1st_patch/omx/meson.build	2020-06-22 13:39:43.413239954 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/meson.build	2020-06-22 13:41:29.060807620 +0900
+@@ -46,6 +46,8 @@
+   omx_sources += 'gstomxh265dec.c'
+ endif
+ 
++omx_sources += 'gstomxvp9dec.c'
++
+ optional_deps = []
+ if gstgl_dep.found()
+   optional_deps += gstgl_dep
+diff -Naur 1st_patch/omx/openmax/OMX_IndexExt.h 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_IndexExt.h
+--- 1st_patch/omx/openmax/OMX_IndexExt.h	2020-06-22 13:39:43.414239964 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_IndexExt.h	2020-06-22 13:41:08.402177629 +0900
+@@ -69,6 +69,7 @@
+     OMX_IndexParamVideoVp8,                         /**< reference: OMX_VIDEO_PARAM_VP8TYPE */
+     OMX_IndexConfigVideoVp8ReferenceFrame,          /**< reference: OMX_VIDEO_VP8REFERENCEFRAMETYPE */
+     OMX_IndexConfigVideoVp8ReferenceFrameType,      /**< reference: OMX_VIDEO_VP8REFERENCEFRAMEINFOTYPE */
++    OMX_IndexParamVideoHevc,                        /**< reference: OMX_VIDEO_PARAM_HEVCTYPE */
+ 
+     /* Image & Video common configurations */
+     OMX_IndexExtCommonStartUnused = OMX_IndexKhronosExtensions + 0x00700000,
+diff -Naur 1st_patch/omx/openmax/OMX_VideoExt.h 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_VideoExt.h
+--- 1st_patch/omx/openmax/OMX_VideoExt.h	2020-06-22 13:39:43.414239964 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_VideoExt.h	2020-06-22 13:41:13.964091851 +0900
+@@ -133,6 +133,113 @@
+     OMX_COLOR_FormatYUV422PlanarTc
+ } OMX_TC_COLOR_FORMATTYPE;
+ 
++/** VP9 profiles */
++typedef enum OMX_VIDEO_VP9PROFILETYPE {
++    OMX_VIDEO_VP9Profile0 = 0x1,
++    OMX_VIDEO_VP9Profile1 = 0x2,
++    OMX_VIDEO_VP9Profile2 = 0x4,
++    OMX_VIDEO_VP9Profile3 = 0x8,
++    // HDR profiles also support passing HDR metadata
++    OMX_VIDEO_VP9Profile2HDR = 0x1000,
++    OMX_VIDEO_VP9Profile3HDR = 0x2000,
++    OMX_VIDEO_VP9Profile2HDR10Plus = 0x4000,
++    OMX_VIDEO_VP9Profile3HDR10Plus = 0x8000,
++    OMX_VIDEO_VP9ProfileUnknown = 0x6EFFFFFF,
++    OMX_VIDEO_VP9ProfileMax = 0x7FFFFFFF
++} OMX_VIDEO_VP9PROFILETYPE;
++/** VP9 levels */
++typedef enum OMX_VIDEO_VP9LEVELTYPE {
++    OMX_VIDEO_VP9Level1  = 0x1,
++    OMX_VIDEO_VP9Level11 = 0x2,
++    OMX_VIDEO_VP9Level2  = 0x4,
++    OMX_VIDEO_VP9Level21 = 0x8,
++    OMX_VIDEO_VP9Level3  = 0x10,
++    OMX_VIDEO_VP9Level31 = 0x20,
++    OMX_VIDEO_VP9Level4  = 0x40,
++    OMX_VIDEO_VP9Level41 = 0x80,
++    OMX_VIDEO_VP9Level5  = 0x100,
++    OMX_VIDEO_VP9Level51 = 0x200,
++    OMX_VIDEO_VP9Level52 = 0x400,
++    OMX_VIDEO_VP9Level6  = 0x800,
++    OMX_VIDEO_VP9Level61 = 0x1000,
++    OMX_VIDEO_VP9Level62 = 0x2000,
++    OMX_VIDEO_VP9LevelUnknown = 0x6EFFFFFF,
++    OMX_VIDEO_VP9LevelMax = 0x7FFFFFFF
++} OMX_VIDEO_VP9LEVELTYPE;
++/**
++* VP9 Parameters.
++*   Encoder specific parameters (decoders should ignore these fields):
++*     - bErrorResilientMode
++*     - nTileRows
++*     - nTileColumns
++*     - bEnableFrameParallelDecoding
++*/
++typedef struct OMX_VIDEO_PARAM_VP9TYPE {
++    OMX_U32 nSize;
++    OMX_VERSIONTYPE nVersion;
++    OMX_U32 nPortIndex;
++    OMX_VIDEO_VP9PROFILETYPE eProfile;
++    OMX_VIDEO_VP9LEVELTYPE eLevel;
++    OMX_BOOL bErrorResilientMode;
++    OMX_U32 nTileRows;
++    OMX_U32 nTileColumns;
++    OMX_BOOL bEnableFrameParallelDecoding;
++} OMX_VIDEO_PARAM_VP9TYPE;
++/** HEVC Profile enum type */
++typedef enum OMX_VIDEO_HEVCPROFILETYPE {
++    OMX_VIDEO_HEVCProfileUnknown      = 0x0,
++    OMX_VIDEO_HEVCProfileMain         = 0x1,
++    OMX_VIDEO_HEVCProfileMain10       = 0x2,
++    OMX_VIDEO_HEVCProfileMainStill    = 0x4,
++    // Main10 profile with HDR SEI support.
++    OMX_VIDEO_HEVCProfileMain10HDR10  = 0x1000,
++    OMX_VIDEO_HEVCProfileMain10HDR10Plus  = 0x2000,
++    OMX_VIDEO_HEVCProfileMax          = 0x7FFFFFFF
++} OMX_VIDEO_HEVCPROFILETYPE;
++/** HEVC Level enum type */
++typedef enum OMX_VIDEO_HEVCLEVELTYPE {
++    OMX_VIDEO_HEVCLevelUnknown    = 0x0,
++    OMX_VIDEO_HEVCMainTierLevel1  = 0x1,
++    OMX_VIDEO_HEVCHighTierLevel1  = 0x2,
++    OMX_VIDEO_HEVCMainTierLevel2  = 0x4,
++    OMX_VIDEO_HEVCHighTierLevel2  = 0x8,
++    OMX_VIDEO_HEVCMainTierLevel21 = 0x10,
++    OMX_VIDEO_HEVCHighTierLevel21 = 0x20,
++    OMX_VIDEO_HEVCMainTierLevel3  = 0x40,
++    OMX_VIDEO_HEVCHighTierLevel3  = 0x80,
++    OMX_VIDEO_HEVCMainTierLevel31 = 0x100,
++    OMX_VIDEO_HEVCHighTierLevel31 = 0x200,
++    OMX_VIDEO_HEVCMainTierLevel4  = 0x400,
++    OMX_VIDEO_HEVCHighTierLevel4  = 0x800,
++    OMX_VIDEO_HEVCMainTierLevel41 = 0x1000,
++    OMX_VIDEO_HEVCHighTierLevel41 = 0x2000,
++    OMX_VIDEO_HEVCMainTierLevel5  = 0x4000,
++    OMX_VIDEO_HEVCHighTierLevel5  = 0x8000,
++    OMX_VIDEO_HEVCMainTierLevel51 = 0x10000,
++    OMX_VIDEO_HEVCHighTierLevel51 = 0x20000,
++    OMX_VIDEO_HEVCMainTierLevel52 = 0x40000,
++    OMX_VIDEO_HEVCHighTierLevel52 = 0x80000,
++    OMX_VIDEO_HEVCMainTierLevel6  = 0x100000,
++    OMX_VIDEO_HEVCHighTierLevel6  = 0x200000,
++    OMX_VIDEO_HEVCMainTierLevel61 = 0x400000,
++    OMX_VIDEO_HEVCHighTierLevel61 = 0x800000,
++    OMX_VIDEO_HEVCMainTierLevel62 = 0x1000000,
++    OMX_VIDEO_HEVCHighTierLevel62 = 0x2000000,
++    OMX_VIDEO_HEVCHighTiermax     = 0x7FFFFFFF
++} OMX_VIDEO_HEVCLEVELTYPE;
++/** Structure for controlling HEVC video encoding */
++typedef struct OMX_VIDEO_PARAM_HEVCTYPE {
++    OMX_U32 nSize;
++    OMX_VERSIONTYPE nVersion;
++    OMX_U32 nPortIndex;
++    OMX_VIDEO_HEVCPROFILETYPE eProfile;
++    OMX_VIDEO_HEVCLEVELTYPE eLevel;
++    OMX_U32 nKeyFrameInterval;        // distance between consecutive I-frames (including one
++                                      // of the I frames). 0 means interval is unspecified and
++                                      // can be freely chosen by the codec. 1 means a stream of
++                                      // only I frames.
++} OMX_VIDEO_PARAM_HEVCTYPE;
++
+ /** WMV9 profiles */
+ typedef enum OMX_VIDEO_WMV9PROFILETYPE {
+     OMX_VIDEO_WMV9ProfileSimple    = 0x01,

@@ -1,0 +1,153 @@
+diff -Naur before/gst/videoparsers/gsth264parse.c 1.16.2-r0/gst-plugins-bad-1.16.2/gst/videoparsers/gsth264parse.c
+--- before/gst/videoparsers/gsth264parse.c	2021-02-18 10:37:28.863909829 +0900
++++ 1.16.2-r0/gst-plugins-bad-1.16.2/gst/videoparsers/gsth264parse.c	2021-02-19 14:10:04.227489708 +0900
+@@ -38,6 +38,9 @@
+ 
+ #define DEFAULT_CONFIG_INTERVAL      (0)
+ 
++
++#define ENABLE_ERROR_CONCEALMENT //error concealment for wrong encoded stream
++
+ enum
+ {
+   PROP_0,
+@@ -933,7 +936,7 @@
+       h264parse->state &= GST_H264_PARSE_STATE_VALID_PICTURE_HEADERS;
+       if (!GST_H264_PARSE_STATE_VALID (h264parse,
+               GST_H264_PARSE_STATE_VALID_PICTURE_HEADERS))
+-        return FALSE;
++        GST_WARNING_OBJECT(h264parse, "Expected state is %x, but Current state is %x. anyway continue..",GST_H264_PARSE_STATE_VALID_PICTURE_HEADERS,h264parse->state);
+ 
+       /* don't need to parse the whole slice (header) here */
+       if (*(nalu->data + nalu->offset + nalu->header_bytes) & 0x80) {
+@@ -2756,6 +2759,9 @@
+   GstH264NalUnit nalu;
+   GstH264ParserResult parseres;
+   GstCaps *old_caps;
++  gboolean passthrough = FALSE;
++
++  guint8 profile_idc = 0, level_idc = 0;
+ 
+   h264parse = GST_H264_PARSE (parse);
+ 
+@@ -2779,6 +2785,8 @@
+   gst_structure_get_fraction (str, "pixel-aspect-ratio",
+       &h264parse->upstream_par_n, &h264parse->upstream_par_d);
+ 
++  /* check if upstream want to do passthrough mode */
++  gst_structure_get_boolean (str, "ring-mode", &passthrough);
+   /* get upstream format and align from caps */
+   gst_h264_parse_format_from_caps (caps, &format, &align);
+ 
+@@ -2800,8 +2808,14 @@
+   /* avc caps sanity checks */
+   if (format == GST_H264_PARSE_FORMAT_AVC) {
+     /* AVC requires codec_data, AVC3 might have one and/or SPS/PPS inline */
+-    if (codec_data_value == NULL)
++    if (codec_data_value == NULL) {
++#ifdef ENABLE_ERROR_CONCEALMENT
++      GST_INFO_OBJECT (h264parse, "avc_caps_codec_data_missing");
++      goto invalid_avcC_format;
++#else
+       goto avc_caps_codec_data_missing;
++#endif
++    }
+ 
+     /* AVC implies alignment=au, everything else is not allowed */
+     if (align == GST_H264_PARSE_ALIGN_NONE)
+@@ -2845,12 +2859,21 @@
+     /* parse the avcC data */
+     if (size < 7) {             /* when numSPS==0 and numPPS==0, length is 7 bytes */
+       gst_buffer_unmap (codec_data, &map);
++#ifdef ENABLE_ERROR_CONCEALMENT
++      GST_INFO_OBJECT (h264parse, "avcc_too_small %d", size);
++      goto invalid_avcC_format;
++#else
+       goto avcc_too_small;
++#endif
+     }
+     /* parse the version, this must be 1 */
+     if (data[0] != 1) {
+       gst_buffer_unmap (codec_data, &map);
++#ifdef ENABLE_ERROR_CONCEALMENT
++      goto invalid_avcC_format;
++#else
+       goto wrong_version;
++#endif
+     }
+ #ifndef GST_DISABLE_GST_DEBUG
+     /* AVCProfileIndication */
+@@ -2860,6 +2883,21 @@
+     GST_DEBUG_OBJECT (h264parse, "profile %06x", profile);
+ #endif
+ 
++    /* VPU decoder can support up to H264 High profile @Level 4.2 */
++    profile_idc = data[1];
++    level_idc = data[3];
++
++    if( profile_idc < 66 || profile_idc > 100)
++    {
++      GST_WARNING_OBJECT (h264parse, "Video decoder can support up to H264 High profile @Level 4.2");
++      goto not_support_profile;
++    }
++    if( (profile_idc == 100) && level_idc > 42)
++    {
++      GST_ELEMENT_WARNING (h264parse, LIBRARY, SPEC_OUT,
++       (("Video decoder can quarantee up to H264 High profile @Level 4.2.\n This stream is H264 profile[%d] @Level[%d], therefore it can be played abnormally"), profile_idc, level_idc), NULL);
++    }
++
+     /* 6 bits reserved | 2 bits lengthSizeMinusOne */
+     /* this is the number of bytes in front of the NAL units to mark their
+      * length */
+@@ -2908,6 +2946,9 @@
+     h264parse->have_sps_in_frame = FALSE;
+     h264parse->have_pps_in_frame = FALSE;
+   } else if (format == GST_H264_PARSE_FORMAT_BYTE) {
++#ifdef ENABLE_ERROR_CONCEALMENT
++CONTINUE_PARSING_ON_FORMAT_BYTE:
++#endif
+     GST_DEBUG_OBJECT (h264parse, "have bytestream h264");
+     /* nothing to pre-process */
+     h264parse->packetized = FALSE;
+@@ -2932,7 +2973,9 @@
+     gst_caps_unref (in_caps);
+   }
+ 
+-  if (format == h264parse->format && align == h264parse->align) {
++  if ( (format == h264parse->format && align == h264parse->align) || passthrough) {
++    gst_base_parse_set_passthrough (parse, TRUE);
++
+     /* we did parse codec-data and might supplement src caps */
+     gst_h264_parse_update_src_caps (h264parse, caps);
+   } else if (format == GST_H264_PARSE_FORMAT_AVC
+@@ -2953,6 +2996,18 @@
+   return TRUE;
+ 
+   /* ERRORS */
++#ifdef ENABLE_ERROR_CONCEALMENT
++invalid_avcC_format:
++  {
++      format = GST_H264_PARSE_FORMAT_BYTE;
++      GST_WARNING_OBJECT (h264parse, "**************************************************************************");
++      GST_WARNING_OBJECT (h264parse, "");
++      GST_WARNING_OBJECT (h264parse, "  Invalid avcC Format: Let's treat it as a bytestream format");
++      GST_WARNING_OBJECT (h264parse, "");
++      GST_WARNING_OBJECT (h264parse, "**************************************************************************");
++      goto CONTINUE_PARSING_ON_FORMAT_BYTE;
++  }
++#endif
+ avc_caps_codec_data_wrong_type:
+   {
+     GST_WARNING_OBJECT (parse, "H.264 AVC caps, codec_data field not a buffer");
+@@ -2984,6 +3039,11 @@
+     GST_DEBUG_OBJECT (h264parse, "wrong avcC version");
+     goto refuse_caps;
+   }
++not_support_profile:
++  {
++    GST_ELEMENT_WARNING (h264parse, LIBRARY, SPEC_OUT, (("Video decoder can not support H264 profile[%d] @Level[%d]"), profile_idc, level_idc), NULL);
++    goto refuse_caps;
++  }
+ refuse_caps:
+   {
+     GST_WARNING_OBJECT (h264parse, "refused caps %" GST_PTR_FORMAT, caps);

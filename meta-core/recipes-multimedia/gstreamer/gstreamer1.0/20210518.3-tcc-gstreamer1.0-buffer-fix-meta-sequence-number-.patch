@@ -1,0 +1,23 @@
+buffer: fix meta sequence number fallback on rpi
+The global seqnum variable wasn't actually increased in
+the fallback code path, leading to all buffers getting
+a seqnum of 0. Which also made the unit test fail.
+
+This affects platforms/toolchains that don't have
+64-bit atomic ops such as when compiling for armv7 rpi.
+
+Part-of: <https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/645>
+
+diff --git a/gst/gstbuffer.c b/gst/gstbuffer.c
+index 19a70b417..00978580c 100644
+--- a/gst/gstbuffer.c
++++ b/gst/gstbuffer.c
+@@ -192,7 +192,7 @@ gst_atomic_int64_inc (volatile gint64 * atomic)
+   gint64 ret;
+ 
+   G_LOCK (meta_seq);
+-  ret = *atomic++;
++  ret = (*atomic)++;
+   G_UNLOCK (meta_seq);
+ 
+   return ret;

@@ -1,0 +1,28 @@
+From 25f5bd4aea37d4668e8188fa7779707c1fe98f4e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=EC=9E=84=EC=98=81=ED=98=84=28Lim=20Young=20Hyun=29?=
+ <limdh3@telechips.com>
+Date: Fri, 26 May 2017 07:52:25 +0000
+Subject: [PATCH] Not Using -flto option in compier version 4.8.1
+
+---
+ configure.ac | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 86909a5..8bd68bf 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -227,10 +227,6 @@ AS_CASE([$CC], [*clang*],
+                -Wno-gnu-variable-sized-type-not-at-end \
+         ])])
+ 
+-AS_CASE([$CFLAGS], [*-O[[12345sz\ ]]*],
+-        [CC_CHECK_FLAGS_APPEND([with_cflags], [CFLAGS], [\
+-               -flto])],
+-        [AC_MSG_RESULT([skipping -flto, optimization not enabled])])
+ AC_SUBST([OUR_CFLAGS], "$with_cflags $sanitizer_cflags")
+ 
+ AS_CASE([$CFLAGS], [*-O[[12345sz\ ]]*],
+-- 
+2.9.3
+

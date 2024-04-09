@@ -1,0 +1,39 @@
+From e8b1b6cae09f3ee47dcd373cda651496b95762da Mon Sep 17 00:00:00 2001
+From: Frank Binns <frank.binns@imgtec.com>
+Date: Thu, 19 Mar 2015 14:07:23 +0000
+Subject: [PATCH] dri: Add MT21 DRI fourcc and DRM format
+
+Add the MT21 DRI fourcc and DRM format.
+
+---
+ include/drm-uapi/drm_fourcc.h   | 2 ++
+ src/egl/drivers/dri2/egl_dri2.c | 3 +++
+ 2 files changed, 5 insertions(+)
+
+diff --git a/include/drm-uapi/drm_fourcc.h b/include/drm-uapi/drm_fourcc.h
+index f427140..de5c976 100644
+--- a/include/drm-uapi/drm_fourcc.h
++++ b/include/drm-uapi/drm_fourcc.h
+@@ -237,6 +237,8 @@ extern "C" {
+ #define DRM_FORMAT_NV24		fourcc_code('N', 'V', '2', '4') /* non-subsampled Cr:Cb plane */
+ #define DRM_FORMAT_NV42		fourcc_code('N', 'V', '4', '2') /* non-subsampled Cb:Cr plane */
+ 
++#define DRM_FORMAT_MT21		fourcc_code('M', 'T', '2', '1') /* Mediatek Block Mode */
++
+ /*
+  * 2 plane YCbCr MSB aligned
+  * index 0 = Y plane, [15:0] Y:x [10:6] little endian
+diff --git a/src/egl/drivers/dri2/egl_dri2.c b/src/egl/drivers/dri2/egl_dri2.c
+index 305e236..95fb63e 100644
+--- a/src/egl/drivers/dri2/egl_dri2.c
++++ b/src/egl/drivers/dri2/egl_dri2.c
+@@ -2594,6 +2594,9 @@ dri2_num_fourcc_format_planes(EGLint format)
+    case DRM_FORMAT_P010:
+    case DRM_FORMAT_P012:
+    case DRM_FORMAT_P016:
++#ifdef DRM_FORMAT_MT21
++   case DRM_FORMAT_MT21:
++#endif
+       return 2;
+ 
+    case DRM_FORMAT_YUV410:

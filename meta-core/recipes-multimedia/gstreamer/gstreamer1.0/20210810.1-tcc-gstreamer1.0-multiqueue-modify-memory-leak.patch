@@ -1,0 +1,61 @@
+[fix] multiqueue: prevent memory leak
+
+diff -Naur before/plugins/elements/gstmultiqueue.c 1.16.2-r0/gstreamer-1.16.2/plugins/elements/gstmultiqueue.c
+--- before/plugins/elements/gstmultiqueue.c	2021-07-22 18:18:48.677427972 +0900
++++ 1.16.2-r0/gstreamer-1.16.2/plugins/elements/gstmultiqueue.c	2021-08-04 12:07:51.544774711 +0900
+@@ -2874,6 +2874,7 @@
+ 		GstStateChangeReturn ret;
+ 		GstElement *mqElement= GST_ELEMENT_CAST(mq);
+ 		GstElement *parent1; // if using "playbin" , parent is a decodebin.
++		gchar *elem_name;
+ 
+ 		self_ret = gst_element_get_state (mqElement, &self_state,&self_pending,0);
+ 
+@@ -2892,21 +2893,25 @@
+ 				parent3 = gst_element_get_parent(parent2);
+ 				if(parent3 != NULL)
+ 				{
++					elem_name = gst_element_get_name(parent3);
+ 					ret = gst_element_get_state (parent3, &state,&pending,0);
+-
+-					GST_WARNING_OBJECT(mq, " name [%s], ret %d, state %d, pending %d ", gst_element_get_name(parent3),ret,state,pending);
+-
++					GST_WARNING_OBJECT(mq, " name [%s], ret %d, state %d, pending %d ", elem_name,ret,state,pending);
++					g_free(elem_name);
+ 					gst_object_unref(parent3);
+ 				}
+ 				else
+ 				{
+-					GST_WARNING_OBJECT(mq, " name [%s], ret %d, state %d, pending %d ", gst_element_get_name(parent2),ret,state,pending);
++					elem_name = gst_element_get_name(parent2);
++					GST_WARNING_OBJECT(mq, " name [%s], ret %d, state %d, pending %d ", elem_name,ret,state,pending);
++					g_free(elem_name);
+ 				}
+ 				gst_object_unref(parent2);
+ 			}
+ 			else
+ 			{
+-				GST_WARNING_OBJECT(mq, " name [%s], ret %d, state %d, pending %d ", gst_element_get_name(parent1),ret,state,pending);
++				elem_name = gst_element_get_name(parent1);
++				GST_WARNING_OBJECT(mq, " name [%s], ret %d, state %d, pending %d ", elem_name,ret,state,pending);
++				g_free(elem_name);
+ 			}
+ 
+ 			if(ret == GST_STATE_CHANGE_ASYNC &&
+@@ -2980,13 +2985,14 @@
+ 
+ 				if(send_error_msg)
+ 				{
+-					GST_WARNING_OBJECT(mq, " name [%s], ret %d, state %d, pending %d ", gst_element_get_name(mqElement),self_ret,self_state,self_pending);
++					elem_name = gst_element_get_name(mqElement);
++					GST_WARNING_OBJECT(mq, " name [%s], ret %d, state %d, pending %d ", elem_name,self_ret,self_state,self_pending);
+ 					GST_ERROR_OBJECT(mq, "\x1b[1;32m Infinite pending!!!! \x1b[1;0m queue %d: visible %u/%u, bytes %u/%u, time %" G_GUINT64_FORMAT "/%" G_GUINT64_FORMAT, 
+ 						 sq->id, visible, sq->max_size.visible, bytes, sq->max_size.bytes, sq->cur_time, sq->max_size.time);
+-
+ 					GST_ELEMENT_ERROR (mq,STREAM , PENDING,
+ 						("MultiQueue falls into the infinite pending state."),
+ 						("queue %d: visible %u/%u, bytes %u/%u",sq->id, visible, sq->max_size.visible, bytes, sq->max_size.bytes));
++					g_free(elem_name);
+ 				}
+ 			}
+ done:

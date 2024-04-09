@@ -1,0 +1,15 @@
+[Unit]
+Description=Telechips EGL Sample Application
+Before=systemd-journald.service systemd-udev-trigger.service systemd-udevd.service sysinit.target
+DefaultDependencies=no
+
+[Service]
+Type=simple
+Environment=QT_QPA_EGLFS_PHYSICAL_WIDTH=LCD_WIDTH
+Environment=QT_QPA_EGLFS_PHYSICAL_HEIGHT=LCD_HEIGHT
+Environment=QT_QPA_EGLFS_INTEGRATION=eglfs_mali
+Environment=QT_QPA_EGLFS_FORCE888=1
+ExecStart=/usr/bin/tcTeapot20 LCD_WIDTH LCD_HEIGHT
+
+[Install]
+WantedBy=sysinit.target

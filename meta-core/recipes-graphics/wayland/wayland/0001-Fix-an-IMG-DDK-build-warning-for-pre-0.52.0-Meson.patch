@@ -1,0 +1,41 @@
+From 9e563039f9eac048f6cc8d59422db5ecdaa7dab9 Mon Sep 17 00:00:00 2001
+From: Jay Jeon <inbest@telechips.com>
+Date: Mon, 11 May 2020 08:51:37 +0900
+Subject: [PATCH] Fix an IMG DDK build warning for pre-0.52.0 Meson
+
+For Wayland, the is_cross_build method of the meson object was used to
+determine whether the native Wayland scanner should be searched for,
+but prior to Meson 0.52.0, the method gives the wrong result if the
+build machine is the same as the host machine (i.e. the target system
+in DDK terminology).
+
+Always search for the native Wayland scanner, but only if the Wayland
+libraries are being built. This also ensures the scanner isn't searched
+for when building the host version of Wayland with the IMG DDK, which
+just builds the scanner.
+---
+ src/meson.build | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/src/meson.build b/src/meson.build
+index 7e410fa..6de7dd3 100644
+--- a/src/meson.build
++++ b/src/meson.build
+@@ -54,13 +54,9 @@ pkgconfig.generate(
+ 	filebase: 'wayland-scanner'
+ )
+ 
+-if meson.is_cross_build()
++if get_option('libraries')
+ 	wayland_scanner_for_build = find_program('wayland-scanner')
+-else
+-	wayland_scanner_for_build = wayland_scanner
+-endif
+ 
+-if get_option('libraries')
+ 	mathlib_dep = cc.find_library('m', required: false)
+ 	threads_dep = dependency('threads', required: false)
+ 
+-- 
+1.9.3
+

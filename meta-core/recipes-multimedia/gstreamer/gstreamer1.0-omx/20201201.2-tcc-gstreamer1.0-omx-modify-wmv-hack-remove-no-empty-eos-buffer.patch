@@ -1,0 +1,13 @@
+with no-empty-eos-buffer, can't play end frame of stream.
+
+--- before/config/bellagio/gstomx.conf	2020-11-30 10:51:37.944816779 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/config/bellagio/gstomx.conf	2020-12-01 14:25:12.395170845 +0900
+@@ -129,7 +129,7 @@
+ rank=257
+ in-port-index=0
+ out-port-index=1
+-hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;event-port-settings-changed-port-0-to-1;no-empty-eos-buffer;
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;event-port-settings-changed-port-0-to-1;
+ 
+ [omxvp8dec]
+ type-name=GstOMXVP8Dec

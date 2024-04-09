@@ -1,0 +1,309 @@
+From 2e239b5f086628b1936615caad0efab63e84a1e3 Mon Sep 17 00:00:00 2001
+From: Jay Jeon <inbest@telechips.com>
+Date: Mon, 31 Aug 2020 09:31:39 +0900
+Subject: [PATCH] [ref] pp125085.eglfs_pvr.Qt5.6.3.patch
+
+Change-Id: Ia220263f9258d667e4b9472ccba2b8892219b14b
+---
+ configure                                          |  9 +++
+ .../eglfs/deviceintegration/deviceintegration.pro  |  1 +
+ .../deviceintegration/eglfs_pvr/eglfs_pvr.json     |  3 +
+ .../deviceintegration/eglfs_pvr/eglfs_pvr.pro      | 21 ++++++
+ .../eglfs_pvr/qeglfspvrintegration.cpp             | 75 ++++++++++++++++++++++
+ .../eglfs_pvr/qeglfspvrintegration.h               | 54 ++++++++++++++++
+ .../deviceintegration/eglfs_pvr/qeglfspvrmain.cpp  | 50 +++++++++++++++
+ 7 files changed, 213 insertions(+)
+ create mode 100644 src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/eglfs_pvr.json
+ create mode 100644 src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/eglfs_pvr.pro
+ create mode 100644 src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/qeglfspvrintegration.cpp
+ create mode 100644 src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/qeglfspvrintegration.h
+ create mode 100644 src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/qeglfspvrmain.cpp
+
+diff --git a/configure b/configure
+index 6ebeab3..618ea8b 100755
+--- a/configure
++++ b/configure
+@@ -697,6 +697,7 @@ CFG_EGLFS=auto
+ CFG_EGLFS_BRCM=no
+ CFG_EGLFS_EGLDEVICE=no
+ CFG_EGLFS_MALI=no
++CFG_EGLFS_PVR=no
+ CFG_EGLFS_VIV=no
+ CFG_EGLFS_VIV_WL=no
+ CFG_DIRECTFB=no
+@@ -5814,6 +5815,10 @@ if [ "$CFG_EGLFS" != "no" ]; then
+         else
+             CFG_EGLFS_MALI=no
+         fi
++
++	#eglfs_pvr only depends on eglfs
++	CFG_EGLFS_PVR=yes
++
+         if compileTest qpa/eglfs-viv "eglfs-viv"; then
+             CFG_EGLFS_VIV=yes
+         else
+@@ -6268,6 +6273,9 @@ fi
+ if [ "$CFG_EGLFS_MALI" = "yes" ]; then
+     QT_CONFIG="$QT_CONFIG eglfs_mali"
+ fi
++if [ "$CFG_EGLFS_PVR" = "yes" ]; then
++    QT_CONFIG="$QT_CONFIG eglfs_pvr"
++fi
+ if [ "$CFG_EGLFS_VIV" = "yes" ]; then
+     QT_CONFIG="$QT_CONFIG eglfs_viv"
+     if [ "$CFG_EGLFS_VIV_WL" = "yes" ]; then
+@@ -7359,6 +7367,7 @@ report_support "      EGLFS i.MX6 Wayland." "$CFG_EGLFS_VIV_WL"
+ report_support "      EGLFS EGLDevice ...." "$CFG_EGLFS_EGLDEVICE"
+ report_support "      EGLFS GBM .........." "$CFG_EGLFS_GBM"
+ report_support "      EGLFS Mali ........." "$CFG_EGLFS_MALI"
++report_support "      EGLFS PVR .........." "$CFG_EGLFS_PVR"
+ report_support "      EGLFS Raspberry Pi ." "$CFG_EGLFS_BRCM"
+ report_support "      EGLFS X11 .........." "$CFG_EGL_X"
+ report_support "    LinuxFB .............." "$CFG_LINUXFB"
+diff --git a/src/plugins/platforms/eglfs/deviceintegration/deviceintegration.pro b/src/plugins/platforms/eglfs/deviceintegration/deviceintegration.pro
+index 266a97d..7a81077 100644
+--- a/src/plugins/platforms/eglfs/deviceintegration/deviceintegration.pro
++++ b/src/plugins/platforms/eglfs/deviceintegration/deviceintegration.pro
+@@ -5,5 +5,6 @@ contains(QT_CONFIG, eglfs_gbm): SUBDIRS += eglfs_kms
+ contains(QT_CONFIG, eglfs_egldevice): SUBDIRS += eglfs_kms_egldevice
+ contains(QT_CONFIG, eglfs_brcm): SUBDIRS += eglfs_brcm
+ contains(QT_CONFIG, eglfs_mali): SUBDIRS += eglfs_mali
++contains(QT_CONFIG, eglfs_pvr): SUBDIRS += eglfs_pvr
+ contains(QT_CONFIG, eglfs_viv): SUBDIRS += eglfs_viv
+ contains(QT_CONFIG, eglfs_viv_wl): SUBDIRS += eglfs_viv_wl
+diff --git a/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/eglfs_pvr.json b/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/eglfs_pvr.json
+new file mode 100644
+index 0000000..7aea184
+--- /dev/null
++++ b/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/eglfs_pvr.json
+@@ -0,0 +1,3 @@
++{
++    "Keys": [ "eglfs_pvr" ]
++}
+diff --git a/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/eglfs_pvr.pro b/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/eglfs_pvr.pro
+new file mode 100644
+index 0000000..cd09560
+--- /dev/null
++++ b/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/eglfs_pvr.pro
+@@ -0,0 +1,21 @@
++TARGET = qeglfs-pvr-integration
++
++QT += core-private gui-private platformsupport-private eglfs_device_lib-private
++
++# Avoid X11 header collision
++DEFINES += MESA_EGL_NO_X11_HEADERS
++
++INCLUDEPATH += $$PWD/../..
++CONFIG += egl
++QMAKE_LFLAGS += $$QMAKE_LFLAGS_NOUNDEF
++
++SOURCES += $$PWD/qeglfspvrmain.cpp \
++           $$PWD/qeglfspvrintegration.cpp
++
++HEADERS += $$PWD/qeglfspvrintegration.h
++
++OTHER_FILES += $$PWD/eglfs_pvr.json
++
++PLUGIN_TYPE = egldeviceintegrations
++PLUGIN_CLASS_NAME = QEglFSPvrIntegrationPlugin
++load(qt_plugin)
+diff --git a/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/qeglfspvrintegration.cpp b/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/qeglfspvrintegration.cpp
+new file mode 100644
+index 0000000..25b17af
+--- /dev/null
++++ b/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/qeglfspvrintegration.cpp
+@@ -0,0 +1,75 @@
++/****************************************************************************
++**
++** Copyright (C) 2015 The Qt Company Ltd.
++** Contact: http://www.qt.io/licensing/
++**
++** This file is part of the plugins of the Qt Toolkit.
++**
++** $QT_BEGIN_LICENSE:LGPL21$
++** Commercial License Usage
++** Licensees holding valid commercial Qt licenses may use this file in
++** accordance with the commercial license agreement provided with the
++** Software or, alternatively, in accordance with the terms contained in
++** a written agreement between you and The Qt Company. For licensing terms
++** and conditions see http://www.qt.io/terms-conditions. For further
++** information use the contact form at http://www.qt.io/contact-us.
++**
++** GNU Lesser General Public License Usage
++** Alternatively, this file may be used under the terms of the GNU Lesser
++** General Public License version 2.1 or version 3 as published by the Free
++** Software Foundation and appearing in the file LICENSE.LGPLv21 and
++** LICENSE.LGPLv3 included in the packaging of this file. Please review the
++** following information to ensure the GNU Lesser General Public License
++** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
++** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
++**
++** As a special exception, The Qt Company gives you certain additional
++** rights. These rights are described in The Qt Company LGPL Exception
++** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
++**
++** $QT_END_LICENSE$
++**
++****************************************************************************/
++
++#include "qeglfspvrintegration.h"
++
++#include <unistd.h>
++#include <fcntl.h>
++#include <sys/ioctl.h>
++#include <linux/fb.h>
++
++#include <private/qcore_unix_p.h>
++
++QT_BEGIN_NAMESPACE
++ 
++void QEglFSPvrIntegration::platformInit()
++{
++    qDebug("IMG: QEglFSPvrIntegration::platformInit");
++}
++
++EGLNativeWindowType QEglFSPvrIntegration::createNativeWindow(QPlatformWindow *window, const QSize &size, const QSurfaceFormat &format)
++{
++	Q_UNUSED(window);
++	Q_UNUSED(size);
++	Q_UNUSED(format);
++
++    qDebug("IMG: QEglFSPvrIntegration::createNativeWindow");
++    return (EGLNativeWindowType)fbDeviceNumber();
++}
++
++EGLNativeWindowType QEglFSPvrIntegration::createNativeOffscreenWindow(const QSurfaceFormat &format)
++{
++	Q_UNUSED(format);
++}
++
++void QEglFSPvrIntegration::destroyNativeWindow(EGLNativeWindowType window)
++{
++    qDebug("IMG: QEglFSPvrIntegration::destroyNativeWindow");
++}
++
++EGLNativeWindowType QEglFSPvrIntegration::fbDeviceNumber(void)
++{
++	return (EGLNativeWindowType)(fbDeviceName().right(1).toInt());
++}
++
++QT_END_NAMESPACE
+diff --git a/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/qeglfspvrintegration.h b/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/qeglfspvrintegration.h
+new file mode 100644
+index 0000000..5fcb43b
+--- /dev/null
++++ b/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/qeglfspvrintegration.h
+@@ -0,0 +1,54 @@
++/****************************************************************************
++**
++** Copyright (C) 2015 The Qt Company Ltd.
++** Contact: http://www.qt.io/licensing/
++**
++** This file is part of the plugins of the Qt Toolkit.
++**
++** $QT_BEGIN_LICENSE:LGPL21$
++** Commercial License Usage
++** Licensees holding valid commercial Qt licenses may use this file in
++** accordance with the commercial license agreement provided with the
++** Software or, alternatively, in accordance with the terms contained in
++** a written agreement between you and The Qt Company. For licensing terms
++** and conditions see http://www.qt.io/terms-conditions. For further
++** information use the contact form at http://www.qt.io/contact-us.
++**
++** GNU Lesser General Public License Usage
++** Alternatively, this file may be used under the terms of the GNU Lesser
++** General Public License version 2.1 or version 3 as published by the Free
++** Software Foundation and appearing in the file LICENSE.LGPLv21 and
++** LICENSE.LGPLv3 included in the packaging of this file. Please review the
++** following information to ensure the GNU Lesser General Public License
++** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
++** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
++**
++** As a special exception, The Qt Company gives you certain additional
++** rights. These rights are described in The Qt Company LGPL Exception
++** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
++**
++** $QT_END_LICENSE$
++**
++****************************************************************************/
++
++#ifndef QEGLFSPVRINTEGRATION_H
++#define QEGLFSPVRINTEGRATION_H
++
++#include "qeglfsdeviceintegration.h"
++
++QT_BEGIN_NAMESPACE
++
++class QEglFSPvrIntegration : public QEGLDeviceIntegration
++{
++public:
++    void platformInit() Q_DECL_OVERRIDE;
++    EGLNativeWindowType createNativeWindow(QPlatformWindow *window, const QSize &size, const QSurfaceFormat &format) Q_DECL_OVERRIDE;
++	EGLNativeWindowType createNativeOffscreenWindow(const QSurfaceFormat &format) Q_DECL_OVERRIDE;
++    void destroyNativeWindow(EGLNativeWindowType window) Q_DECL_OVERRIDE;
++private:
++	EGLNativeWindowType fbDeviceNumber(void);
++};
++
++QT_END_NAMESPACE
++
++#endif
+diff --git a/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/qeglfspvrmain.cpp b/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/qeglfspvrmain.cpp
+new file mode 100644
+index 0000000..1d30076
+--- /dev/null
++++ b/src/plugins/platforms/eglfs/deviceintegration/eglfs_pvr/qeglfspvrmain.cpp
+@@ -0,0 +1,50 @@
++/****************************************************************************
++**
++** Copyright (C) 2015 The Qt Company Ltd.
++** Contact: http://www.qt.io/licensing/
++**
++** This file is part of the plugins of the Qt Toolkit.
++**
++** $QT_BEGIN_LICENSE:LGPL21$
++** Commercial License Usage
++** Licensees holding valid commercial Qt licenses may use this file in
++** accordance with the commercial license agreement provided with the
++** Software or, alternatively, in accordance with the terms contained in
++** a written agreement between you and The Qt Company. For licensing terms
++** and conditions see http://www.qt.io/terms-conditions. For further
++** information use the contact form at http://www.qt.io/contact-us.
++**
++** GNU Lesser General Public License Usage
++** Alternatively, this file may be used under the terms of the GNU Lesser
++** General Public License version 2.1 or version 3 as published by the Free
++** Software Foundation and appearing in the file LICENSE.LGPLv21 and
++** LICENSE.LGPLv3 included in the packaging of this file. Please review the
++** following information to ensure the GNU Lesser General Public License
++** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
++** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
++**
++** As a special exception, The Qt Company gives you certain additional
++** rights. These rights are described in The Qt Company LGPL Exception
++** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
++**
++** $QT_END_LICENSE$
++**
++****************************************************************************/
++
++#include "qeglfsdeviceintegration.h"
++#include "qeglfspvrintegration.h"
++
++QT_BEGIN_NAMESPACE
++
++class QEglFSPvrIntegrationPlugin : public QEGLDeviceIntegrationPlugin
++{
++    Q_OBJECT
++    Q_PLUGIN_METADATA(IID QEGLDeviceIntegrationFactoryInterface_iid FILE "eglfs_pvr.json")
++
++public:
++    QEGLDeviceIntegration *create() Q_DECL_OVERRIDE { return new QEglFSPvrIntegration; }
++};
++
++QT_END_NAMESPACE
++
++#include "qeglfspvrmain.moc"
+-- 
+1.9.3
+

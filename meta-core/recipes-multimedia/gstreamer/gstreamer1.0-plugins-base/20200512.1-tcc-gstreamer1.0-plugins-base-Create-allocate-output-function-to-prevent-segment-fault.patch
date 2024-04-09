@@ -1,0 +1,77 @@
+diff -Naur before/gst-libs/gst/video/gstvideodecoder.c after/gst-libs/gst/video/gstvideodecoder.c
+--- before/gst-libs/gst/video/gstvideodecoder.c	2016-07-25 19:15:33.000000000 +0900
++++ after/gst-libs/gst/video/gstvideodecoder.c	2020-03-13 10:10:14.355250068 +0900
+@@ -3920,6 +3920,52 @@
+ }
+ 
+ /**
++ * gst_video_decoder_allocate_output:
++ * @decoder: a #GstVideoDecoder
++ *
++ * Helper function that allocates a buffer to hold a video frame for @decoder's
++ * current #GstVideoCodecState.
++ *
++ * You should use gst_video_decoder_allocate_output() instead of this
++ * function, if possible at all.
++ *
++ * Returns: %GST_FLOW_OK if an output buffer could be allocated
++ */
++GstFlowReturn
++gst_video_decoder_allocate_output (GstVideoDecoder * decoder)
++{
++  gboolean needs_reconfigure = FALSE;
++
++  GST_DEBUG ("alloc src buffer");
++
++  GST_VIDEO_DECODER_STREAM_LOCK (decoder);
++  needs_reconfigure = gst_pad_check_reconfigure (decoder->srcpad);
++  if (G_UNLIKELY (!decoder->priv->output_state
++          || decoder->priv->output_state_changed || needs_reconfigure)) {
++    if (!gst_video_decoder_negotiate_unlocked (decoder)) {
++      if (decoder->priv->output_state) {
++        GST_DEBUG_OBJECT (decoder, "Failed to negotiate, fallback allocation");
++        gst_pad_mark_reconfigure (decoder->srcpad);
++        goto failed_allocation;
++      } else {
++        GST_DEBUG_OBJECT (decoder, "Failed to negotiate, output_buffer=NULL");
++        goto failed_allocation;
++      }
++    }
++  }
++  GST_VIDEO_DECODER_STREAM_UNLOCK (decoder);
++
++  return GST_FLOW_OK;
++
++failed_allocation:
++  GST_ERROR_OBJECT (decoder, "Failed to allocate the buffer..");
++  GST_VIDEO_DECODER_STREAM_UNLOCK (decoder);
++
++  return GST_FLOW_ERROR;
++}
++
++
++/**
+  * gst_video_decoder_allocate_output_buffer:
+  * @decoder: a #GstVideoDecoder
+  *
+@@ -4101,6 +4147,7 @@
+ 
+   GST_OBJECT_UNLOCK (decoder);
+ 
++  deadline = 1;
+   return deadline;
+ }
+ 
+diff -Naur before/gst-libs/gst/video/gstvideodecoder.h after/gst-libs/gst/video/gstvideodecoder.h
+--- before/gst-libs/gst/video/gstvideodecoder.h 2019-08-24 21:41:07.000000000 +0900
++++ after/gst-libs/gst/video/gstvideodecoder.h  2020-05-12 11:20:10.944129975 +0900
+@@ -417,6 +417,9 @@
+ gsize          gst_video_decoder_get_pending_frame_size (GstVideoDecoder *decoder);
+ 
+ GST_VIDEO_API
++GstFlowReturn  gst_video_decoder_allocate_output (GstVideoDecoder *decoder);
++
++GST_VIDEO_API
+ GstBuffer     *gst_video_decoder_allocate_output_buffer (GstVideoDecoder * decoder);
+ 
+ GST_VIDEO_API

@@ -1,0 +1,252 @@
+diff -Naur before/ext/alsa/gstalsasink.c after/ext/alsa/gstalsasink.c
+--- before/ext/alsa/gstalsasink.c	2019-04-19 18:16:20.000000000 +0900
++++ after/ext/alsa/gstalsasink.c	2020-05-12 11:33:24.171705749 +0900
+@@ -58,7 +58,8 @@
+ #define ESTRPIPE EPIPE
+ #endif
+ 
+-#define DEFAULT_DEVICE		"default"
++//#define DEFAULT_DEVICE		"default"
++#define DEFAULT_DEVICE		"plug:tcc"
+ #define DEFAULT_DEVICE_NAME	""
+ #define DEFAULT_CARD_NAME	""
+ #define SPDIF_PERIOD_SIZE 1536
+diff -Naur before/ext/alsa/gstalsasrc.c after/ext/alsa/gstalsasrc.c
+--- before/ext/alsa/gstalsasrc.c	2019-08-24 21:41:07.000000000 +0900
++++ after/ext/alsa/gstalsasrc.c	2020-05-12 11:33:39.131193281 +0900
+@@ -54,7 +54,8 @@
+ #define ESTRPIPE EPIPE
+ #endif
+ 
+-#define DEFAULT_PROP_DEVICE		"default"
++//#define DEFAULT_PROP_DEVICE		"default"
++#define DEFAULT_PROP_DEVICE		"plug:tcc"
+ #define DEFAULT_PROP_DEVICE_NAME	""
+ #define DEFAULT_PROP_CARD_NAME	        ""
+ 
+diff -Naur before/gst/playback/gstplaysink.c after/gst/playback/gstplaysink.c
+--- before/gst/playback/gstplaysink.c	2019-08-24 21:41:07.000000000 +0900
++++ after/gst/playback/gstplaysink.c	2020-05-12 11:36:20.856898331 +0900
+@@ -3241,8 +3241,11 @@
+     /* we only deinterlace if native video is not requested and
+      * we have raw video */
+     if ((flags & GST_PLAY_FLAG_DEINTERLACE)
+-        && !(flags & GST_PLAY_FLAG_NATIVE_VIDEO) && playsink->video_pad_raw)
++        && !(flags & GST_PLAY_FLAG_NATIVE_VIDEO) && playsink->video_pad_raw) {
++#if 0  
+       need_deinterlace = TRUE;
++#endif
++    }
+   }
+ 
+   if (playsink->audio_pad) {
+@@ -4196,7 +4199,7 @@
+ 
+   name = gst_structure_get_name (s);
+ 
+-  if (g_str_equal (name, "video/x-raw") || g_str_equal (name, "audio/x-raw"))
++  if (g_str_equal (name, "video/x-raw") || g_str_equal (name, "video/x-tc-raw") || g_str_equal (name, "audio/x-raw"))
+     return TRUE;
+   return FALSE;
+ }
+diff -Naur before/gst/playback/gstrawcaps.h after/gst/playback/gstrawcaps.h
+--- before/gst/playback/gstrawcaps.h	2019-04-19 18:16:20.000000000 +0900
++++ after/gst/playback/gstrawcaps.h	2020-05-12 11:36:51.027613082 +0900
+@@ -27,6 +27,7 @@
+ 
+ #define DEFAULT_RAW_CAPS \
+     "video/x-raw(ANY); " \
++    "video/x-tc-raw(ANY); " \
+     "audio/x-raw(ANY); " \
+     "text/x-raw(ANY); " \
+     "subpicture/x-dvd; " \
+diff -Naur before/gst-libs/gst/video/video-format.c after/gst-libs/gst/video/video-format.c
+--- before/gst-libs/gst/video/video-format.c	2019-04-19 18:16:20.000000000 +0900
++++ after/gst-libs/gst/video/video-format.c	2020-05-12 11:37:42.577822496 +0900
+@@ -5670,6 +5670,8 @@
+   MAKE_RGBA_LE_PACK_FORMAT (BGR10A2_LE, "raw video", DPTH10_10_10_2, PSTR4444,
+       PLANE0,
+       OFFS0, SUB4444, PACK_BGR10A2_LE),
++  { GST_MAKE_FOURCC('T', 'C', 'V', '0'), { GST_VIDEO_FORMAT_I420_TC, "I420_TC", "raw video", GST_VIDEO_FORMAT_FLAG_YUV|GST_VIDEO_FORMAT_FLAG_ADDRESS, DPTH888, PSTR111, PLANE0, OFFS0 } },
++  { GST_MAKE_FOURCC('T', 'C', 'V', '1'), { GST_VIDEO_FORMAT_NV12_TC, "NV12_TC", "raw video", GST_VIDEO_FORMAT_FLAG_YUV|GST_VIDEO_FORMAT_FLAG_ADDRESS, DPTH888, PSTR122, PLANE0, OFFS0 }} ,
+ };
+ 
+ static GstVideoFormat
+diff -Naur before/gst-libs/gst/video/video-format.h after/gst-libs/gst/video/video-format.h
+--- before/gst-libs/gst/video/video-format.h	2019-08-24 21:41:07.000000000 +0900
++++ after/gst-libs/gst/video/video-format.h	2020-05-12 11:40:39.306809800 +0900
+@@ -211,6 +211,8 @@
+   GST_VIDEO_FORMAT_Y410,
+   GST_VIDEO_FORMAT_VUYA,
+   GST_VIDEO_FORMAT_BGR10A2_LE,
++  GST_VIDEO_FORMAT_I420_TC,
++  GST_VIDEO_FORMAT_NV12_TC,
+ } GstVideoFormat;
+ 
+ #define GST_VIDEO_MAX_PLANES 4
+@@ -251,7 +253,8 @@
+   GST_VIDEO_FORMAT_FLAG_PALETTE  = (1 << 5),
+   GST_VIDEO_FORMAT_FLAG_COMPLEX  = (1 << 6),
+   GST_VIDEO_FORMAT_FLAG_UNPACK   = (1 << 7),
+-  GST_VIDEO_FORMAT_FLAG_TILED    = (1 << 8)
++  GST_VIDEO_FORMAT_FLAG_TILED    = (1 << 8),
++  GST_VIDEO_FORMAT_FLAG_ADDRESS  = (1 << 9),
+ } GstVideoFormatFlags;
+ 
+ /* YUV components */
+@@ -443,6 +446,7 @@
+ #define GST_VIDEO_FORMAT_INFO_HAS_PALETTE(info)  ((info)->flags & GST_VIDEO_FORMAT_FLAG_PALETTE)
+ #define GST_VIDEO_FORMAT_INFO_IS_COMPLEX(info)   ((info)->flags & GST_VIDEO_FORMAT_FLAG_COMPLEX)
+ #define GST_VIDEO_FORMAT_INFO_IS_TILED(info)     ((info)->flags & GST_VIDEO_FORMAT_FLAG_TILED)
++#define GST_VIDEO_FORMAT_INFO_IS_ADDRESS(info)	 ((info)->flags & GST_VIDEO_FORMAT_FLAG_ADDRESS)
+ 
+ #define GST_VIDEO_FORMAT_INFO_BITS(info)         ((info)->bits)
+ #define GST_VIDEO_FORMAT_INFO_N_COMPONENTS(info) ((info)->n_components)
+@@ -556,6 +560,7 @@
+ #define GST_VIDEO_FORMATS_ALL "{ I420, YV12, YUY2, UYVY, AYUV, VUYA, RGBx, "  \
+   "BGRx, xRGB, xBGR, RGBA, BGRA, ARGB, ABGR, RGB, BGR, Y41B, Y42B, YVYU, " \
+   "Y444, v210, v216, Y210, Y410, NV12, NV21, GRAY8, GRAY16_BE, GRAY16_LE, v308, RGB16, " \
++  "I420_TC, NV12_TC, " \
+   "BGR16, RGB15, BGR15, UYVP, A420, RGB8P, YUV9, YVU9, IYU1, ARGB64, " \
+   "AYUV64, r210, I420_10BE, I420_10LE, I422_10BE, I422_10LE, Y444_10BE, " \
+   "Y444_10LE, GBR, GBR_10BE, GBR_10LE, NV16, NV24, NV12_64Z32, A420_10BE, " \
+@@ -564,6 +569,7 @@
+   "GBRA_12BE, GBRA_12LE, I420_12BE, I420_12LE, I422_12BE, I422_12LE, " \
+   "Y444_12BE, Y444_12LE, GRAY10_LE32, NV12_10LE32, NV16_10LE32, NV12_10LE40 }"
+ 
++#define GST_TC_VIDEO_FORMATS_ALL "{ I420_TC, NV12_TC }"
+ /**
+  * GST_VIDEO_CAPS_MAKE:
+  * @format: string format that describes the pixel layout, as string
+@@ -576,6 +582,13 @@
+     "format = (string) " format ", "                                    \
+     "width = " GST_VIDEO_SIZE_RANGE ", "                                \
+     "height = " GST_VIDEO_SIZE_RANGE ", "                               \
++    "framerate = " GST_VIDEO_FPS_RANGE
++
++#define GST_TC_VIDEO_CAPS_MAKE(format)                                  \
++    "video/x-tc-raw, "                                                  \
++    "format = (string) " format ", "                                    \
++    "width = " GST_VIDEO_SIZE_RANGE ", "                                \
++    "height = " GST_VIDEO_SIZE_RANGE ", "                               \
+     "framerate = " GST_VIDEO_FPS_RANGE
+ 
+ /**
+diff -Naur before/gst-libs/gst/video/video-info.c after/gst-libs/gst/video/video-info.c
+--- before/gst-libs/gst/video/video-info.c	2019-09-22 02:52:11.000000000 +0900
++++ after/gst-libs/gst/video/video-info.c	2020-05-12 11:44:47.529581627 +0900
+@@ -395,6 +395,7 @@
+   gint fps_n, fps_d;
+   gint par_n, par_d;
+   guint multiview_flags;
++  gboolean ringmode;
+ 
+   g_return_val_if_fail (info != NULL, FALSE);
+   g_return_val_if_fail (caps != NULL, FALSE);
+@@ -404,7 +405,7 @@
+ 
+   structure = gst_caps_get_structure (caps, 0);
+ 
+-  if (gst_structure_has_name (structure, "video/x-raw")) {
++  if (gst_structure_has_name (structure, "video/x-raw") || gst_structure_has_name(structure, "video/x-tc-raw")) {
+     if (!(s = gst_structure_get_string (structure, "format")))
+       goto no_format;
+ 
+@@ -457,6 +458,15 @@
+     info->par_d = 1;
+   }
+ 
++  if(gst_structure_get_boolean(structure, "ring-mode", &ringmode))
++  {
++    if(ringmode)
++    {
++      printf("gst_video_info_from_caps : ring-mode\n");
++      info->flags |= GST_VIDEO_FLAG_RINGMODE;
++    }
++  }
++
+   if ((s = gst_structure_get_string (structure, "interlace-mode")))
+     info->interlace_mode = gst_video_interlace_mode_from_string (s);
+   else
+@@ -641,6 +651,7 @@
+   gchar *color;
+   gint par_n, par_d;
+   GstVideoColorimetry colorimetry;
++  gchar *mime;
+ 
+   g_return_val_if_fail (info != NULL, NULL);
+   g_return_val_if_fail (info->finfo != NULL, NULL);
+@@ -648,11 +659,20 @@
+ 
+   format = gst_video_format_to_string (info->finfo->format);
+   g_return_val_if_fail (format != NULL, NULL);
++  if(strstr(format, "I420_TC") || strstr(format, "NV12_TC"))
++  {
++     mime = "video/x-tc-raw";
++  }
++  else
++     mime = "video/x-raw";
+ 
+-  caps = gst_caps_new_simple ("video/x-raw",
++  caps = gst_caps_new_simple (
++      mime,
+       "format", G_TYPE_STRING, format,
+       "width", G_TYPE_INT, info->width,
+-      "height", G_TYPE_INT, info->height, NULL);
++      "height", G_TYPE_INT, info->height, 
++      "pixel-aspect-ratio", GST_TYPE_FRACTION, info->par_n, info->par_d, 
++      NULL);
+ 
+   par_n = info->par_n;
+   par_d = info->par_d;
+@@ -728,11 +748,12 @@
+         colorimetry.matrix);
+     colorimetry.matrix = GST_VIDEO_COLOR_MATRIX_RGB;
+   }
++#if 0
+   if ((color = gst_video_colorimetry_to_string (&colorimetry))) {
+     gst_caps_set_simple (caps, "colorimetry", G_TYPE_STRING, color, NULL);
+     g_free (color);
+   }
+-
++#endif
+   if (info->views > 1)
+     gst_caps_set_simple (caps, "views", G_TYPE_INT, info->views, NULL);
+ 
+@@ -1116,6 +1137,23 @@
+       info->size = info->offset[1] + info->stride[0] * cr_h;
+       break;
+ 
++    case GST_VIDEO_FORMAT_I420_TC:
++      info->stride[0] = GST_ROUND_UP_16(width);
++      info->stride[1] = info->stride[0]/2;
++      info->stride[2] = info->stride[0]/2;
++      info->offset[0] = 0;
++      info->offset[1] = info->stride[0] * height;
++      info->offset[2] = info->offset[1] + info->stride[1] * height / 2;
++      info->size = info->offset[2] + info->stride[2] * height / 2;
++      break;
++	case GST_VIDEO_FORMAT_NV12_TC:
++      info->stride[0] = GST_ROUND_UP_16(width);
++      info->stride[1] = info->stride[0];
++      info->offset[0] = 0;
++      info->offset[1] = info->stride[0] * height;
++      info->size = info->stride[0] * height * 3 / 2;
++      break;
++
+     case GST_VIDEO_FORMAT_ENCODED:
+       break;
+     case GST_VIDEO_FORMAT_UNKNOWN:
+diff -Naur before/gst-libs/gst/video/video-info.h after/gst-libs/gst/video/video-info.h
+--- before/gst-libs/gst/video/video-info.h	2019-08-24 21:41:07.000000000 +0900
++++ after/gst-libs/gst/video/video-info.h	2020-05-12 11:45:12.924619512 +0900
+@@ -243,7 +243,8 @@
+ typedef enum {
+   GST_VIDEO_FLAG_NONE                = 0,
+   GST_VIDEO_FLAG_VARIABLE_FPS        = (1 << 0),
+-  GST_VIDEO_FLAG_PREMULTIPLIED_ALPHA = (1 << 1)
++  GST_VIDEO_FLAG_PREMULTIPLIED_ALPHA = (1 << 1),
++  GST_VIDEO_FLAG_RINGMODE            = (1 << 2),
+ } GstVideoFlags;
+ 
+ /**

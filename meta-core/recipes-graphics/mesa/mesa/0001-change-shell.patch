@@ -1,0 +1,56 @@
+From 00985b9bdea55f5c44446068d41e9b007fedd7c4 Mon Sep 17 00:00:00 2001
+From: Jay Jeon <inbest@telechips.com>
+Date: Tue, 12 May 2020 17:54:07 +0900
+Subject: [PATCH] change-shell
+
+Change-Id: I83364d85ee3cf91f0e44c090062ddb4e14041e59
+---
+ rogue/aarch64-linux-gnu/lws-generic/non-vz/etc/init.d/rc.pvr | 2 +-
+ rogue/aarch64-linux-gnu/lws-generic/vz/etc/init.d/rc.pvr     | 2 +-
+ rogue/aarch64-linux-gnu/nullws/non-vz/etc/init.d/rc.pvr      | 2 +-
+ rogue/aarch64-linux-gnu/nullws/vz/etc/init.d/rc.pvr          | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/rogue/aarch64-linux-gnu/lws-generic/non-vz/etc/init.d/rc.pvr b/rogue/aarch64-linux-gnu/lws-generic/non-vz/etc/init.d/rc.pvr
+index 94503be..ffa117e 100755
+--- a/rogue/aarch64-linux-gnu/lws-generic/non-vz/etc/init.d/rc.pvr
++++ b/rogue/aarch64-linux-gnu/lws-generic/non-vz/etc/init.d/rc.pvr
+@@ -1,4 +1,4 @@
+-#!/bin/bash
++#!/bin/sh
+ ############################################################################ ###
+ #@Copyright     Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ #@License       MIT
+diff --git a/rogue/aarch64-linux-gnu/lws-generic/vz/etc/init.d/rc.pvr b/rogue/aarch64-linux-gnu/lws-generic/vz/etc/init.d/rc.pvr
+index 94503be..ffa117e 100755
+--- a/rogue/aarch64-linux-gnu/lws-generic/vz/etc/init.d/rc.pvr
++++ b/rogue/aarch64-linux-gnu/lws-generic/vz/etc/init.d/rc.pvr
+@@ -1,4 +1,4 @@
+-#!/bin/bash
++#!/bin/sh
+ ############################################################################ ###
+ #@Copyright     Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ #@License       MIT
+diff --git a/rogue/aarch64-linux-gnu/nullws/non-vz/etc/init.d/rc.pvr b/rogue/aarch64-linux-gnu/nullws/non-vz/etc/init.d/rc.pvr
+index 54af015..f76e118 100755
+--- a/rogue/aarch64-linux-gnu/nullws/non-vz/etc/init.d/rc.pvr
++++ b/rogue/aarch64-linux-gnu/nullws/non-vz/etc/init.d/rc.pvr
+@@ -1,4 +1,4 @@
+-#!/bin/bash
++#!/bin/sh
+ ############################################################################ ###
+ #@Copyright     Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ #@License       MIT
+diff --git a/rogue/aarch64-linux-gnu/nullws/vz/etc/init.d/rc.pvr b/rogue/aarch64-linux-gnu/nullws/vz/etc/init.d/rc.pvr
+index 54af015..f76e118 100755
+--- a/rogue/aarch64-linux-gnu/nullws/vz/etc/init.d/rc.pvr
++++ b/rogue/aarch64-linux-gnu/nullws/vz/etc/init.d/rc.pvr
+@@ -1,4 +1,4 @@
+-#!/bin/bash
++#!/bin/sh
+ ############################################################################ ###
+ #@Copyright     Copyright (c) Imagination Technologies Ltd. All Rights Reserved
+ #@License       MIT
+-- 
+1.9.3
+

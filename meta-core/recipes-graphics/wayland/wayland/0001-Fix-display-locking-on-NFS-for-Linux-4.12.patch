@@ -1,0 +1,33 @@
+From a93358f47fb7f6033daec788d71a5b21b0c387ce Mon Sep 17 00:00:00 2001
+From: Brendan King <Brendan.King@imgtec.com>
+Date: Thu, 6 Jul 2017 13:54:11 +0100
+Subject: [PATCH] Fix display locking on NFS for Linux 4.12
+
+On NFS filesystems, Linux 4.12 checks the file mode against the type
+of the advisory lock being requested. In particular, the file must be
+opened for write access if an exclusive lock is required.
+
+The kernel commit responsible for the change in behaviour is
+e12937279c8b07798651de7f5c8c52974c699931, "NFS: Move the flock open
+mode check into nfs_flock()".
+---
+ src/wayland-server.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/wayland-server.c b/src/wayland-server.c
+index 19f6a76..4c0bc28 100644
+--- a/src/wayland-server.c
++++ b/src/wayland-server.c
+@@ -1378,7 +1378,8 @@ wl_socket_lock(struct wl_socket *socket)
+ 	snprintf(socket->lock_addr, sizeof socket->lock_addr,
+ 		 "%s%s", socket->addr.sun_path, LOCK_SUFFIX);
+ 
+-	socket->fd_lock = open(socket->lock_addr, O_CREAT | O_CLOEXEC,
++	socket->fd_lock = open(socket->lock_addr,
++			       O_CREAT | O_CLOEXEC | O_WRONLY,
+ 			       (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP));
+ 
+ 	if (socket->fd_lock < 0) {
+-- 
+2.17.1
+

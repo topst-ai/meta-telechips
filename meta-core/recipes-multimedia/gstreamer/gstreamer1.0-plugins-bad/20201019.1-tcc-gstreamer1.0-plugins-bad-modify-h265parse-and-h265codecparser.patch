@@ -1,0 +1,53 @@
+[add] h265parse : enable passthrough
+[mod] h265parser : H265 parser does not check VUI parsing error, it can be reconfirmed in VPU.
+
+diff -Naur before/gst/videoparsers/gsth265parse.c 1.16.2-r0/gst-plugins-bad-1.16.2/gst/videoparsers/gsth265parse.c
+--- before/gst/videoparsers/gsth265parse.c	2019-04-19 18:16:36.000000000 +0900
++++ 1.16.2-r0/gst-plugins-bad-1.16.2/gst/videoparsers/gsth265parse.c	2020-10-19 16:01:15.563753541 +0900
+@@ -2315,6 +2315,8 @@
+   GstH265NalUnit nalu;
+   GstH265ParserResult parseres;
+   GstCaps *old_caps;
++  /* this variable needs for passthrough mode when upstream want to do passthrough mode */
++  gboolean passthrough = FALSE;
+ 
+   h265parse = GST_H265_PARSE (parse);
+ 
+@@ -2338,6 +2340,9 @@
+   gst_structure_get_fraction (str, "pixel-aspect-ratio",
+       &h265parse->upstream_par_n, &h265parse->upstream_par_d);
+ 
++  /* check if upstream want to do passthrough mode */
++  gst_structure_get_boolean(str, "ring-mode", &passthrough);
++
+   /* get upstream format and align from caps */
+   gst_h265_parse_format_from_caps (caps, &format, &align);
+ 
+@@ -2433,9 +2438,10 @@
+     gst_caps_unref (in_caps);
+   }
+ 
+-  if (format == h265parse->format && align == h265parse->align) {
++  /* always set CAPS if passthrough mode (ring-mode) is on. */
++  if ((format == h265parse->format && align == h265parse->align) || passthrough) {
+     /* do not set CAPS and passthrough mode if SPS/PPS have not been parsed */
+-    if (h265parse->have_sps && h265parse->have_pps) {
++    if ((h265parse->have_sps && h265parse->have_pps) || passthrough) {
+       gst_base_parse_set_passthrough (parse, TRUE);
+ 
+       /* we did parse codec-data and might supplement src caps */
+diff -Naur before/gst-libs/gst/codecparsers/gsth265parser.c 1.16.2-r0/gst-plugins-bad-1.16.2/gst-libs/gst/codecparsers/gsth265parser.c
+--- before/gst-libs/gst/codecparsers/gsth265parser.c	2019-04-19 18:16:36.000000000 +0900
++++ 1.16.2-r0/gst-plugins-bad-1.16.2/gst-libs/gst/codecparsers/gsth265parser.c	2020-10-19 16:01:19.576046322 +0900
+@@ -536,7 +536,10 @@
+ 
+ error:
+   GST_WARNING ("error parsing \"VUI Parameters\"");
+-  return FALSE;
++
++  /* Ignore VUI parsing error.
++     It can be reconfirmed in VPU.*/
++  return TRUE; // return FALSE;
+ }
+ 
+ static gboolean

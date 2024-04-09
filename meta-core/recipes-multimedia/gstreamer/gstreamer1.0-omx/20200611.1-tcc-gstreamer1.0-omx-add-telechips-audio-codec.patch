@@ -1,0 +1,3092 @@
+diff -Naur before/config/bellagio/gstomx.conf 1.16.2-r0/gst-omx-1.16.2/config/bellagio/gstomx.conf
+--- before/config/bellagio/gstomx.conf	2019-12-03 05:08:10.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/config/bellagio/gstomx.conf	2020-06-11 14:19:38.532269638 +0900
+@@ -58,3 +58,193 @@
+ rank=0
+ in-port-index=0
+ out-port-index=1
++
++[omxmpeg2videodec]
++type-name=GstOMXMPEG2VideoDec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.mpeg2dec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;event-port-settings-changed-port-0-to-1
++
++[omxmpeg4videodec]
++type-name=GstOMXMPEG4VideoDec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.mpeg4dec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;event-port-settings-changed-port-0-to-1
++
++[omxdivxdec]
++type-name=GstOMXDIVXDec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.divxdec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;event-port-settings-changed-port-0-to-1
++
++[omxh263dec]
++type-name=GstOMXH263Dec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.h263dec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;event-port-settings-changed-port-0-to-1
++
++[omxflvdec]
++type-name=GstOMXFLVDec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.flv1dec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;event-port-settings-changed-port-0-to-1
++
++[omxh264dec]
++type-name=GstOMXH264Dec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.avcdec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;event-port-settings-changed-port-0-to-1
++
++[omxh265dec]
++type-name=GstOMXH265Dec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.hevcdec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;event-port-settings-changed-port-0-to-1
++
++[omxwmvdec]
++type-name=GstOMXWMVDec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.wmvdec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;event-port-settings-changed-port-0-to-1;no-empty-eos-buffer;
++
++[omxvp8dec]
++type-name=GstOMXVP8Dec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.vp8dec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;event-port-settings-changed-port-0-to-1
++
++[omxvp9dec]
++type-name=GstOMXVP9Dec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.vp9dec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;event-port-settings-changed-port-0-to-1
++
++[omxmjpegdec]
++type-name=GstOMXMJPEGDec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.mjpegdec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;event-port-settings-changed-port-0-to-1
++
++[omxwmadec]
++type-name=GstOMXWMADec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.wmadec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;drain-may-not-return;
++
++[omxac3dec]
++type-name=GstOMXAC3Dec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.ac3dec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;drain-may-not-return;
++
++[omxdtsdec]
++type-name=GstOMXDTSDec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.dtsdec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;drain-may-not-return;
++
++[omxmp3dec]
++type-name=GstOMXMP3Dec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.mp3dec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;drain-may-not-return;
++
++[omxaacdec]
++type-name=GstOMXAACDec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.aacdec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;drain-may-not-return;
++
++[omxflacdec]
++type-name=GstOMXFLACDec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.flacdec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;drain-may-not-return;
++
++[omxapedec]
++type-name=GstOMXAPEDec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.apedec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;drain-may-not-return;
++
++[omxwavdec]
++type-name=GstOMXWAVDec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.pcmdec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;drain-may-not-return;
++
++[omxopusdec]
++type-name=GstOMXOPUSDec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.opusdec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;drain-may-not-return;
++
++[omxamrnbdec]
++type-name=GstOMXAMRNBDec
++core-name=/usr/lib/libomxil-tcc.so.0
++component-name=OMX.TCC.amrnbdec
++rank=257
++in-port-index=0
++out-port-index=1
++hacks=no-disable-outport;event-port-settings-changed-ndata-parameter-swap;drain-may-not-return;
++
+diff -Naur before/omx/gstomxaacdec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxaacdec.c
+--- before/omx/gstomxaacdec.c	2019-12-03 05:08:10.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxaacdec.c	2020-06-11 10:18:08.176099400 +0900
+@@ -64,12 +64,11 @@
+   audiodec_class->cdata.default_sink_template_caps = "audio/mpeg, "
+       "mpegversion=(int){2, 4}, "
+       "stream-format=(string) { raw, adts, adif, loas }, "
+-      "rate=(int)[8000,48000], "
+-      "channels=(int)[1,9], " "framed=(boolean) true";
++      "framed=(boolean) true";
+ 
+   gst_element_class_set_static_metadata (element_class,
+       "OpenMAX AAC Audio Decoder",
+-      "Codec/Decoder/Audio/Hardware",
++      "Codec/Decoder/Audio",
+       "Decode AAC audio streams",
+       "Sebastian Dröge <sebastian@centricular.com>");
+ 
+@@ -92,8 +91,8 @@
+   OMX_AUDIO_PARAM_AACPROFILETYPE aac_param;
+   OMX_ERRORTYPE err;
+   GstStructure *s;
+-  gint rate, channels, mpegversion;
+-  const gchar *stream_format;
++  gint rate, channels, mpegversion, object_type;
++  const gchar *stream_format, *profile;
+ 
+   gst_omx_port_get_port_definition (port, &port_def);
+   port_def.format.audio.eEncoding = OMX_AUDIO_CodingAAC;
+@@ -120,19 +119,25 @@
+ 
+   s = gst_caps_get_structure (caps, 0);
+ 
+-  if (!gst_structure_get_int (s, "mpegversion", &mpegversion) ||
+-      !gst_structure_get_int (s, "rate", &rate) ||
+-      !gst_structure_get_int (s, "channels", &channels)) {
++  if (!gst_structure_get_int (s, "mpegversion", &mpegversion)) {
+     GST_ERROR_OBJECT (self, "Incomplete caps");
+     return FALSE;
+   }
+ 
++  gst_structure_get_int (s, "rate", &rate);
++  gst_structure_get_int (s, "channels", &channels);
+   stream_format = gst_structure_get_string (s, "stream-format");
+   if (!stream_format) {
+     GST_ERROR_OBJECT (self, "Incomplete caps");
+     return FALSE;
+   }
+ 
++  if ((strcmp(stream_format, "raw") == 0) &&
++    ((channels == 0) || (rate < 8000) || (rate > 96000))) {
++    GST_ERROR_OBJECT (self, "Incomplete caps");
++    return FALSE;
++  }
++
+   aac_param.nChannels = channels;
+   aac_param.nSampleRate = rate;
+   aac_param.nBitRate = 0;       /* unknown */
+@@ -149,10 +154,29 @@
+   else if (strcmp (stream_format, "raw") == 0)
+     aac_param.eAACStreamFormat = OMX_AUDIO_AACStreamFormatRAW;
+   else {
+-    GST_ERROR_OBJECT (self, "Unexpected format: %s", stream_format);
+-    return FALSE;
++    aac_param.eAACStreamFormat = OMX_AUDIO_AACStreamFormatRAW;
++  }
++  profile = gst_structure_get_string(s, "profile");
++  if(profile) {
++    if ((strcmp (profile, "main") == 0) || (strcmp (profile, "ltp") == 0)) {
++      GST_ERROR_OBJECT(self, "%s is unsupported profile",profile);
++      return FALSE;
++    }
+   }
+ 
++  if(gst_structure_get_int(s, "object-type", &object_type))
++  {
++    if (!((object_type == 2) ||  // AOT_AAC_LC : Low Complexity object
++          (object_type == 5) ||  // AOT_SBR
++          (object_type == 17) || // AOT_ER_AAC_LC : Error Resilient(ER) AAC Low Complexity
++          (object_type == 23) || // AOT_ER_AAC_LD : Error Resilient(ER) AAC LowDelay object
++          (object_type == 29) || // AOT_PS : PS, Parametric Stereo (includes SBR)
++          (object_type == 39)))  // AOT_ER_AAC_ELD : AAC Enhanced Low Delay
++    {
++      GST_ERROR_OBJECT(self, "object-type(%d) is unsupported",object_type);
++      return FALSE;
++    }
++  }
+   err =
+       gst_omx_component_set_parameter (dec->dec, OMX_IndexParamAudioAac,
+       &aac_param);
+diff -Naur before/omx/gstomxamrnbdec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxamrnbdec.c
+--- before/omx/gstomxamrnbdec.c	1970-01-01 09:00:00.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxamrnbdec.c	2019-04-05 14:34:45.083261400 +0900
+@@ -0,0 +1,184 @@
++/*
++ * Copyright (C) 2014, Sebastian Dröge <sebastian@centricular.com>
++ * Copyright (C) 2014 Telechips Inc. 
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation
++ * version 2.1 of the License.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++#include <gst/gst.h>
++#include <stdio.h>
++
++#include "gstomxamrnbdec.h"
++
++GST_DEBUG_CATEGORY_STATIC (gst_omx_amrnb_dec_debug_category);
++#define GST_CAT_DEFAULT gst_omx_amrnb_dec_debug_category
++
++/* prototypes */
++static gboolean gst_omx_amrnb_dec_set_format (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstCaps * caps);
++static gboolean gst_omx_amrnb_dec_is_format_change (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstCaps * caps);
++static gint gst_omx_amrnb_dec_get_samples_per_frame (GstOMXAudioDec * dec,
++    GstOMXPort * port);
++static gboolean gst_omx_amrnb_dec_get_channel_positions (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstAudioChannelPosition position[OMX_AUDIO_MAXCHANNELS]);
++
++/* class initialization */
++
++#define DEBUG_INIT \
++  GST_DEBUG_CATEGORY_INIT (gst_omx_amrnb_dec_debug_category, "omxamrnbdec", 0, \
++      "debug category for gst-omx audio decoder base class");
++
++G_DEFINE_TYPE_WITH_CODE (GstOMXAMRNBDec, gst_omx_amrnb_dec,
++    GST_TYPE_OMX_AUDIO_DEC, DEBUG_INIT);
++
++#if 0
++static GstStaticPadTemplate omxamrnb_src_template_factory =
++GST_STATIC_PAD_TEMPLATE ("src",
++    GST_PAD_SRC,
++    GST_PAD_ALWAYS,
++    GST_STATIC_CAPS ("audio/x-raw, "
++        "format=(string) " GST_AUDIO_NE (S32) ", "
++        "layout=(string) interleaved, "
++        "rate=(int) 8000, "
++        "channels=(int) 1;")
++    );
++
++
++static GstStaticPadTemplate omxamrnb_sink_template_factory =
++GST_STATIC_PAD_TEMPLATE ("sink",
++    GST_PAD_SINK,
++    GST_PAD_ALWAYS,
++    GST_STATIC_CAPS ("audio/AMR, "
++       "rate=(int) 8000, "
++      "channels=(int) 1;")
++    );
++#endif
++
++static void
++gst_omx_amrnb_dec_class_init (GstOMXAMRNBDecClass * klass)
++{
++  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
++  GstOMXAudioDecClass *audiodec_class = GST_OMX_AUDIO_DEC_CLASS (klass);
++
++  audiodec_class->set_format = GST_DEBUG_FUNCPTR (gst_omx_amrnb_dec_set_format);
++  audiodec_class->is_format_change =
++      GST_DEBUG_FUNCPTR (gst_omx_amrnb_dec_is_format_change);
++  audiodec_class->get_samples_per_frame =
++      GST_DEBUG_FUNCPTR (gst_omx_amrnb_dec_get_samples_per_frame);
++  audiodec_class->get_channel_positions =
++      GST_DEBUG_FUNCPTR (gst_omx_amrnb_dec_get_channel_positions);
++#if 0
++  gst_element_class_add_pad_template (element_class,
++      gst_static_pad_template_get (&omxamrnb_sink_template_factory));
++  gst_element_class_add_pad_template (element_class,
++      gst_static_pad_template_get (&omxamrnb_src_template_factory));
++#endif
++
++  audiodec_class->cdata.default_sink_template_caps = 
++	  "audio/AMR, "
++      "rate=(int) 8000, "
++      "channels=(int) 1";
++
++  gst_element_class_set_static_metadata (element_class,
++      "OpenMAX AMRNB Audio Decoder",
++      "Codec/Decoder/Audio",
++      "Decode AMRNB audio streams",
++      "Helena Kim");
++
++  gst_omx_set_default_role (&audiodec_class->cdata, "audio_decoder.amrnb");
++
++}
++
++
++static void
++gst_omx_amrnb_dec_init (GstOMXAMRNBDec * self)
++{
++  self->spf = -1;
++}
++
++static gboolean
++gst_omx_amrnb_dec_set_format (GstOMXAudioDec * dec, GstOMXPort * port,
++    GstCaps * caps)
++{
++  GstOMXAMRNBDec *self = GST_OMX_AMRNB_DEC (dec);
++  OMX_PARAM_PORTDEFINITIONTYPE port_def;
++  OMX_AUDIO_PARAM_AMRTYPE amrnb_param;
++  OMX_ERRORTYPE err;
++  GstStructure *s;
++  gint rate, channels, depth;
++
++  gst_omx_port_get_port_definition (port, &port_def);
++  port_def.format.audio.eEncoding = OMX_AUDIO_CodingAMR;
++  err = gst_omx_port_update_port_definition (port, &port_def);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self,
++        "Failed to set AMRNB format on component: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  GST_OMX_INIT_STRUCT (&amrnb_param);
++
++  {
++    OMX_AUDIO_PARAM_PCMMODETYPE pcm_param;
++    GST_OMX_INIT_STRUCT (&pcm_param);
++    pcm_param.nPortIndex = OMX_DirOutput;
++
++    err = gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioPcm,
++        &pcm_param);
++
++    pcm_param.nSamplingRate = 8000;
++    pcm_param.nChannels = 1;
++
++    err = gst_omx_component_set_parameter (dec->dec, OMX_IndexParamAudioPcm,
++        &pcm_param);
++    if (err != OMX_ErrorNone) {
++      GST_ERROR_OBJECT (self, "Error setting PCM parameters: %s (0x%08x)",
++          gst_omx_error_to_string (err), err);
++      return FALSE;
++    }
++  }
++
++  return TRUE;
++}
++
++static gboolean
++gst_omx_amrnb_dec_is_format_change (GstOMXAudioDec * dec, GstOMXPort * port,
++    GstCaps * caps)
++{
++  return TRUE;
++}
++
++static gint
++gst_omx_amrnb_dec_get_samples_per_frame (GstOMXAudioDec * dec, GstOMXPort * port)
++{
++  return GST_OMX_AMRNB_DEC (dec)->spf;
++}
++
++
++static gboolean
++gst_omx_amrnb_dec_get_channel_positions (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstAudioChannelPosition position[OMX_AUDIO_MAXCHANNELS])
++{
++  position[0] = GST_AUDIO_CHANNEL_POSITION_MONO;
++
++  return TRUE;
++}
+diff -Naur before/omx/gstomxamrnbdec.h 1.16.2-r0/gst-omx-1.16.2/omx/gstomxamrnbdec.h
+--- before/omx/gstomxamrnbdec.h	1970-01-01 09:00:00.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxamrnbdec.h	2017-09-08 10:39:59.869113100 +0900
+@@ -0,0 +1,61 @@
++/*
++ * Copyright (C) 2014, Sebastian Dröge <sebastian@centricular.com>
++ * Copyright (C) 2014 Telechips Inc. 
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation
++ * version 2.1 of the License.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ *
++ */
++
++#ifndef __GST_OMX_AMRNB_DEC_H__
++#define __GST_OMX_AMRNB_DEC_H__
++
++#include <gst/gst.h>
++#include "gstomxaudiodec.h"
++
++G_BEGIN_DECLS
++
++#define GST_TYPE_OMX_AMRNB_DEC \
++  (gst_omx_amrnb_dec_get_type())
++#define GST_OMX_AMRNB_DEC(obj) \
++  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_OMX_AMRNB_DEC,GstOMXAMRNBDec))
++#define GST_OMX_AMRNB_DEC_CLASS(klass) \
++  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_OMX_AMRNB_DEC,GstOMXAMRNBDecClass))
++#define GST_OMX_AMRNB_DEC_GET_CLASS(obj) \
++  (G_TYPE_INSTANCE_GET_CLASS((obj),GST_TYPE_OMX_AMRNB_DEC,GstOMXAMRNBDecClass))
++#define GST_IS_OMX_AMRNB_DEC(obj) \
++  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_OMX_AMRNB_DEC))
++#define GST_IS_OMX_AMRNB_DEC_CLASS(obj) \
++  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_OMX_AMRNB_DEC))
++
++typedef struct _GstOMXAMRNBDec GstOMXAMRNBDec;
++typedef struct _GstOMXAMRNBDecClass GstOMXAMRNBDecClass;
++
++struct _GstOMXAMRNBDec
++{
++  GstOMXAudioDec parent;
++  gint spf;
++};
++
++struct _GstOMXAMRNBDecClass
++{
++  GstOMXAudioDecClass parent_class;
++};
++
++GType gst_omx_amrnb_dec_get_type (void);
++
++G_END_DECLS
++
++#endif /* __GST_OMX_AMRNB_DEC_H__ */
++
+diff -Naur before/omx/gstomxapedec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxapedec.c
+--- before/omx/gstomxapedec.c	1970-01-01 09:00:00.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxapedec.c	2020-06-11 10:18:08.176099400 +0900
+@@ -0,0 +1,306 @@
++/*
++ * Copyright (C) 2014, Sebastian Dröge <sebastian@centricular.com>
++ * Copyright (C) 2014 Telechips Inc. 
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation
++ * version 2.1 of the License.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++#include <gst/gst.h>
++#include <stdio.h>
++
++#include "gstomxapedec.h"
++
++GST_DEBUG_CATEGORY_STATIC (gst_omx_ape_dec_debug_category);
++#define GST_CAT_DEFAULT gst_omx_ape_dec_debug_category
++
++/* prototypes */
++static gboolean gst_omx_ape_dec_set_format (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstCaps * caps);
++static gboolean gst_omx_ape_dec_is_format_change (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstCaps * caps);
++static gint gst_omx_ape_dec_get_samples_per_frame (GstOMXAudioDec * dec,
++    GstOMXPort * port);
++static gboolean gst_omx_ape_dec_get_channel_positions (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstAudioChannelPosition position[OMX_AUDIO_MAXCHANNELS]);
++
++/* class initialization */
++
++#define DEBUG_INIT \
++  GST_DEBUG_CATEGORY_INIT (gst_omx_ape_dec_debug_category, "omxapedec", 0, \
++      "debug category for gst-omx audio decoder base class");
++
++G_DEFINE_TYPE_WITH_CODE (GstOMXAPEDec, gst_omx_ape_dec,
++    GST_TYPE_OMX_AUDIO_DEC, DEBUG_INIT);
++
++#if 0
++static GstStaticPadTemplate omxape_src_template_factory =
++GST_STATIC_PAD_TEMPLATE ("src",
++    GST_PAD_SRC,
++    GST_PAD_ALWAYS,
++    GST_STATIC_CAPS ("audio/x-raw, "
++        "format = (string) " GST_AUDIO_NE (S32) ", "
++        "layout = (string) interleaved, "
++        "rate = (int) { 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000 }, "
++        "channels = (int) [ 1, 8 ]")
++    );
++
++static GstStaticPadTemplate omxape_sink_template_factory =
++GST_STATIC_PAD_TEMPLATE ("sink",
++    GST_PAD_SINK,
++    GST_PAD_ALWAYS,
++    GST_STATIC_CAPS ("audio/x-ffmpeg-parsed-ape; audio/x-ape; audio/ape, "
++      "depth=(int)[16,24], "
++      "rate = (int) [8000,96000], "
++      "channels = (int) [ 1, 2 ]")
++    );
++#endif
++
++/*
++    GST_STATIC_CAPS ("audio/x-ape, "
++      "depth=(int)[16,24], "
++      "rate = (int) [8000,96000], "
++      "channels = (int) [ 1, 2 ]")
++*/
++static void
++gst_omx_ape_dec_class_init (GstOMXAPEDecClass * klass)
++{
++  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
++  GstOMXAudioDecClass *audiodec_class = GST_OMX_AUDIO_DEC_CLASS (klass);
++
++  audiodec_class->set_format = GST_DEBUG_FUNCPTR (gst_omx_ape_dec_set_format);
++  audiodec_class->is_format_change =
++      GST_DEBUG_FUNCPTR (gst_omx_ape_dec_is_format_change);
++  audiodec_class->get_samples_per_frame =
++      GST_DEBUG_FUNCPTR (gst_omx_ape_dec_get_samples_per_frame);
++  audiodec_class->get_channel_positions =
++      GST_DEBUG_FUNCPTR (gst_omx_ape_dec_get_channel_positions);
++#if 0
++  gst_element_class_add_pad_template (element_class,
++      gst_static_pad_template_get (&omxape_sink_template_factory));
++  gst_element_class_add_pad_template (element_class,
++      gst_static_pad_template_get (&omxape_src_template_factory));
++#endif
++  audiodec_class->cdata.default_sink_template_caps = "audio/x-ffmpeg-parsed-ape; audio/x-ape; audio/ape, "
++      "depth=(int)[16,24], "
++      "rate=(int)[8000,96000], "
++      "channels=(int)[1,2], "
++      "framed=(boolean) true";
++      
++  gst_element_class_set_static_metadata (element_class,
++      "OpenMAX APE Audio Decoder",
++      "Codec/Decoder/Audio",
++      "Decode APE audio streams",
++      "Helena Kim");
++
++  gst_omx_set_default_role (&audiodec_class->cdata, "audio_decoder.ape");
++
++}
++
++
++static void
++gst_omx_ape_dec_init (GstOMXAPEDec * self)
++{
++  self->spf = -1;
++}
++
++static gboolean
++gst_omx_ape_dec_set_format (GstOMXAudioDec * dec, GstOMXPort * port,
++    GstCaps * caps)
++{
++  GstOMXAPEDec *self = GST_OMX_APE_DEC (dec);
++  OMX_PARAM_PORTDEFINITIONTYPE port_def;
++  OMX_AUDIO_PARAM_APETYPE ape_param;
++  OMX_ERRORTYPE err;
++  GstStructure *s;
++  gint rate, channels, depth;
++
++  gst_omx_port_get_port_definition (port, &port_def);
++  port_def.format.audio.eEncoding = OMX_AUDIO_CodingAPE;
++  err = gst_omx_port_update_port_definition (port, &port_def);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self,
++        "Failed to set APE format on component: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  GST_OMX_INIT_STRUCT (&ape_param);
++  ape_param.nPortIndex = port->index;
++
++  err =
++      gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioAPE,
++      &ape_param);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self,
++        "Failed to get APE parameters from component: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  s = gst_caps_get_structure (caps, 0);
++
++
++  if ( !gst_structure_get_int (s, "rate", &rate) ||
++      !gst_structure_get_int (s, "depth", &depth) ||
++      !gst_structure_get_int (s, "channels", &channels)) {
++    GST_ERROR_OBJECT (self, "Incomplete caps");
++    return FALSE;
++  }
++
++  ape_param.nChannels = channels;
++  ape_param.nSampleRate = rate;
++  ape_param.nBitPerSample = depth;
++/*
++printf("%s(%d) rate=%d\n",__FUNCTION__,__LINE__,rate);
++printf("%s(%d) depth=%d\n",__FUNCTION__,__LINE__,depth);
++printf("%s(%d) channels=%d\n",__FUNCTION__,__LINE__,channels);
++*/
++  err =
++      gst_omx_component_set_parameter (dec->dec, OMX_IndexParamAudioAPE,
++      &ape_param);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self, "Error setting APE parameters: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  /* Get codec data from caps */
++  {
++    const GValue *codec_data;
++
++    gst_buffer_replace (&GST_OMX_AUDIO_DEC (self)->codec_data, NULL);
++    codec_data = gst_structure_get_value (s, "codec_data");
++
++    if (codec_data) {    	    	
++      GST_OMX_AUDIO_DEC (self)->codec_data = gst_value_get_buffer (codec_data);
++      if (GST_OMX_AUDIO_DEC (self)->codec_data)
++        gst_buffer_ref (GST_OMX_AUDIO_DEC (self)->codec_data);     
++    }
++  }
++
++
++#ifdef SUPPORT_HIGHBPS_OUTPUT
++  if (depth > 16)
++  {
++    OMX_AUDIO_PARAM_PCMMODETYPE pcm_param;
++    GST_OMX_INIT_STRUCT (&pcm_param);
++    pcm_param.nPortIndex = OMX_DirOutput;
++
++    err = gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioPcm,
++        &pcm_param);
++
++    pcm_param.nBitPerSample = depth;
++
++    err = gst_omx_component_set_parameter (dec->dec, OMX_IndexParamAudioPcm,
++        &pcm_param);
++    if (err != OMX_ErrorNone) {
++      GST_ERROR_OBJECT (self, "Error setting PCM parameters: %s (0x%08x)",
++          gst_omx_error_to_string (err), err);
++      return FALSE;
++    }
++  }
++#endif
++  
++  return TRUE;
++}
++
++static gboolean
++gst_omx_ape_dec_is_format_change (GstOMXAudioDec * dec, GstOMXPort * port,
++    GstCaps * caps)
++{
++  GstOMXAPEDec *self = GST_OMX_APE_DEC (dec);
++  OMX_AUDIO_PARAM_APETYPE ape_param;
++  OMX_ERRORTYPE err;
++  GstStructure *s;
++  gint rate, channels, depth;
++
++  GST_OMX_INIT_STRUCT (&ape_param);
++  ape_param.nPortIndex = port->index;
++
++  err =
++      gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioAPE,
++      &ape_param);
++
++
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self,
++        "Failed to get APE parameters from component: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  s = gst_caps_get_structure (caps, 0);
++
++  if (!gst_structure_get_int (s, "rate", &rate) ||
++      !gst_structure_get_int (s, "depth", &depth) ||
++      !gst_structure_get_int (s, "channels", &channels)) {
++    GST_ERROR_OBJECT (self, "Incomplete caps");
++    return FALSE;
++  }
++
++  if (ape_param.nChannels != channels)
++    return TRUE;
++
++  if (ape_param.nSampleRate != rate)
++    return TRUE;
++
++  return FALSE;
++}
++
++static gint
++gst_omx_ape_dec_get_samples_per_frame (GstOMXAudioDec * dec, GstOMXPort * port)
++{
++  return GST_OMX_APE_DEC (dec)->spf;
++}
++
++
++static gboolean
++gst_omx_ape_dec_get_channel_positions (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstAudioChannelPosition position[OMX_AUDIO_MAXCHANNELS])
++{
++  OMX_AUDIO_PARAM_PCMMODETYPE pcm_param;
++  OMX_ERRORTYPE err;
++
++  GST_OMX_INIT_STRUCT (&pcm_param);
++  pcm_param.nPortIndex = port->index;
++  err =
++      gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioPcm,
++      &pcm_param);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (dec, "Failed to get PCM parameters: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  /* FIXME: Rather arbitrary values here, based on what we do in gstfaac.c */
++  switch (pcm_param.nChannels) {
++    case 1:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_MONO;
++      break;
++    case 2:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT;
++      position[1] = GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT;
++      break;
++    default:
++      return FALSE;
++  }
++
++  return TRUE;
++}
+\ No newline at end of file
+diff -Naur before/omx/gstomxapedec.h 1.16.2-r0/gst-omx-1.16.2/omx/gstomxapedec.h
+--- before/omx/gstomxapedec.h	1970-01-01 09:00:00.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxapedec.h	2020-06-11 10:18:08.176099400 +0900
+@@ -0,0 +1,61 @@
++/*
++ * Copyright (C) 2014, Sebastian Dröge <sebastian@centricular.com>
++ * Copyright (C) 2014 Telechips Inc. 
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation
++ * version 2.1 of the License.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ *
++ */
++
++#ifndef __GST_OMX_APE_DEC_H__
++#define __GST_OMX_APE_DEC_H__
++
++#include <gst/gst.h>
++#include "gstomxaudiodec.h"
++
++G_BEGIN_DECLS
++
++#define GST_TYPE_OMX_APE_DEC \
++  (gst_omx_ape_dec_get_type())
++#define GST_OMX_APE_DEC(obj) \
++  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_OMX_APE_DEC,GstOMXAPEDec))
++#define GST_OMX_APE_DEC_CLASS(klass) \
++  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_OMX_APE_DEC,GstOMXAPEDecClass))
++#define GST_OMX_APE_DEC_GET_CLASS(obj) \
++  (G_TYPE_INSTANCE_GET_CLASS((obj),GST_TYPE_OMX_APE_DEC,GstOMXAPEDecClass))
++#define GST_IS_OMX_APE_DEC(obj) \
++  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_OMX_APE_DEC))
++#define GST_IS_OMX_APE_DEC_CLASS(obj) \
++  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_OMX_APE_DEC))
++
++typedef struct _GstOMXAPEDec GstOMXAPEDec;
++typedef struct _GstOMXAPEDecClass GstOMXAPEDecClass;
++
++struct _GstOMXAPEDec
++{
++  GstOMXAudioDec parent;
++  gint spf;
++};
++
++struct _GstOMXAPEDecClass
++{
++  GstOMXAudioDecClass parent_class;
++};
++
++GType gst_omx_ape_dec_get_type (void);
++
++G_END_DECLS
++
++#endif /* __GST_OMX_APE_DEC_H__ */
++
+diff -Naur before/omx/gstomxaudiodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxaudiodec.c
+--- before/omx/gstomxaudiodec.c	2019-12-03 05:08:10.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxaudiodec.c	2020-06-11 11:17:40.914395600 +0900
+@@ -313,7 +313,7 @@
+   }
+ 
+   if (!gst_pad_has_current_caps (GST_AUDIO_DECODER_SRC_PAD (self)) ||
+-      acq_return == GST_OMX_ACQUIRE_BUFFER_RECONFIGURE) {
++      acq_return == GST_OMX_ACQUIRE_BUFFER_RECONFIGURE || (self->info.bpf == 0)) {
+     OMX_PARAM_PORTDEFINITIONTYPE port_def;
+     OMX_AUDIO_PARAM_PCMMODETYPE pcm_param;
+     GstAudioChannelPosition omx_position[OMX_AUDIO_MAXCHANNELS];
+@@ -403,7 +403,8 @@
+       }
+     }
+     if (pcm_param.nChannels == 1
+-        && omx_position[0] == GST_AUDIO_CHANNEL_POSITION_FRONT_CENTER)
++        && ((omx_position[0] == GST_AUDIO_CHANNEL_POSITION_FRONT_CENTER) || (omx_position[0] == GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT)) 
++    )
+       omx_position[0] = GST_AUDIO_CHANNEL_POSITION_MONO;
+ 
+     if (omx_position[0] == GST_AUDIO_CHANNEL_POSITION_NONE
+@@ -423,12 +424,15 @@
+       gst_audio_get_channel_reorder_map (pcm_param.nChannels, self->position,
+           omx_position, self->reorder_map);
+ 
++// * @width: amount of bits used per sample
++// * @depth: amount of used bits in @width
++
+     gst_audio_info_set_format (&self->info,
+         gst_audio_format_build_integer (pcm_param.eNumData ==
+             OMX_NumericalDataSigned,
+             pcm_param.eEndian ==
+             OMX_EndianLittle ? G_LITTLE_ENDIAN : G_BIG_ENDIAN,
+-            pcm_param.nBitPerSample, pcm_param.nBitPerSample),
++            pcm_param.nBitPerSample > 16 ? 32 : 16, pcm_param.nBitPerSample),
+         pcm_param.nSamplingRate, pcm_param.nChannels, self->position);
+ 
+     GST_DEBUG_OBJECT (self,
+@@ -518,16 +522,32 @@
+     if (self->needs_reorder) {
+       gint i, n_samples, c, n_channels;
+       gint *reorder_map = self->reorder_map;
+-      gint16 *dest, *source;
++      if ((self->info.bpf / self->info.channels) == 2)		//16bit output
++      {
++        gint16 *dest, *source;
++
++        dest = (gint16 *) minfo.data;
++        source = (gint16 *) (buf->omx_buf->pBuffer + buf->omx_buf->nOffset);
++        n_samples = buf->omx_buf->nFilledLen / self->info.bpf;
++        n_channels = self->info.channels;
++
++        for (i = 0; i < n_samples; i++) {
++          for (c = 0; c < n_channels; c++) {
++            dest[i * n_channels + reorder_map[c]] = source[i * n_channels + c];
++          }
++        }
++      } else { //32bit output
++        gint *dest, *source;
+ 
+-      dest = (gint16 *) minfo.data;
+-      source = (gint16 *) (buf->omx_buf->pBuffer + buf->omx_buf->nOffset);
+-      n_samples = buf->omx_buf->nFilledLen / self->info.bpf;
+-      n_channels = self->info.channels;
+-
+-      for (i = 0; i < n_samples; i++) {
+-        for (c = 0; c < n_channels; c++) {
+-          dest[i * n_channels + reorder_map[c]] = source[i * n_channels + c];
++        dest = (gint *) minfo.data;
++        source = (gint *) (buf->omx_buf->pBuffer + buf->omx_buf->nOffset);
++        n_samples = buf->omx_buf->nFilledLen / self->info.bpf;
++        n_channels = self->info.channels;
++
++        for (i = 0; i < n_samples; i++) {
++          for (c = 0; c < n_channels; c++) {
++            dest[i * n_channels + reorder_map[c]] = source[i * n_channels + c];
++          }
+         }
+       }
+     } else {
+diff -Naur before/omx/gstomx.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomx.c
+--- before/omx/gstomx.c	2019-12-03 05:08:20.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomx.c	2020-06-11 14:20:23.664491396 +0900
+@@ -36,6 +36,8 @@
+ #include "gstomxh263dec.h"
+ #include "gstomxh265dec.h"
+ #include "gstomxvp8dec.h"
++#include "gstomxvp9dec.h"
++#include "gstomxdivxdec.h"
+ #include "gstomxtheoradec.h"
+ #include "gstomxwmvdec.h"
+ #include "gstomxmpeg4videoenc.h"
+@@ -44,9 +46,13 @@
+ #include "gstomxh265enc.h"
+ #include "gstomxaacdec.h"
+ #include "gstomxmp3dec.h"
++#include "gstomxapedec.h"
++#include "gstomxflacdec.h"
++#include "gstomxwavdec.h"
++#include "gstomxopusdec.h"
+ #include "gstomxmp3enc.h"
+ #include "gstomxaacenc.h"
+-#include "gstomxamrdec.h"
++#include "gstomxamrnbdec.h"
+ #include "gstomxanalogaudiosink.h"
+ #include "gstomxhdmiaudiosink.h"
+ 
+@@ -3416,7 +3422,9 @@
+   gst_omx_aac_enc_get_type, gst_omx_mjpeg_dec_get_type,
+   gst_omx_aac_dec_get_type, gst_omx_mp3_dec_get_type,
+   gst_omx_aac_dec_get_type, gst_omx_mp3_enc_get_type,
+-  gst_omx_amr_dec_get_type
++  gst_omx_flac_dec_get_type, gst_omx_ape_dec_get_type,
++  gst_omx_opus_dec_get_type, gst_omx_wav_dec_get_type,
++  gst_omx_amrnb_dec_get_type
+ #ifdef HAVE_VP8
+       , gst_omx_vp8_dec_get_type
+ #endif
+diff -Naur before/omx/gstomxdivxdec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxdivxdec.c
+--- before/omx/gstomxdivxdec.c	1970-01-01 09:00:00.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxdivxdec.c	2020-06-11 14:21:06.189923486 +0900
+@@ -0,0 +1,127 @@
++/*
++ * Copyright (C) 2013, Collabora Ltd.
++ *   Author: Sebastian Dröge <sebastian.droege@collabora.co.uk>
++ * Copyright (C) 2014, Telechips Inc.
++ *   Author: AV Algorithm Group. <AValgorithm@telechips.com>
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation
++ * version 2.1 of the License.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++#include <gst/gst.h>
++#include <OMX_IndexExt.h>
++#include "gstomxdivxdec.h"
++
++GST_DEBUG_CATEGORY_STATIC (gst_omx_divx_dec_debug_category);
++#define GST_CAT_DEFAULT gst_omx_divx_dec_debug_category
++
++/* prototypes */
++static gboolean gst_omx_divx_dec_is_format_change (GstOMXVideoDec * dec,
++    GstOMXPort * port, GstVideoCodecState * state);
++static gboolean gst_omx_divx_dec_set_format (GstOMXVideoDec * dec,
++    GstOMXPort * port, GstVideoCodecState * state);
++
++enum
++{
++  PROP_0
++};
++
++/* class initialization */
++
++#define DEBUG_INIT \
++  GST_DEBUG_CATEGORY_INIT (gst_omx_divx_dec_debug_category, "omxdivxdec", 0, \
++      "debug category for gst-omx video decoder base class");
++
++G_DEFINE_TYPE_WITH_CODE (GstOMXDIVXDec, gst_omx_divx_dec,
++    GST_TYPE_OMX_VIDEO_DEC, DEBUG_INIT);
++
++static void
++gst_omx_divx_dec_class_init (GstOMXDIVXDecClass * klass)
++{
++  GstOMXVideoDecClass *videodec_class = GST_OMX_VIDEO_DEC_CLASS (klass);
++  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
++
++  videodec_class->is_format_change =
++      GST_DEBUG_FUNCPTR (gst_omx_divx_dec_is_format_change);
++  videodec_class->set_format = GST_DEBUG_FUNCPTR (gst_omx_divx_dec_set_format);
++
++  videodec_class->cdata.default_sink_template_caps = "video/x-divx, "
++	  "divxversion=(int) [3,5], "
++      GST_TC_OMX_VIDEO_SIZE_RANGE;
++
++  gst_element_class_set_static_metadata (element_class,
++      "OpenMAX DivX Video Decoder",
++      "Codec/Decoder/Video",
++      "Decode DivX video streams",
++      "AV Algorithm Group at Telechips Inc. <AValgorith@telechips.com>");
++
++  gst_omx_set_default_role (&videodec_class->cdata, "video_decoder.divx");
++}
++
++static void
++gst_omx_divx_dec_init (GstOMXDIVXDec * self)
++{
++}
++
++static gboolean
++gst_omx_divx_dec_is_format_change (GstOMXVideoDec * dec,
++    GstOMXPort * port, GstVideoCodecState * state)
++{
++  return FALSE;
++}
++
++static gboolean
++gst_omx_divx_dec_set_format (GstOMXVideoDec * dec, GstOMXPort * port,
++    GstVideoCodecState * state)
++{
++  gboolean ret;
++  gint32 divxversion = 0;
++  const gchar *mime;
++  OMX_PARAM_PORTDEFINITIONTYPE port_def;
++
++  GstStructure *structure = gst_caps_get_structure(state->caps, 0);
++  gst_structure_get_int(structure,      "divxversion", &divxversion);
++
++  gst_omx_port_get_port_definition (port, &port_def);
++  port_def.format.video.eCompressionFormat = OMX_VIDEO_CodingDIVX;
++  ret = gst_omx_port_update_port_definition (port, &port_def) == OMX_ErrorNone;
++
++  // MS MPEG-4
++  if (divxversion)  {
++    OMX_VIDEO_PARAM_DIVXVERSIONTYPE param;
++    GST_OMX_INIT_STRUCT (&param);
++
++    param.nPortIndex = port->index;
++
++	switch (divxversion) {
++	case 1:  param.eVersion = OMX_VIDEO_DIVXVersion1;  break;
++	case 2:  param.eVersion = OMX_VIDEO_DIVXVersion2;  break;
++	case 3:  param.eVersion = OMX_VIDEO_DIVXVersion3;  break;
++	case 4:  param.eVersion = OMX_VIDEO_DIVXVersion4;  break;
++	case 5:  param.eVersion = OMX_VIDEO_DIVXVersion5;  break;
++	default:  param.eVersion = OMX_VIDEO_DIVXVersionUnused;  break;
++	}
++
++    gst_omx_component_set_parameter (dec->dec, OMX_IndexParamVideoDivxVersion, &param);
++  }
++
++  //gst_omx_video_dec_set_property_config (dec);
++
++  return TRUE;
++}
+diff -Naur before/omx/gstomxdivxdec.h 1.16.2-r0/gst-omx-1.16.2/omx/gstomxdivxdec.h
+--- before/omx/gstomxdivxdec.h	1970-01-01 09:00:00.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxdivxdec.h	2017-09-08 10:39:59.871113100 +0900
+@@ -0,0 +1,62 @@
++/*
++ * Copyright (C) 2013, Collabora Ltd.
++ *   Author: Sebastian Dröge <sebastian.droege@collabora.co.uk>
++ * Copyright (C) 2014, Telechips Inc.
++ *   Author: AV Algorithm Group. <AValgorithm@telechips.com>
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation
++ * version 2.1 of the License.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ *
++ */
++
++#ifndef __GST_OMX_DIVX_DEC_H__
++#define __GST_OMX_DIVX_DEC_H__
++
++#include <gst/gst.h>
++#include "gstomxvideodec.h"
++
++G_BEGIN_DECLS
++
++#define GST_TYPE_OMX_DIVX_DEC \
++  (gst_omx_divx_dec_get_type())
++#define GST_OMX_DIVX_DEC(obj) \
++  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_OMX_DIVX_DEC,GstOMXDIVXDec))
++#define GST_OMX_DIVX_DEC_CLASS(klass) \
++  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_OMX_DIVX_DEC,GstOMXDIVXDecClass))
++#define GST_OMX_DIVX_DEC_GET_CLASS(obj) \
++  (G_TYPE_INSTANCE_GET_CLASS((obj),GST_TYPE_OMX_DIVX_DEC,GstOMXDIVXDecClass))
++#define GST_IS_OMX_DIVX_DEC(obj) \
++  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_OMX_DIVX_DEC))
++#define GST_IS_OMX_DIVX_DEC_CLASS(obj) \
++  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_OMX_DIVX_DEC))
++
++typedef struct _GstOMXDIVXDec GstOMXDIVXDec;
++typedef struct _GstOMXDIVXDecClass GstOMXDIVXDecClass;
++
++struct _GstOMXDIVXDec
++{
++  GstOMXVideoDec parent;
++};
++
++struct _GstOMXDIVXDecClass
++{
++  GstOMXVideoDecClass parent_class;
++};
++
++GType gst_omx_divx_dec_get_type (void);
++
++G_END_DECLS
++
++#endif /* __GST_OMX_DIVX_DEC_H__ */
++
+diff -Naur before/omx/gstomxflacdec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxflacdec.c
+--- before/omx/gstomxflacdec.c	1970-01-01 09:00:00.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxflacdec.c	2020-06-11 10:18:08.178099400 +0900
+@@ -0,0 +1,269 @@
++/*
++ * Copyright (C) 2014, Sebastian Dröge <sebastian@centricular.com>
++ * Copyright (C) 2014 Telechips Inc.
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation
++ * version 2.1 of the License.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++#include <gst/gst.h>
++
++#include "gstomxflacdec.h"
++
++GST_DEBUG_CATEGORY_STATIC (gst_omx_flac_dec_debug_category);
++#define GST_CAT_DEFAULT gst_omx_flac_dec_debug_category
++
++/* prototypes */
++static gboolean gst_omx_flac_dec_set_format (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstCaps * caps);
++static gboolean gst_omx_flac_dec_is_format_change (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstCaps * caps);
++static gint gst_omx_flac_dec_get_samples_per_frame (GstOMXAudioDec * dec,
++    GstOMXPort * port);
++static gboolean gst_omx_flac_dec_get_channel_positions (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstAudioChannelPosition position[OMX_AUDIO_MAXCHANNELS]);
++
++/* class initialization */
++
++#define DEBUG_INIT \
++  GST_DEBUG_CATEGORY_INIT (gst_omx_flac_dec_debug_category, "omxflacdec", 0, \
++      "debug category for gst-omx audio decoder base class");
++
++G_DEFINE_TYPE_WITH_CODE (GstOMXFLACDec, gst_omx_flac_dec,
++    GST_TYPE_OMX_AUDIO_DEC, DEBUG_INIT);
++
++
++static void
++gst_omx_flac_dec_class_init (GstOMXFLACDecClass * klass)
++{
++  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
++  GstOMXAudioDecClass *audiodec_class = GST_OMX_AUDIO_DEC_CLASS (klass);
++
++  audiodec_class->set_format = GST_DEBUG_FUNCPTR (gst_omx_flac_dec_set_format);
++  audiodec_class->is_format_change =
++      GST_DEBUG_FUNCPTR (gst_omx_flac_dec_is_format_change);
++  audiodec_class->get_samples_per_frame =
++      GST_DEBUG_FUNCPTR (gst_omx_flac_dec_get_samples_per_frame);
++  audiodec_class->get_channel_positions =
++      GST_DEBUG_FUNCPTR (gst_omx_flac_dec_get_channel_positions);
++
++  audiodec_class->cdata.default_sink_template_caps = "audio/x-flac, "
++      "rate=(int)[8000,688350], "
++      "depth=(int)[8,24], "
++      "channels=(int)[1,8], " "framed=(boolean) true";
++
++  gst_element_class_set_static_metadata (element_class,
++      "Free Lossless audio decoder",
++      "Codec/Decoder/Audio",
++      "Decodes audio in Flac format with OpenMAX IL", "Jonathan Kim");
++
++  gst_omx_set_default_role (&audiodec_class->cdata, "audio_decoder.flac");
++}
++
++static void
++gst_omx_flac_dec_init (GstOMXFLACDec * self)
++{
++self->spf = -1;
++}
++
++static gboolean
++gst_omx_flac_dec_set_format (GstOMXAudioDec * dec, GstOMXPort * port,
++    GstCaps * caps)
++{
++  GstOMXFLACDec *self = GST_OMX_FLAC_DEC (dec);
++  OMX_PARAM_PORTDEFINITIONTYPE port_def;
++  OMX_AUDIO_PARAM_FLACTYPE flac_param;
++  OMX_ERRORTYPE err;
++  GstStructure *s;
++  gint rate, channels,depth;
++
++  gst_omx_port_get_port_definition (port, &port_def);
++  port_def.format.audio.eEncoding = OMX_AUDIO_CodingFLAC;
++  err = gst_omx_port_update_port_definition (port, &port_def);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self,
++        "Failed to set FLAC format on component: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  GST_OMX_INIT_STRUCT (&flac_param);
++  flac_param.nPortIndex = port->index;
++
++  err =
++      gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioFlac,
++      &flac_param);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self,
++        "Failed to get FLAC parameters from component: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  s = gst_caps_get_structure (caps, 0);
++
++  if (!gst_structure_get_int (s, "rate", &rate) ||
++      !gst_structure_get_int (s, "channels", &channels)) {
++    GST_ERROR_OBJECT (self, "Incomplete caps");
++    return FALSE;
++  }
++
++  flac_param.nChannels = channels;
++  flac_param.nSampleRate = rate;
++
++  err =
++      gst_omx_component_set_parameter (dec->dec, OMX_IndexParamAudioFlac,
++      &flac_param);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self, "Error setting FLAC parameters: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++#ifdef SUPPORT_HIGHBPS_OUTPUT
++  depth = 16;
++  if (gst_structure_get_int (s, "depth", &depth)) 
++  {
++    if (depth > 16)
++    {
++      OMX_AUDIO_PARAM_PCMMODETYPE pcm_param;
++      GST_OMX_INIT_STRUCT (&pcm_param);
++      pcm_param.nPortIndex = OMX_DirOutput;
++
++      err = gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioPcm, &pcm_param);
++      pcm_param.nBitPerSample = depth;
++      err = gst_omx_component_set_parameter (dec->dec, OMX_IndexParamAudioPcm, &pcm_param);
++      if (err != OMX_ErrorNone) {
++        GST_ERROR_OBJECT (self, "Error setting PCM parameters: %s (0x%08x)",
++            gst_omx_error_to_string (err), err);
++        return FALSE;
++      }
++    }
++  }
++#endif
++
++
++  return TRUE;
++}
++
++static gboolean
++gst_omx_flac_dec_is_format_change (GstOMXAudioDec * dec, GstOMXPort * port,
++    GstCaps * caps)
++{
++  GstOMXFLACDec *self = GST_OMX_FLAC_DEC (dec);
++  OMX_AUDIO_PARAM_FLACTYPE flac_param;
++  OMX_ERRORTYPE err;
++  GstStructure *s;
++  gint rate, channels, layer, mpegaudioversion;
++
++  GST_OMX_INIT_STRUCT (&flac_param);
++  flac_param.nPortIndex = port->index;
++
++  err =
++      gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioFlac,
++      &flac_param);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self,
++        "Failed to get FLAC parameters from component: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  s = gst_caps_get_structure (caps, 0);
++
++  if (!gst_structure_get_int (s, "rate", &rate) ||
++      !gst_structure_get_int (s, "channels", &channels)) {
++    GST_ERROR_OBJECT (self, "Incomplete caps");
++    return FALSE;
++  }
++
++  if (flac_param.nChannels != channels)
++    return TRUE;
++
++  if (flac_param.nSampleRate != rate)
++    return TRUE;
++
++  return FALSE;
++}
++
++static gint
++gst_omx_flac_dec_get_samples_per_frame (GstOMXAudioDec * dec, GstOMXPort * port)
++{
++  return GST_OMX_FLAC_DEC (dec)->spf;
++}
++
++static gboolean
++gst_omx_flac_dec_get_channel_positions (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstAudioChannelPosition position[OMX_AUDIO_MAXCHANNELS])
++{
++  OMX_AUDIO_PARAM_PCMMODETYPE pcm_param;
++  OMX_ERRORTYPE err;
++
++  GST_OMX_INIT_STRUCT (&pcm_param);
++  pcm_param.nPortIndex = port->index;
++  err =
++      gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioPcm,
++      &pcm_param);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (dec, "Failed to get PCM parameters: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  /* FIXME: Rather arbitrary values here, based on what we do in gstfaac.c */
++  switch (pcm_param.nChannels) {
++    case 1:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_MONO;
++      break;
++    case 2:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT;
++      position[1] = GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT;
++      break;
++    case 3:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_FRONT_CENTER;
++      position[1] = GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT;
++      position[2] = GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT;
++      break;
++    case 4:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_FRONT_CENTER;
++      position[1] = GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT;
++      position[2] = GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT;
++      position[3] = GST_AUDIO_CHANNEL_POSITION_REAR_CENTER;
++      break;
++    case 5:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_FRONT_CENTER;
++      position[1] = GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT;
++      position[2] = GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT;
++      position[3] = GST_AUDIO_CHANNEL_POSITION_REAR_LEFT;
++      position[4] = GST_AUDIO_CHANNEL_POSITION_REAR_RIGHT;
++      break;
++    case 6:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_FRONT_CENTER;
++      position[1] = GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT;
++      position[2] = GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT;
++      position[3] = GST_AUDIO_CHANNEL_POSITION_REAR_LEFT;
++      position[4] = GST_AUDIO_CHANNEL_POSITION_REAR_RIGHT;
++      position[5] = GST_AUDIO_CHANNEL_POSITION_LFE1;
++      break;
++    default:
++      return FALSE;
++  }
++
++  return TRUE;
++}
+diff -Naur before/omx/gstomxflacdec.h 1.16.2-r0/gst-omx-1.16.2/omx/gstomxflacdec.h
+--- before/omx/gstomxflacdec.h	1970-01-01 09:00:00.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxflacdec.h	2020-06-11 10:18:08.178099400 +0900
+@@ -0,0 +1,61 @@
++/*
++ * Copyright (C) 2014, Sebastian Dröge <sebastian@centricular.com>
++ * Copyright (C) 2014 Telechips Inc.
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation
++ * version 2.1 of the License.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ *
++ */
++
++#ifndef __GST_OMX_FLAC_DEC_H__
++#define __GST_OMX_FLAC_DEC_H__
++
++#include <gst/gst.h>
++#include "gstomxaudiodec.h"
++
++G_BEGIN_DECLS
++
++#define GST_TYPE_OMX_FLAC_DEC \
++  (gst_omx_flac_dec_get_type())
++#define GST_OMX_FLAC_DEC(obj) \
++  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_OMX_FLAC_DEC,GstOMXFLACDec))
++#define GST_OMX_FLAC_DEC_CLASS(klass) \
++  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_OMX_FLAC_DEC,GstOMXFLACDecClass))
++#define GST_OMX_FLAC_DEC_GET_CLASS(obj) \
++  (G_TYPE_INSTANCE_GET_CLASS((obj),GST_TYPE_OMX_FLAC_DEC,GstOMXFLACDecClass))
++#define GST_IS_OMX_FLAC_DEC(obj) \
++  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_OMX_FLAC_DEC))
++#define GST_IS_OMX_FLAC_DEC_CLASS(obj) \
++  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_OMX_FLAC_DEC))
++
++typedef struct _GstOMXFLACDec GstOMXFLACDec;
++typedef struct _GstOMXFLACDecClass GstOMXFLACDecClass;
++
++struct _GstOMXFLACDec
++{
++  GstOMXAudioDec parent;
++  gint spf;
++};
++
++struct _GstOMXFLACDecClass
++{
++  GstOMXAudioDecClass parent_class;
++};
++
++GType gst_omx_flac_dec_get_type (void);
++
++G_END_DECLS
++
++#endif /* __GST_OMX_FLAC_DEC_H__ */
++
+diff -Naur before/omx/gstomxmp3dec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxmp3dec.c
+--- before/omx/gstomxmp3dec.c	2019-12-03 05:08:10.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxmp3dec.c	2020-06-11 10:18:08.178099400 +0900
+@@ -64,15 +64,15 @@
+ 
+   audiodec_class->cdata.default_sink_template_caps = "audio/mpeg, "
+       "mpegversion=(int)1, "
+-      "layer=(int)3, "
++      "layer=(int)[1,3], "
+       "mpegaudioversion=(int)[1,3], "
+       "rate=(int)[8000,48000], "
+       "channels=(int)[1,2], " "parsed=(boolean) true";
+ 
+   gst_element_class_set_static_metadata (element_class,
+       "OpenMAX MP3 Audio Decoder",
+-      "Codec/Decoder/Audio/Hardware",
+-      "Decode MP3 audio streams",
++      "Codec/Decoder/Audio",
++      "Decode MP3/MP2/MP1 audio streams",
+       "Sebastian Dröge <sebastian@centricular.com>");
+ 
+   gst_omx_set_default_role (&audiodec_class->cdata, "audio_decoder.mp3");
+@@ -129,18 +129,42 @@
+   }
+ 
+   self->spf = (mpegaudioversion == 1 ? 1152 : 576);
++  if (layer == 1)
++    self->spf = 384;
+ 
+   mp3_param.nChannels = channels;
+   mp3_param.nBitRate = 0;       /* unknown */
+   mp3_param.nSampleRate = rate;
+   mp3_param.nAudioBandWidth = 0;        /* decoder decision */
+   mp3_param.eChannelMode = 0;   /* FIXME */
+-  if (mpegaudioversion == 1)
+-    mp3_param.eFormat = OMX_AUDIO_MP3StreamFormatMP1Layer3;
+-  else if (mpegaudioversion == 2)
+-    mp3_param.eFormat = OMX_AUDIO_MP3StreamFormatMP2Layer3;
+-  else
+-    mp3_param.eFormat = OMX_AUDIO_MP3StreamFormatMP2_5Layer3;
++
++  switch(layer) {
++    case 1:
++      if (mpegaudioversion == 1)
++        mp3_param.eFormat = OMX_AUDIO_MP3StreamFormatMP1Layer1;
++      else if (mpegaudioversion == 2)
++        mp3_param.eFormat = OMX_AUDIO_MP3StreamFormatMP2Layer1;
++      else
++        mp3_param.eFormat = OMX_AUDIO_MP3StreamFormatMP2_5Layer1;
++      break;
++    case 2:
++      if (mpegaudioversion == 1)
++        mp3_param.eFormat = OMX_AUDIO_MP3StreamFormatMP1Layer2;
++      else if (mpegaudioversion == 2)
++        mp3_param.eFormat = OMX_AUDIO_MP3StreamFormatMP2Layer2;
++      else
++        mp3_param.eFormat = OMX_AUDIO_MP3StreamFormatMP2_5Layer2;
++      break;
++    case 3:
++    default:
++      if (mpegaudioversion == 1)
++        mp3_param.eFormat = OMX_AUDIO_MP3StreamFormatMP1Layer3;
++      else if (mpegaudioversion == 2)
++        mp3_param.eFormat = OMX_AUDIO_MP3StreamFormatMP2Layer3;
++      else
++        mp3_param.eFormat = OMX_AUDIO_MP3StreamFormatMP2_5Layer3;
++      break;
++  }
+ 
+   err =
+       gst_omx_component_set_parameter (dec->dec, OMX_IndexParamAudioMp3,
+diff -Naur before/omx/gstomxopusdec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxopusdec.c
+--- before/omx/gstomxopusdec.c	1970-01-01 09:00:00.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxopusdec.c	2018-05-11 11:44:00.334665200 +0900
+@@ -0,0 +1,219 @@
++/*
++ * Copyright (C) 2014, Sebastian Dröge <sebastian@centricular.com>
++ * Copyright (C) 2014 Telechips Inc.
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation
++ * version 2.1 of the License.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++#include <gst/gst.h>
++
++#include "gstomxopusdec.h"
++
++GST_DEBUG_CATEGORY_STATIC (gst_omx_opus_dec_debug_category);
++#define GST_CAT_DEFAULT gst_omx_opus_dec_debug_category
++
++/* prototypes */
++static gboolean gst_omx_opus_dec_set_format (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstCaps * caps);
++static gboolean gst_omx_opus_dec_is_format_change (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstCaps * caps);
++static gint gst_omx_opus_dec_get_samples_per_frame (GstOMXAudioDec * dec,
++    GstOMXPort * port);
++static gboolean gst_omx_opus_dec_get_channel_positions (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstAudioChannelPosition position[OMX_AUDIO_MAXCHANNELS]);
++
++/* class initialization */
++
++#define DEBUG_INIT \
++  GST_DEBUG_CATEGORY_INIT (gst_omx_opus_dec_debug_category, "omxopusdec", 0, \
++      "debug category for gst-omx audio decoder base class");
++
++G_DEFINE_TYPE_WITH_CODE (GstOMXOPUSDec, gst_omx_opus_dec,
++    GST_TYPE_OMX_AUDIO_DEC, DEBUG_INIT);
++
++static void
++gst_omx_opus_dec_class_init (GstOMXOPUSDecClass * klass)
++{
++  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
++  GstOMXAudioDecClass *audiodec_class = GST_OMX_AUDIO_DEC_CLASS (klass);
++
++  audiodec_class->set_format = GST_DEBUG_FUNCPTR (gst_omx_opus_dec_set_format);
++  audiodec_class->is_format_change =
++      GST_DEBUG_FUNCPTR (gst_omx_opus_dec_is_format_change);
++  audiodec_class->get_samples_per_frame =
++      GST_DEBUG_FUNCPTR (gst_omx_opus_dec_get_samples_per_frame);
++  audiodec_class->get_channel_positions =
++      GST_DEBUG_FUNCPTR (gst_omx_opus_dec_get_channel_positions);
++
++  audiodec_class->cdata.default_sink_template_caps = ("audio/x-opus, "
++        "channels = (int) [1, 255] ");
++  gst_element_class_set_static_metadata (element_class,
++      "OpenMAX Opus Audio Decoder",
++      "Codec/Decoder/Audio",
++      "Decode Opus audio streams",
++      "Claire Lee");
++
++  gst_omx_set_default_role (&audiodec_class->cdata, "audio_decoder.opus");
++}
++
++
++static void
++gst_omx_opus_dec_init (GstOMXOPUSDec * self)
++{
++  self->spf = -1;
++}
++
++static gboolean
++gst_omx_opus_dec_set_format (GstOMXAudioDec * dec, GstOMXPort * port,
++    GstCaps * caps)
++{
++  GstOMXOPUSDec *self = GST_OMX_OPUS_DEC (dec);
++  OMX_PARAM_PORTDEFINITIONTYPE port_def;
++  OMX_AUDIO_PARAM_OPUSTYPE opus_param;
++  OMX_ERRORTYPE err;
++  GstStructure *s;
++  gint rate, channels;
++
++  gst_omx_port_get_port_definition (port, &port_def);
++  port_def.format.audio.eEncoding = OMX_AUDIO_CodingOPUS;
++  err = gst_omx_port_update_port_definition (port, &port_def);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self,
++        "Failed to set OPUS format on component: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  GST_OMX_INIT_STRUCT (&opus_param);
++  opus_param.nPortIndex = port->index;
++
++  err =
++      gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioOpus,
++      &opus_param);
++
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self,
++        "Failed to get OPUS parameters from component: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  s = gst_caps_get_structure (caps, 0);
++
++  if ( !gst_structure_get_int (s, "rate", &rate) ||
++    !gst_structure_get_int (s, "channels", &channels)) {
++    GST_ERROR_OBJECT (self, "Incomplete caps");
++    return FALSE;
++  }
++
++  opus_param.nSampleRate = rate;
++  opus_param.nChannels = channels;
++
++  err =
++      gst_omx_component_set_parameter (dec->dec, OMX_IndexParamAudioOpus,
++      &opus_param);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self, "Error setting OPUS parameters: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++  return TRUE;
++}
++static gboolean
++gst_omx_opus_dec_is_format_change (GstOMXAudioDec * dec, GstOMXPort * port,
++    GstCaps * caps)
++{
++  GstOMXOPUSDec *self = GST_OMX_OPUS_DEC (dec);
++  OMX_AUDIO_PARAM_OPUSTYPE opus_param;
++  OMX_ERRORTYPE err;
++  GstStructure *s;
++  gint rate, channels;
++
++  GST_OMX_INIT_STRUCT (&opus_param);
++  opus_param.nPortIndex = port->index;
++
++  err =
++      gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioOpus,
++      &opus_param);
++
++
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self,
++        "Failed to get OPUS parameters from component: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  s = gst_caps_get_structure (caps, 0);
++
++  if (!gst_structure_get_int (s, "rate", &rate) ||
++      !gst_structure_get_int (s, "channels", &channels)) {
++    GST_ERROR_OBJECT (self, "Incomplete caps");
++    return FALSE;
++  }
++
++  if (opus_param.nChannels != channels)
++    return TRUE;
++
++  if (opus_param.nSampleRate != rate)
++    return TRUE;
++
++  return FALSE;
++}
++
++static gint
++gst_omx_opus_dec_get_samples_per_frame (GstOMXAudioDec * dec, GstOMXPort * port)
++{
++  return GST_OMX_OPUS_DEC (dec)->spf;
++}
++
++
++static gboolean
++gst_omx_opus_dec_get_channel_positions (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstAudioChannelPosition position[OMX_AUDIO_MAXCHANNELS])
++{
++  OMX_AUDIO_PARAM_PCMMODETYPE pcm_param;
++  OMX_ERRORTYPE err;
++
++  GST_OMX_INIT_STRUCT (&pcm_param);
++  pcm_param.nPortIndex = port->index;
++  err =
++      gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioPcm,
++      &pcm_param);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (dec, "Failed to get PCM parameters: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  switch (pcm_param.nChannels) {
++    case 1:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_MONO;
++      break;
++    case 2:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT;
++      position[1] = GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT;
++      break;
++    default:
++      return FALSE;
++  }
++
++  return TRUE;
++}
+diff -Naur before/omx/gstomxopusdec.h 1.16.2-r0/gst-omx-1.16.2/omx/gstomxopusdec.h
+--- before/omx/gstomxopusdec.h	1970-01-01 09:00:00.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxopusdec.h	2017-09-08 10:39:59.873113100 +0900
+@@ -0,0 +1,61 @@
++/*
++ * Copyright (C) 2014, Sebastian Dröge <sebastian@centricular.com>
++ * Copyright (C) 2014 Telechips Inc. 
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation
++ * version 2.1 of the License.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ *
++ */
++
++#ifndef __GST_OMX_OPUS_DEC_H__
++#define __GST_OMX_OPUS_DEC_H__
++
++#include <gst/gst.h>
++#include "gstomxaudiodec.h"
++
++G_BEGIN_DECLS
++
++#define GST_TYPE_OMX_OPUS_DEC \
++  (gst_omx_opus_dec_get_type())
++#define GST_OMX_OPUS_DEC(obj) \
++  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_OMX_OPUS_DEC,GstOMXOPUSDec))
++#define GST_OMX_OPUS_DEC_CLASS(klass) \
++  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_OMX_OPUS_DEC,GstOMXOPUSDecClass))
++#define GST_OMX_OPUS_DEC_GET_CLASS(obj) \
++  (G_TYPE_INSTANCE_GET_CLASS((obj),GST_TYPE_OMX_OPUS_DEC,GstOMXOPUSDecClass))
++#define GST_IS_OMX_OPUS_DEC(obj) \
++  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_OMX_OPUS_DEC))
++#define GST_IS_OMX_OPUS_DEC_CLASS(obj) \
++  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_OMX_OPUS_DEC))
++
++typedef struct _GstOMXOPUSDec GstOMXOPUSDec;
++typedef struct _GstOMXOPUSDecClass GstOMXOPUSDecClass;
++
++struct _GstOMXOPUSDec
++{
++  GstOMXAudioDec parent;
++  gint spf;
++};
++
++struct _GstOMXOPUSDecClass
++{
++  GstOMXAudioDecClass parent_class;
++};
++
++GType gst_omx_opus_dec_get_type (void);
++
++G_END_DECLS
++
++#endif /* __GST_OMX_OPUS_DEC_H__ */
++
+diff -Naur before/omx/gstomxvideo.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideo.c
+--- before/omx/gstomxvideo.c	2019-12-03 05:08:20.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideo.c	2020-06-11 14:21:27.448855483 +0900
+@@ -82,6 +82,12 @@
+     case OMX_COLOR_Format24bitBGR888:
+       format = GST_VIDEO_FORMAT_BGR;
+       break;
++	case OMX_COLOR_FormatYUV420PlanarTc:
++		format = GST_VIDEO_FORMAT_I420_TC;
++		break;
++	case OMX_COLOR_FormatYUV420SemiPlanarTc:
++		format = GST_VIDEO_FORMAT_NV12_TC;
++		break;
+ #ifdef USE_OMX_TARGET_ZYNQ_USCALE_PLUS
+       /* Formats defined in extensions have their own enum so disable to -Wswitch warning */
+ #pragma GCC diagnostic push
+diff -Naur before/omx/gstomxvideodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c
+--- before/omx/gstomxvideodec.c	2019-12-03 05:08:20.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c	2020-06-11 14:21:49.370269779 +0900
+@@ -592,6 +592,7 @@
+         dst_width[0] = GST_VIDEO_INFO_WIDTH (vinfo);
+         break;
+       case GST_VIDEO_FORMAT_I420:
++		case GST_VIDEO_FORMAT_I420_TC:
+         dst_width[0] = GST_VIDEO_INFO_WIDTH (vinfo);
+         src_stride[1] = nstride / 2;
+         src_size[1] = (src_stride[1] * nslice) / 2;
+@@ -603,6 +604,7 @@
+         dst_height[2] = GST_VIDEO_INFO_HEIGHT (vinfo) / 2;
+         break;
+       case GST_VIDEO_FORMAT_NV12:
++		case GST_VIDEO_FORMAT_NV12_TC:
+         dst_width[0] = GST_VIDEO_INFO_WIDTH (vinfo);
+         src_stride[1] = nstride;
+         src_size[1] = src_stride[1] * nslice / 2;
+@@ -637,20 +639,27 @@
+         break;
+     }
+ 
+-    src = inbuf->omx_buf->pBuffer + inbuf->omx_buf->nOffset;
+-    for (p = 0; p < GST_VIDEO_INFO_N_PLANES (vinfo); p++) {
+-      const guint8 *data;
+-      guint8 *dst;
+-      guint h;
++    if(GST_VIDEO_INFO_FORMAT(vinfo) == GST_VIDEO_FORMAT_I420_TC || GST_VIDEO_INFO_FORMAT(vinfo) == GST_VIDEO_FORMAT_NV12_TC)
++    {
++      guint8 *dst = GST_VIDEO_FRAME_PLANE_DATA(&frame, 0);
++      src = inbuf->omx_buf->pBuffer + inbuf->omx_buf->nOffset;
++      memcpy(dst, src, inbuf->omx_buf->nFilledLen);
++	} else {
++      src = inbuf->omx_buf->pBuffer + inbuf->omx_buf->nOffset;
++      for (p = 0; p < GST_VIDEO_INFO_N_PLANES (vinfo); p++) {
++        const guint8 *data;
++        guint8 *dst;
++        guint h;
+ 
+-      dst = GST_VIDEO_FRAME_PLANE_DATA (&frame, p);
+-      data = src;
+-      for (h = 0; h < dst_height[p]; h++) {
+-        memcpy (dst, data, dst_width[p]);
+-        dst += GST_VIDEO_FRAME_PLANE_STRIDE (&frame, p);
+-        data += src_stride[p];
++        dst = GST_VIDEO_FRAME_PLANE_DATA (&frame, p);
++        data = src;
++        for (h = 0; h < dst_height[p]; h++) {
++          memcpy (dst, data, dst_width[p]);
++          dst += GST_VIDEO_FRAME_PLANE_STRIDE (&frame, p);
++          data += src_stride[p];
++        }
++        src += src_size[p];
+       }
+-      src += src_size[p];
+     }
+ 
+     gst_video_frame_unmap (&frame);
+diff -Naur before/omx/gstomxvideodec.h 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.h
+--- before/omx/gstomxvideodec.h	2019-12-03 05:08:10.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.h	2020-06-11 14:22:02.419824123 +0900
+@@ -31,6 +31,8 @@
+ 
+ #include "gstomx.h"
+ 
++#define GST_TC_OMX_VIDEO_SIZE_RANGE		"width=(int) [48,1920], height=(int) [32,1088]"
++
+ G_BEGIN_DECLS
+ 
+ #define GST_TYPE_OMX_VIDEO_DEC \
+diff -Naur before/omx/gstomxvp9dec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvp9dec.c
+--- before/omx/gstomxvp9dec.c	1970-01-01 09:00:00.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvp9dec.c	2020-06-11 14:22:16.230411788 +0900
+@@ -0,0 +1,122 @@
++/*
++ * Copyright (C) 2013, Collabora Ltd.
++ *   Author: Sebastian Dröge <sebastian.droege@collabora.co.uk>
++ * Copyright (C) 2014, Telechips Inc.
++ *   Author: AV Algorithm Group. <AValgorithm@telechips.com>
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation
++ * version 2.1 of the License.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++#include <gst/gst.h>
++
++#include "gstomxvp9dec.h"
++
++GST_DEBUG_CATEGORY_STATIC (gst_omx_vp9_dec_debug_category);
++#define GST_CAT_DEFAULT gst_omx_vp9_dec_debug_category
++
++/* prototypes */
++static gboolean gst_omx_vp9_dec_is_format_change (GstOMXVideoDec * dec,
++    GstOMXPort * port, GstVideoCodecState * state);
++static gboolean gst_omx_vp9_dec_set_format (GstOMXVideoDec * dec,
++    GstOMXPort * port, GstVideoCodecState * state);
++
++#if defined(TCC_898x_INCLUDE)
++#define GST_TC_OMX_VP9_SIZE_RANGE	"width=(int) [48,3840], height=(int) [32,2160]"
++#else
++#define GST_TC_OMX_VP9_SIZE_RANGE	"width=(int) [48,1920], height=(int) [32,1200]"
++#endif
++
++enum
++{
++  PROP_0
++};
++
++/* class initialization */
++
++#define DEBUG_INIT \
++  GST_DEBUG_CATEGORY_INIT (gst_omx_vp9_dec_debug_category, "omxvp9dec", 0, \
++      "debug category for gst-omx video decoder base class");
++
++G_DEFINE_TYPE_WITH_CODE (GstOMXVP9Dec, gst_omx_vp9_dec,
++    GST_TYPE_OMX_VIDEO_DEC, DEBUG_INIT);
++
++static void
++gst_omx_vp9_dec_class_init (GstOMXVP9DecClass * klass)
++{
++  GstOMXVideoDecClass *videodec_class = GST_OMX_VIDEO_DEC_CLASS (klass);
++  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
++  GST_ERROR("gst_omx_vp9_dec_class_init");
++  videodec_class->is_format_change =
++      GST_DEBUG_FUNCPTR (gst_omx_vp9_dec_is_format_change);
++  videodec_class->set_format = GST_DEBUG_FUNCPTR (gst_omx_vp9_dec_set_format);
++
++  videodec_class->cdata.default_sink_template_caps = "video/x-vp9, "
++      GST_TC_OMX_VP9_SIZE_RANGE
++      ;
++
++  videodec_class->cdata.default_src_template_caps =
++      "video/x-raw, "
++      GST_TC_OMX_VP9_SIZE_RANGE ", "
++      "framerate = " GST_VIDEO_FPS_RANGE ", "
++      "format=(string) { I420, NV12 };"
++      "video/x-tc-raw, "
++      GST_TC_OMX_VP9_SIZE_RANGE ", "
++      "framerate = " GST_VIDEO_FPS_RANGE ", "
++      "format=(string) { I420, NV12 };"
++      ;
++
++  gst_element_class_set_static_metadata (element_class,
++      "OpenMAX VP9 Video Decoder",
++      "Codec/Decoder/Video",
++      "Decode VP9 video streams",
++      "AV Algorithm Group at Telechips Inc. <AValgorith@telechips.com>");
++
++  gst_omx_set_default_role (&videodec_class->cdata, "video_decoder.vp9");
++}
++
++static void
++gst_omx_vp9_dec_init (GstOMXVP9Dec * self)
++{
++  GST_ERROR("gst_omx_vp9_dec_init");
++}
++
++static gboolean
++gst_omx_vp9_dec_is_format_change (GstOMXVideoDec * dec,
++    GstOMXPort * port, GstVideoCodecState * state)
++{
++  GST_ERROR("gst_omx_vp9_dec_is_format_change");
++  return FALSE;
++}
++
++static gboolean
++gst_omx_vp9_dec_set_format (GstOMXVideoDec * dec, GstOMXPort * port,
++    GstVideoCodecState * state)
++{
++  gboolean ret;
++  OMX_PARAM_PORTDEFINITIONTYPE port_def;
++  GST_ERROR("gst_omx_vp9_dec_set_format");
++  gst_omx_port_get_port_definition (port, &port_def);
++  port_def.format.video.eCompressionFormat = OMX_VIDEO_CodingVP9;
++  ret = gst_omx_port_update_port_definition (port, &port_def) == OMX_ErrorNone;
++
++  //gst_omx_video_dec_set_property_config (dec);
++
++  return ret;
++}
+diff -Naur before/omx/gstomxvp9dec.h 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvp9dec.h
+--- before/omx/gstomxvp9dec.h	1970-01-01 09:00:00.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvp9dec.h	2017-09-08 10:39:59.875113100 +0900
+@@ -0,0 +1,60 @@
++/*
++ * Copyright (C) 2013, Collabora Ltd.
++ *   Author: Sebastian Dröge <sebastian.droege@collabora.co.uk>
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation
++ * version 2.1 of the License.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ *
++ */
++
++#ifndef __GST_OMX_VP9_DEC_H__
++#define __GST_OMX_VP9_DEC_H__
++
++#include <gst/gst.h>
++#include "gstomxvideodec.h"
++
++G_BEGIN_DECLS
++
++#define GST_TYPE_OMX_VP9_DEC \
++  (gst_omx_vp9_dec_get_type())
++#define GST_OMX_VP9_DEC(obj) \
++  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_OMX_VP9_DEC,GstOMXVP9Dec))
++#define GST_OMX_VP9_DEC_CLASS(klass) \
++  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_OMX_VP9_DEC,GstOMXVP9DecClass))
++#define GST_OMX_VP9_DEC_GET_CLASS(obj) \
++  (G_TYPE_INSTANCE_GET_CLASS((obj),GST_TYPE_OMX_VP9_DEC,GstOMXVP9DecClass))
++#define GST_IS_OMX_VP9_DEC(obj) \
++  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_OMX_VP9_DEC))
++#define GST_IS_OMX_VP9_DEC_CLASS(obj) \
++  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_OMX_VP9_DEC))
++
++typedef struct _GstOMXVP9Dec GstOMXVP9Dec;
++typedef struct _GstOMXVP9DecClass GstOMXVP9DecClass;
++
++struct _GstOMXVP9Dec
++{
++  GstOMXVideoDec parent;
++};
++
++struct _GstOMXVP9DecClass
++{
++  GstOMXVideoDecClass parent_class;
++};
++
++GType gst_omx_vp9_dec_get_type (void);
++
++G_END_DECLS
++
++#endif /* __GST_OMX_VP9_DEC_H__ */
++
+diff -Naur before/omx/gstomxwavdec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxwavdec.c
+--- before/omx/gstomxwavdec.c	1970-01-01 09:00:00.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxwavdec.c	2019-08-08 14:05:38.693474400 +0900
+@@ -0,0 +1,358 @@
++/*
++ * Copyright (C) 2014, Sebastian Dröge <sebastian@centricular.com>
++ * Copyright (C) 2014 Telechips Inc. 
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation
++ * version 2.1 of the License.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++#include <gst/gst.h>
++#include <stdio.h>
++
++#include "gstomxwavdec.h"
++
++GST_DEBUG_CATEGORY_STATIC (gst_omx_wav_dec_debug_category);
++#define GST_CAT_DEFAULT gst_omx_wav_dec_debug_category
++
++/* prototypes */
++static gboolean gst_omx_wav_dec_set_format (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstCaps * caps);
++static gboolean gst_omx_wav_dec_is_format_change (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstCaps * caps);
++static gint gst_omx_wav_dec_get_samples_per_frame (GstOMXAudioDec * dec,
++    GstOMXPort * port);
++static gboolean gst_omx_wav_dec_get_channel_positions (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstAudioChannelPosition position[OMX_AUDIO_MAXCHANNELS]);
++
++/* class initialization */
++
++#define DEBUG_INIT \
++  GST_DEBUG_CATEGORY_INIT (gst_omx_wav_dec_debug_category, "omxwavdec", 0, \
++      "debug category for gst-omx audio decoder base class");
++
++G_DEFINE_TYPE_WITH_CODE (GstOMXWAVDec, gst_omx_wav_dec,
++    GST_TYPE_OMX_AUDIO_DEC, DEBUG_INIT);
++
++#if 0
++static GstStaticPadTemplate omxwav_src_template_factory =
++GST_STATIC_PAD_TEMPLATE ("src",
++    GST_PAD_SRC,
++    GST_PAD_ALWAYS,
++    GST_STATIC_CAPS ("audio/x-raw, "
++        "format = (string) " GST_AUDIO_NE (S32) ", "
++        "layout = (string) interleaved, "
++        "rate = (int) { 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000 }, "
++        "channels = (int) [ 1, 8 ]")
++    );
++
++static GstStaticPadTemplate omxwav_sink_template_factory =
++GST_STATIC_PAD_TEMPLATE ("sink",
++    GST_PAD_SINK,
++    GST_PAD_ALWAYS,
++    GST_STATIC_CAPS ("audio/x-pcm; audio/x-lpcm; audio/x-private1-lpcm; audio/pcm, "
++      "width=(int)[16,24], "
++      "depth=(int)[1,32], "
++      "rate = (int) [8000,192000], "
++      "channels = (int) [ 1, 8 ]")
++    );
++#endif
++
++static void
++gst_omx_wav_dec_class_init (GstOMXWAVDecClass * klass)
++{
++  GstElementClass *element_class = GST_ELEMENT_CLASS (klass);
++  GstOMXAudioDecClass *audiodec_class = GST_OMX_AUDIO_DEC_CLASS (klass);
++
++  audiodec_class->set_format = GST_DEBUG_FUNCPTR (gst_omx_wav_dec_set_format);
++  audiodec_class->is_format_change =
++      GST_DEBUG_FUNCPTR (gst_omx_wav_dec_is_format_change);
++  audiodec_class->get_samples_per_frame =
++      GST_DEBUG_FUNCPTR (gst_omx_wav_dec_get_samples_per_frame);
++  audiodec_class->get_channel_positions =
++      GST_DEBUG_FUNCPTR (gst_omx_wav_dec_get_channel_positions);
++#if 0
++  gst_element_class_add_pad_template (element_class,
++      gst_static_pad_template_get (&omxwav_sink_template_factory));
++  gst_element_class_add_pad_template (element_class,
++      gst_static_pad_template_get (&omxwav_src_template_factory));
++#endif
++
++  audiodec_class->cdata.default_sink_template_caps = "audio/x-pcm; audio/x-lpcm; audio/x-private1-lpcm; audio/pcm, "
++  		"width=(int)[16,24], "
++      "depth=(int)[1,32], "
++      "rate=(int)[8000,192000], "
++      "channels=(int)[1,8], "
++			"framed=(boolean) true";
++      
++  gst_element_class_set_static_metadata (element_class,
++      "OpenMAX PCM Audio Decoder",
++      "Codec/Decoder/Audio",
++      "Decode Pcm audio streams",
++      "Helena Kim");
++
++  gst_omx_set_default_role (&audiodec_class->cdata, "audio_decoder.pcm_dec");
++
++
++}
++
++
++static void
++gst_omx_wav_dec_init (GstOMXWAVDec * self)
++{
++  self->spf = -1;
++}
++
++static gboolean
++gst_omx_wav_dec_set_format (GstOMXAudioDec * dec, GstOMXPort * port,
++    GstCaps * caps)
++{
++  GstOMXWAVDec *self = GST_OMX_WAV_DEC (dec);
++  OMX_PARAM_PORTDEFINITIONTYPE port_def;
++  OMX_AUDIO_PARAM_PCMMODETYPE pcm_param;
++  OMX_ERRORTYPE err;
++  GstStructure *s;
++  gint rate=0, channels=0, endianness=0, width=0;
++  gint muxermode = OMX_AUDIO_PCMModeLinear;
++
++
++  gst_omx_port_get_port_definition (port, &port_def);
++  port_def.format.audio.eEncoding = OMX_AUDIO_CodingPCM;
++  err = gst_omx_port_update_port_definition (port, &port_def);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self,
++        "Failed to set PCM format on component: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  GST_OMX_INIT_STRUCT (&pcm_param);
++  pcm_param.nPortIndex = port->index;
++
++  err =
++      gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioPcm,
++      &pcm_param);
++
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self,
++        "Failed to get PCM parameters from component: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  s = gst_caps_get_structure (caps, 0);
++
++  if (!gst_structure_get_int (s, "endianness", &endianness) ||
++      !gst_structure_get_int (s, "rate", &rate) ||
++      !gst_structure_get_int (s, "width", &width) ||
++      !gst_structure_get_int (s, "channels", &channels)) {
++    GST_ERROR_OBJECT (self, "Incomplete caps");
++    return FALSE;
++  }
++
++
++  if (endianness == 4321)	//bigendian
++  {
++    if ( gst_structure_has_name(s,"audio/x-private1-lpcm") )
++    {
++  	  muxermode = OMX_AUDIO_PCMModeDVDLinear;
++    }
++    else if ( gst_structure_has_name(s, "audio/x-private-ts-lpcm") )
++    {
++      muxermode = OMX_AUDIO_PCMModeWDLinear;
++    }
++    else
++	  muxermode = OMX_AUDIO_PCMModeLinear;
++  }
++  else
++  {
++    muxermode = OMX_AUDIO_PCMModeLinear;
++  }
++
++  pcm_param.nChannels = channels;
++  pcm_param.eEndian = endianness;      
++  pcm_param.nSamplingRate = rate;
++  pcm_param.nBitPerSample = width;
++  pcm_param.ePCMMode = muxermode;
++/*
++  printf("pcm_param.nChannels   = %d\n",pcm_param.nChannels);
++  printf("pcm_param.eEndian   = %d\n",pcm_param.eEndian);
++  printf("pcm_param.nSamplingRate  = %d\n",pcm_param.nSamplingRate);
++  printf("pcm_param.nBitPerSample  = %d\n",pcm_param.nBitPerSample);
++  printf("pcm_param.ePCMMode   = %d\n",pcm_param.ePCMMode);
++*/
++
++  err =
++      gst_omx_component_set_parameter (dec->dec, OMX_IndexParamAudioPcm,
++      &pcm_param);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self, "Error setting PCM parameters: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  /* Get codec data from caps */
++  {
++    const GValue *codec_data;
++
++    gst_buffer_replace (&GST_OMX_AUDIO_DEC (self)->codec_data, NULL);
++    codec_data = gst_structure_get_value (s, "codec_data");
++
++    if (codec_data) {    	    	
++      GST_OMX_AUDIO_DEC (self)->codec_data = gst_value_get_buffer (codec_data);
++      if (GST_OMX_AUDIO_DEC (self)->codec_data)
++        gst_buffer_ref (GST_OMX_AUDIO_DEC (self)->codec_data);     
++    }
++  }
++
++#ifdef SUPPORT_HIGHBPS_OUTPUT
++  if (width > 16)
++  {
++    OMX_AUDIO_PARAM_PCMMODETYPE pcm_param;
++    GST_OMX_INIT_STRUCT (&pcm_param);
++    pcm_param.nPortIndex = OMX_DirOutput;
++
++    err = gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioPcm,
++        &pcm_param);
++
++    pcm_param.nBitPerSample = width;
++
++    err = gst_omx_component_set_parameter (dec->dec, OMX_IndexParamAudioPcm,
++        &pcm_param);
++    if (err != OMX_ErrorNone) {
++      GST_ERROR_OBJECT (self, "Error setting PCM parameters: %s (0x%08x)",
++          gst_omx_error_to_string (err), err);
++      return FALSE;
++    }
++  }
++#endif
++
++
++  return TRUE;
++}
++
++static gboolean
++gst_omx_wav_dec_is_format_change (GstOMXAudioDec * dec, GstOMXPort * port,
++    GstCaps * caps)
++{
++  GstOMXWAVDec *self = GST_OMX_WAV_DEC (dec);
++  OMX_AUDIO_PARAM_PCMMODETYPE pcm_param;
++  OMX_ERRORTYPE err;
++  GstStructure *s;
++  gint rate, channels, endianness, width;
++
++  GST_OMX_INIT_STRUCT (&pcm_param);
++  pcm_param.nPortIndex = port->index;
++
++  err =
++      gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioPcm,
++      &pcm_param);
++
++
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (self,
++        "Failed to get PCM parameters from component: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  s = gst_caps_get_structure (caps, 0);
++
++  if (!gst_structure_get_int (s, "endianness", &endianness) ||
++      !gst_structure_get_int (s, "rate", &rate) ||
++      !gst_structure_get_int (s, "width", &width) ||
++      !gst_structure_get_int (s, "channels", &channels)) {
++    GST_ERROR_OBJECT (self, "Incomplete caps");
++    return FALSE;
++  }
++
++  if (pcm_param.nChannels != channels)
++    return TRUE;
++
++  if (pcm_param.nSamplingRate != rate)
++    return TRUE;
++
++  return FALSE;
++}
++
++static gint
++gst_omx_wav_dec_get_samples_per_frame (GstOMXAudioDec * dec, GstOMXPort * port)
++{
++  return GST_OMX_WAV_DEC (dec)->spf;
++}
++
++
++static gboolean
++gst_omx_wav_dec_get_channel_positions (GstOMXAudioDec * dec,
++    GstOMXPort * port, GstAudioChannelPosition position[OMX_AUDIO_MAXCHANNELS])
++{
++  OMX_AUDIO_PARAM_PCMMODETYPE pcm_param;
++  OMX_ERRORTYPE err;
++
++  GST_OMX_INIT_STRUCT (&pcm_param);
++  pcm_param.nPortIndex = port->index;
++  err =
++      gst_omx_component_get_parameter (dec->dec, OMX_IndexParamAudioPcm,
++      &pcm_param);
++  if (err != OMX_ErrorNone) {
++    GST_ERROR_OBJECT (dec, "Failed to get PCM parameters: %s (0x%08x)",
++        gst_omx_error_to_string (err), err);
++    return FALSE;
++  }
++
++  /* FIXME: Rather arbitrary values here, based on what we do in gstfaac.c */
++  switch (pcm_param.nChannels) {
++    case 1:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_MONO;
++      break;
++    case 2:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT;
++      position[1] = GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT;
++      break;
++    case 3:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_FRONT_CENTER;
++      position[1] = GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT;
++      position[2] = GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT;
++      break;
++    case 4:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_FRONT_CENTER;
++      position[1] = GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT;
++      position[2] = GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT;
++      position[3] = GST_AUDIO_CHANNEL_POSITION_REAR_CENTER;
++      break;
++    case 5:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_FRONT_CENTER;
++      position[1] = GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT;
++      position[2] = GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT;
++      position[3] = GST_AUDIO_CHANNEL_POSITION_REAR_LEFT;
++      position[4] = GST_AUDIO_CHANNEL_POSITION_REAR_RIGHT;
++      break;
++    case 6:
++      position[0] = GST_AUDIO_CHANNEL_POSITION_FRONT_CENTER;
++      position[1] = GST_AUDIO_CHANNEL_POSITION_FRONT_LEFT;
++      position[2] = GST_AUDIO_CHANNEL_POSITION_FRONT_RIGHT;
++      position[3] = GST_AUDIO_CHANNEL_POSITION_REAR_LEFT;
++      position[4] = GST_AUDIO_CHANNEL_POSITION_REAR_RIGHT;
++      position[5] = GST_AUDIO_CHANNEL_POSITION_LFE1;
++      break;
++    default:
++      return FALSE;
++  }
++
++  return TRUE;
++}
+diff -Naur before/omx/gstomxwavdec.h 1.16.2-r0/gst-omx-1.16.2/omx/gstomxwavdec.h
+--- before/omx/gstomxwavdec.h	1970-01-01 09:00:00.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxwavdec.h	2017-09-08 10:39:59.875113100 +0900
+@@ -0,0 +1,61 @@
++/*
++ * Copyright (C) 2014, Sebastian Dröge <sebastian@centricular.com>
++ * Copyright (C) 2014 Telechips Inc. 
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation
++ * version 2.1 of the License.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
++ *
++ */
++
++#ifndef __GST_OMX_WAV_DEC_H__
++#define __GST_OMX_WAV_DEC_H__
++
++#include <gst/gst.h>
++#include "gstomxaudiodec.h"
++
++G_BEGIN_DECLS
++
++#define GST_TYPE_OMX_WAV_DEC \
++  (gst_omx_wav_dec_get_type())
++#define GST_OMX_WAV_DEC(obj) \
++  (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_OMX_WAV_DEC,GstOMXWAVDec))
++#define GST_OMX_WAV_DEC_CLASS(klass) \
++  (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_OMX_WAV_DEC,GstOMXWAVDecClass))
++#define GST_OMX_WAV_DEC_GET_CLASS(obj) \
++  (G_TYPE_INSTANCE_GET_CLASS((obj),GST_TYPE_OMX_WAV_DEC,GstOMXWAVDecClass))
++#define GST_IS_OMX_WAV_DEC(obj) \
++  (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_OMX_WAV_DEC))
++#define GST_IS_OMX_WAV_DEC_CLASS(obj) \
++  (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_OMX_WAV_DEC))
++
++typedef struct _GstOMXWAVDec GstOMXWAVDec;
++typedef struct _GstOMXWAVDecClass GstOMXWAVDecClass;
++
++struct _GstOMXWAVDec
++{
++  GstOMXAudioDec parent;
++  gint spf;
++};
++
++struct _GstOMXWAVDecClass
++{
++  GstOMXAudioDecClass parent_class;
++};
++
++GType gst_omx_wav_dec_get_type (void);
++
++G_END_DECLS
++
++#endif /* __GST_OMX_WAV_DEC_H__ */
++
+diff -Naur before/omx/meson.build 1.16.2-r0/gst-omx-1.16.2/omx/meson.build
+--- before/omx/meson.build	2019-12-03 05:08:20.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/meson.build	2020-06-11 14:22:47.395209374 +0900
+@@ -18,8 +18,12 @@
+   'gstomxh263enc.c',
+   'gstomxaacdec.c',
+   'gstomxmp3dec.c',
++  'gstomxapedec.c',
++  'gstomxflacdec.c',
++  'gstomxopusdec.c',
++  'gstomxwavdec.c',
+   'gstomxaacenc.c',
+-  'gstomxamrdec.c',
++  'gstomxamrnbdec.c',
+   'gstomxaudiosink.c',
+   'gstomxanalogaudiosink.c',
+   'gstomxhdmiaudiosink.c',
+diff -Naur before/omx/openmax/OMX_Audio.h 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_Audio.h
+--- before/omx/openmax/OMX_Audio.h	2019-12-03 05:08:10.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_Audio.h	2020-06-11 10:18:08.179099400 +0900
+@@ -89,8 +89,13 @@
+     OMX_AUDIO_CodingWMA,         /**< Any variant of WMA encoded data */
+     OMX_AUDIO_CodingRA,          /**< Any variant of RA encoded data */
+     OMX_AUDIO_CodingMIDI,        /**< Any variant of MIDI encoded data */
++    OMX_AUDIO_CodingFLAC,        /**< Any variant of FLAC encoded data */
++    OMX_AUDIO_CodingOPUS,       /**< Any variant of OPUS encoded data */      
+     OMX_AUDIO_CodingKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */ 
+     OMX_AUDIO_CodingVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
++	OMX_AUDIO_CodingMP2,		 /**< Any variant of MP2 encoded data */
++	OMX_AUDIO_CodingAPE,		 /**< Any variant of APE encoded data */
++    OMX_AUDIO_CodingAC3,		 /**< Any variant of AC3 encoded data */
+     OMX_AUDIO_CodingMax = 0x7FFFFFFF
+ } OMX_AUDIO_CODINGTYPE;
+ 
+@@ -132,6 +137,8 @@
+     OMX_AUDIO_PCMModeMULaw,       /**< Mu law PCM encoded data (G.711)  */ 
+     OMX_AUDIO_PCMModeKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */ 
+     OMX_AUDIO_PCMModeVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
++    OMX_AUDIO_PCMModeDVDLinear = 0x00001000,    /**< DVD Linear PCM encoded data */
++    OMX_AUDIO_PCMModeWDLinear = 0x00002000,     /**< WD Linear PCM encoded data */
+     OMX_AUDIO_PCMModeMax = 0x7FFFFFFF 
+ } OMX_AUDIO_PCMMODETYPE; 
+ 
+@@ -197,6 +204,12 @@
+     OMX_AUDIO_MP3StreamFormatMP2_5Layer3,   /**< MP3 Audio MPEG2.5 Layer 3 Stream format */
+     OMX_AUDIO_MP3StreamFormatKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */ 
+     OMX_AUDIO_MP3StreamFormatVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
++    OMX_AUDIO_MP3StreamFormatMP1Layer1,     /**< MP3 Audio MPEG 1 Layer 1 Stream format */
++    OMX_AUDIO_MP3StreamFormatMP2Layer1,     /**< MP3 Audio MPEG 2 Layer 1 Stream format */
++    OMX_AUDIO_MP3StreamFormatMP2_5Layer1,   /**< MP3 Audio MPEG2.5 Layer 1 Stream format */
++    OMX_AUDIO_MP3StreamFormatMP1Layer2,     /**< MP3 Audio MPEG 1 Layer 2 Stream format */
++    OMX_AUDIO_MP3StreamFormatMP2Layer2,     /**< MP3 Audio MPEG 2 Layer 2 Stream format */
++    OMX_AUDIO_MP3StreamFormatMP2_5Layer2,   /**< MP3 Audio MPEG2.5 Layer 2 Stream format */
+     OMX_AUDIO_MP3StreamFormatMax = 0x7FFFFFFF
+ } OMX_AUDIO_MP3STREAMFORMATTYPE;
+ 
+@@ -244,6 +257,7 @@
+   OMX_AUDIO_AACObjectERLC = 17,     /**< ER AAC Low Complexity object (Error Resilient AAC-LC) */
+   OMX_AUDIO_AACObjectLD = 23,       /**< AAC Low Delay object (Error Resilient) */
+   OMX_AUDIO_AACObjectHE_PS = 29,    /**< AAC High Efficiency with Parametric Stereo coding (HE-AAC v2, object type PS) */
++  OMX_AUDIO_AACObjectELD = 39,      /** AAC Enhanced Low Delay. NOTE: Pending Khronos standardization **/
+   OMX_AUDIO_AACObjectKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */ 
+   OMX_AUDIO_AACObjectVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
+   OMX_AUDIO_AACObjectMax = 0x7FFFFFFF
+@@ -321,6 +335,69 @@
+                                    non-stereo streams). Useful for lower-bitrate encoding. */     
+ } OMX_AUDIO_PARAM_VORBISTYPE;
+ 
++/** MP2 params */
++typedef struct OMX_AUDIO_PARAM_MP2TYPE {
++    OMX_U32 nSize;                 /**< size of the structure in bytes */
++    OMX_VERSIONTYPE nVersion;      /**< OMX specification version information */
++    OMX_U32 nPortIndex;            /**< port that this structure applies to */
++    OMX_U32 nChannels;             /**< Number of channels */
++    OMX_U32 nBitRate;              /**< Bit rate of the input data.  Use 0 for variable
++                                        rate or unknown bit rates */
++    OMX_U32 nSampleRate;           /**< Sampling rate of the source data.  Use 0 for
++                                        variable or unknown sampling rate. */
++    OMX_AUDIO_CHANNELMODETYPE eChannelMode;   /**< Channel mode enumeration */
++    OMX_AUDIO_MP3STREAMFORMATTYPE eFormat;  /**< MP3 stream format */
++} OMX_AUDIO_PARAM_MP2TYPE;
++
++
++/** FLAC params */
++typedef struct OMX_AUDIO_PARAM_FLACTYPE {
++    OMX_U32 nSize;            /**< size of the structure in bytes */
++    OMX_VERSIONTYPE nVersion; /**< OMX specification version information */
++    OMX_U32 nPortIndex;       /**< port that this structure applies to */
++    OMX_U32 nChannels;        /**< Number of channels */
++    OMX_U32 nSampleRate;      /**< Sampling rate of the source data.  Use 0 for
++                                   unknown sampling rate. */
++    OMX_U32 nCompressionLevel;/**< FLAC compression level, from 0 (fastest compression)
++                                   to 8 (highest compression */
++} OMX_AUDIO_PARAM_FLACTYPE;
++
++
++typedef struct OMX_AUDIO_PARAM_APETYPE {
++    OMX_U32 nSize;                 /**< size of the structure in bytes */
++    OMX_VERSIONTYPE nVersion;      /**< OMX specification version information */
++    OMX_U32 nPortIndex;            /**< port that this structure applies to */
++    OMX_U32 nChannels;             /**< Number of channels */
++    OMX_U32 nBitRate;              /**< Bit rate of the input data.  Use 0 for variable
++                                        rate or unknown bit rates */
++    OMX_U32 nSampleRate;           /**< Sampling rate of the source data.  Use 0 for
++                                        variable or unknown sampling rate. */
++    OMX_AUDIO_CHANNELMODETYPE eChannelMode;   /**< Channel mode enumeration */
++    OMX_U32 nBitPerSample;
++} OMX_AUDIO_PARAM_APETYPE;
++typedef enum OMX_AUDIO_AC3FORMATTYPE {
++  	OMX_AUDIO_AC3FormatUnused = 0, /**< format unused or unknown */
++    OMX_AUDIO_AC3FormatAC3,
++    OMX_AUDIO_AC3FormatTRUEHD,
++    OMX_AUDIO_AC3FormatDDP,
++    OMX_AUDIO_AC3FormatKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */ 
++    OMX_AUDIO_AC3FormatVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
++    OMX_AUDIO_AC3FormatMax = 0x7FFFFFFF
++} OMX_AUDIO_AC3FORMATTYPE;
++
++/** AC3 params */
++typedef struct OMX_AUDIO_PARAM_AC3TYPE{
++    OMX_U32 nSize;                 /**< size of the structure in bytes */
++    OMX_VERSIONTYPE nVersion;      /**< OMX specification version information */
++    OMX_U32 nPortIndex;            /**< port that this structure applies to */
++    OMX_U32 nChannels;             /**< Number of channels */
++    OMX_U32 nBitRate;              /**< Bit rate of the input data.  Use 0 for variable
++                                        rate or unknown bit rates */
++    OMX_U32 nSamplingRate;           /**< Sampling rate of the source data.  Use 0 for
++                                        variable or unknown sampling rate. */
++    OMX_AUDIO_CHANNELMODETYPE eChannelMode;   /**< Channel mode enumeration */
++	OMX_AUDIO_AC3FORMATTYPE eFormat; /**< Type of AC3 format */
++} OMX_AUDIO_PARAM_AC3TYPE;
+ 
+ /** WMA Version */
+ typedef enum OMX_AUDIO_WMAFORMATTYPE {
+@@ -360,8 +437,20 @@
+     OMX_U16 nBlockAlign;      /**< is the block alignment, or block size, in bytes of the audio codec */
+     OMX_U16 nEncodeOptions;   /**< WMA Type-specific data */
+     OMX_U32 nSuperBlockAlign; /**< WMA Type-specific data */
++	OMX_U32 nWMAVersion;
++	OMX_U32 nBitPerSample;
+ } OMX_AUDIO_PARAM_WMATYPE;
+ 
++/** OPUS params */
++typedef struct OMX_AUDIO_PARAM_OPUSTYPE {
++    OMX_U32 nSize;            /**< size of the structure in bytes */
++    OMX_VERSIONTYPE nVersion; /**< OMX specification version information */
++    OMX_U32 nPortIndex;       /**< port that this structure applies to */
++    OMX_U32 nChannels;        /**< Number of channels */
++    OMX_U32 nSampleRate;      /**< Sampling rate of the source data.  Use 0 for
++                                   unknown sampling rate. */
++} OMX_AUDIO_PARAM_OPUSTYPE;
++
+ /** 
+  * RealAudio format
+  */
+diff -Naur before/omx/openmax/OMX_Component.h 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_Component.h
+--- before/omx/openmax/OMX_Component.h	2019-12-03 05:08:10.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_Component.h	2020-06-11 10:56:39.705605400 +0900
+@@ -43,6 +43,7 @@
+ 
+ #include <OMX_Audio.h>
+ #include <OMX_Video.h>
++#include <OMX_VideoExt.h>
+ #include <OMX_Image.h>
+ #include <OMX_Other.h>
+ 
+diff -Naur before/omx/openmax/OMX_CoreExt.h 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_CoreExt.h
+--- before/omx/openmax/OMX_CoreExt.h	2019-12-03 05:08:10.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_CoreExt.h	2020-06-11 10:58:02.380180300 +0900
+@@ -43,6 +43,9 @@
+ typedef enum OMX_ERROREXTTYPE 
+ {
+     OMX_ErrorInvalidMode = (OMX_S32) (OMX_ErrorKhronosExtensions + 0x00000001),
++    OMX_ErrorUnSupportedCodec,
++    OMX_ErrorUnSupportedDivxHD,
++    OMX_ErrorUnSupportedDivxPlusHD,
+     OMX_ErrorExtMax = 0x7FFFFFFF
+ } OMX_ERROREXTTYPE;
+ 
+@@ -65,6 +68,29 @@
+     OMX_BOOL bEnable;           /**< enable (OMX_TRUE) or disable (OMX_FALSE) the callback */
+ } OMX_CONFIG_CALLBACKREQUESTTYPE;
+ 
++
++/** Extension buffer flags */
++#define OMX_BUFFERFLAG_CONTINUE 0x10000000
++
++/** Enable or disable a decoding error event. */
++typedef struct OMX_CONFIG_DECODINGERRORREPORTINGTYPE{
++    OMX_U32 nSize;
++    OMX_VERSIONTYPE nVersion;
++    OMX_BOOL bEnable;          /**< enable (OMX_TRUE) or disable (OMX_FALSE) reporting */
++    OMX_BOOL bRepeat;          /**< enable (OMX_TRUE) or disable (OMX_FALSE) repeat */
++    OMX_U32 nPeriod;      	   /**< reporting period (decoding-fail count) */
++} OMX_CONFIG_DECODINGERRORREPORTINGTYPE;
++
++/** OMX_EventUserDataAvailable event specific data  */
++typedef struct OMX_EVENT_USERDATAAVAILABLE
++{
++    OMX_U32 nSize;
++    OMX_VERSIONTYPE nVersion;
++    OMX_BYTE pUserData;
++    OMX_S32 nDataLength;
++    OMX_TICKS nTimestamp;
++} OMX_EVENT_USERDATAAVAILABLE;
++
+ #ifdef __cplusplus
+ }
+ #endif /* __cplusplus */
+diff -Naur before/omx/openmax/OMX_Core.h 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_Core.h
+--- before/omx/openmax/OMX_Core.h	2019-12-03 05:08:10.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_Core.h	2020-06-11 10:57:31.383644500 +0900
+@@ -435,6 +435,8 @@
+                                      be inferred by adding the duration of the 
+                                      of the preceding buffer to the timestamp
+                                      of the preceding buffer.*/
++  OMX_U32 nClockID;
++
+   OMX_U32     nFlags;           /**< buffer specific flags */
+   OMX_U32 nOutputPortIndex;     /**< The index of the output port (if any) using 
+                                      this buffer */
+diff -Naur before/omx/openmax/OMX_IndexExt.h 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_IndexExt.h
+--- before/omx/openmax/OMX_IndexExt.h	2019-12-03 05:08:10.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_IndexExt.h	2020-06-11 11:11:27.420385500 +0900
+@@ -66,6 +66,9 @@
+     OMX_IndexParamNalStreamFormatSupported,         /**< reference: OMX_NALSTREAMFORMATTYPE */
+     OMX_IndexParamNalStreamFormat,                  /**< reference: OMX_NALSTREAMFORMATTYPE */
+     OMX_IndexParamNalStreamFormatSelect,            /**< reference: OMX_NALSTREAMFORMATTYPE */
++    OMX_IndexParamVideoVp8,                         /**< reference: OMX_VIDEO_PARAM_VP8TYPE */
++    OMX_IndexConfigVideoVp8ReferenceFrame,          /**< reference: OMX_VIDEO_VP8REFERENCEFRAMETYPE */
++    OMX_IndexConfigVideoVp8ReferenceFrameType,      /**< reference: OMX_VIDEO_VP8REFERENCEFRAMEINFOTYPE */
+ 
+     /* Image & Video common configurations */
+     OMX_IndexExtCommonStartUnused = OMX_IndexKhronosExtensions + 0x00700000,
+@@ -79,6 +82,59 @@
+     OMX_IndexExtMax = 0x7FFFFFFF
+ } OMX_INDEXEXTTYPE;
+ 
++
++/*
++	Telechips extension indices
++*/
++typedef enum OMX_INDEXTCEXTTYPE
++{
++
++    /* Component parameters and configurations */
++    OMX_IndexTcExtComponentStartUnused = OMX_IndexVendorStartUnused + 0x00100000,
++    
++    /* Port parameters and configurations */
++    OMX_IndexTcExtPortStartUnused = OMX_IndexVendorStartUnused + 0x00200000,
++
++    /* Audio parameters and configurations */
++    OMX_IndexTcExtAudioStartUnused = OMX_IndexVendorStartUnused + 0x00400000,
++	OMX_IndexTcExtAudioParamDRCComMode,
++	OMX_IndexTcExtAudioParamDRCDynScalerHigh,
++	OMX_IndexTcExtAudioParamDRCDynScalerLow,
++
++    /* Image parameters and configurations */
++    OMX_IndexTcExtImageStartUnused = OMX_IndexVendorStartUnused + 0x00500000,
++
++	/* Video parameters and configurations */
++	OMX_IndexTcExtVideoStartUnused = OMX_IndexVendorStartUnused + 0x00600000,
++	OMX_IndexParamVideoMsMpeg4Version,
++	OMX_IndexParamVideoDivxVersion,
++	OMX_IndexParamVideoStride,
++	OMX_IndexConfigMergeAvcSlice,
++	OMX_IndexConfigVideoThumbnailMode,
++	OMX_IndexConfigCurrentFrameOutput,
++	OMX_IndexConfigCurrentKeyframeOutput,
++	OMX_IndexConfigVideoPlayDirection,
++	OMX_IndexConfigVideoOutputKeyFrameOnly,
++	OMX_IndexConfigVideoSequenceInitFailMax,
++    OMX_IndexConfigVideoRingModeEnable,
++    OMX_IndexConfigVideoIFrameOnlyOutput,
++
++    /* Image & Video common configurations */
++    OMX_IndexTcExtCommonStartUnused = OMX_IndexVendorStartUnused + 0x00700000,
++
++    /* Other configurations */
++    OMX_IndexTcExtOtherStartUnused = OMX_IndexVendorStartUnused + 0x00800000,
++    OMX_IndexConfigDecodingErrorReporting,
++    OMX_IndexConfigUserDataHandling,
++    OMX_IndexConfigEventFlush,
++    OMX_IndexConfigTcProperty, // 170724.1.no-buffer-delay
++
++    /* Time configurations */
++    OMX_IndexTcExtTimeStartUnused = OMX_IndexVendorStartUnused + 0x00900000,
++
++    OMX_IndexTcExtMax = 0x7FFFFFFF
++} OMX_INDEXTCEXTTYPE;
++    
+ #ifdef __cplusplus
+ }
+ #endif /* __cplusplus */
+diff -Naur before/omx/openmax/OMX_Index.h 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_Index.h
+--- before/omx/openmax/OMX_Index.h	2019-12-03 05:08:10.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_Index.h	2020-06-11 10:58:47.882893900 +0900
+@@ -118,6 +118,13 @@
+     OMX_IndexParamAudioEvrc,                /**< reference: OMX_AUDIO_PARAM_EVRCTYPE */
+     OMX_IndexParamAudioSmv,                 /**< reference: OMX_AUDIO_PARAM_SMVTYPE */
+     OMX_IndexParamAudioVorbis,              /**< reference: OMX_AUDIO_PARAM_VORBISTYPE */
++    OMX_IndexParamAudioFlac,                /**< reference: OMX_AUDIO_PARAM_FLACTYPE */
++	OMX_IndexParamAudioMp2,                 /**< reference: OMX_AUDIO_PARAM_MP2TYPE */
++	OMX_IndexParamAudioAPE,                 /**< reference: OMX_AUDIO_PARAM_APETYPE */
++	OMX_IndexParamAudioAC3,		            /**< reference: OMX_IndexParamAudioAC3 */
++	OMX_IndexParamAudioBSAC,	            /**< reference: OMX_IndexParamAudioBSAC */
++	OMX_IndexParamAudioDTS,					/**< reference: OMX_IndexParamAudioDTS */
++	OMX_IndexParamAudioOpus,				/**< reference: OMX_IndexParamAudioOPUS */
+ 
+     OMX_IndexConfigAudioMidiImmediateEvent, /**< reference: OMX_AUDIO_CONFIG_MIDIIMMEDIATEEVENTTYPE */
+     OMX_IndexConfigAudioMidiControl,        /**< reference: OMX_AUDIO_CONFIG_MIDICONTROLTYPE */
+diff -Naur before/omx/openmax/OMX_VideoExt.h 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_VideoExt.h
+--- before/omx/openmax/OMX_VideoExt.h	2019-12-03 05:08:10.000000000 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/openmax/OMX_VideoExt.h	2020-06-11 11:11:18.495118500 +0900
+@@ -59,8 +59,144 @@
+     OMX_NALUFORMATSTYPE eNaluFormat;
+ } OMX_NALSTREAMFORMATTYPE;
+ 
++/** Enum for standard video codingtype extensions */
++typedef enum OMX_VIDEO_CODINGEXTTYPE {
++    OMX_VIDEO_ExtCodingUnused = OMX_VIDEO_CodingVendorStartUnused,
++    OMX_VIDEO_CodingVP8,        /**< VP8/WebM */
++    OMX_VIDEO_CodingMSMPEG4,    /**< Microsoft MPEG-4 */
++    OMX_VIDEO_CodingDIVX,       /**< DIVX 3, 4 */
++    OMX_VIDEO_CodingFLV1,       /**< Sorenson's H.263 */
++    OMX_VIDEO_CodingAVS,		/**< AVS */
++    OMX_VIDEO_CodingMVC,		/**< MVC */
++    OMX_VIDEO_CodingHEVC,		/**< HEVC */
++    OMX_VIDEO_CodingVP9,        /**< VP9/WebM */
++    OMX_VIDEO_CodingExtMax = 0x7FFFFFFF
++} OMX_VIDEO_CODINGEXTTYPE;
+ 
++/** VP8 profiles */
++typedef enum OMX_VIDEO_VP8PROFILETYPE {
++    OMX_VIDEO_VP8ProfileMain = 0x01,
++    OMX_VIDEO_VP8ProfileUnknown = 0x6EFFFFFF,
++    OMX_VIDEO_VP8ProfileMax = 0x7FFFFFFF
++} OMX_VIDEO_VP8PROFILETYPE;
+ 
++/** VP8 levels */
++typedef enum OMX_VIDEO_VP8LEVELTYPE {
++    OMX_VIDEO_VP8Level_Version0 = 0x01,
++    OMX_VIDEO_VP8Level_Version1 = 0x02,
++    OMX_VIDEO_VP8Level_Version2 = 0x04,
++    OMX_VIDEO_VP8Level_Version3 = 0x08,
++    OMX_VIDEO_VP8LevelUnknown = 0x6EFFFFFF,
++    OMX_VIDEO_VP8LevelMax = 0x7FFFFFFF
++} OMX_VIDEO_VP8LEVELTYPE;
++
++/** VP8 Param */
++typedef struct OMX_VIDEO_PARAM_VP8TYPE {
++    OMX_U32 nSize;
++    OMX_VERSIONTYPE nVersion;
++    OMX_U32 nPortIndex;
++    OMX_VIDEO_VP8PROFILETYPE eProfile;
++    OMX_VIDEO_VP8LEVELTYPE eLevel;
++    OMX_U32 nDCTPartitions;
++    OMX_BOOL bErrorResilientMode;
++} OMX_VIDEO_PARAM_VP8TYPE;
++
++/** Structure for configuring VP8 reference frames */
++typedef struct OMX_VIDEO_VP8REFERENCEFRAMETYPE {
++    OMX_U32 nSize;
++    OMX_VERSIONTYPE nVersion;
++    OMX_U32 nPortIndex;
++    OMX_BOOL bPreviousFrameRefresh;
++    OMX_BOOL bGoldenFrameRefresh;
++    OMX_BOOL bAlternateFrameRefresh;
++    OMX_BOOL bUsePreviousFrame;
++    OMX_BOOL bUseGoldenFrame;
++    OMX_BOOL bUseAlternateFrame;
++} OMX_VIDEO_VP8REFERENCEFRAMETYPE;
++
++/** Structure for querying VP8 reference frame type */
++typedef struct OMX_VIDEO_VP8REFERENCEFRAMEINFOTYPE {
++    OMX_U32 nSize;
++    OMX_VERSIONTYPE nVersion;
++    OMX_U32 nPortIndex;
++    OMX_BOOL bIsIntraFrame;
++    OMX_BOOL bIsGoldenOrAlternateFrame;
++} OMX_VIDEO_VP8REFERENCEFRAMEINFOTYPE;
++
++/**
++ * Telechips Defined
++ */
++typedef enum OMX_TC_COLOR_FORMATTYPE {
++    OMX_COLOR_FormatTcStartUnused = OMX_COLOR_FormatVendorStartUnused,
++    OMX_COLOR_FormatYUV420PlanarTc,
++    OMX_COLOR_FormatYUV420SemiPlanarTc,
++    OMX_COLOR_FormatYUV422PlanarTc
++} OMX_TC_COLOR_FORMATTYPE;
++
++/** WMV9 profiles */
++typedef enum OMX_VIDEO_WMV9PROFILETYPE {
++    OMX_VIDEO_WMV9ProfileSimple    = 0x01,
++    OMX_VIDEO_WMV9ProfileMain      = 0x02,
++    OMX_VIDEO_WMV9ProfileAdvanced  = 0x04,
++    OMX_VIDEO_WMV9ProfileMax       = 0x7FFFFFFF
++} OMX_VIDEO_WMVPROFILETYPE;
++
++/** WMV9 levels */
++typedef enum OMX_VIDEO_WMV9LEVELTYPE {
++    OMX_VIDEO_WMV9LevelLow      = 0x01,
++    OMX_VIDEO_WMV9LevelMedium   = 0x02,
++    OMX_VIDEO_WMV9LevelHigh     = 0x04,
++    OMX_VIDEO_WMV9LevelLevel0   = 0x08,
++    OMX_VIDEO_WMV9LevelLevel1   = 0x10,
++    OMX_VIDEO_WMV9LevelLevel2   = 0x20,
++    OMX_VIDEO_WMV9LevelLevel3   = 0x40,
++    OMX_VIDEO_WMV9LevelLevel4   = 0x80,
++    OMX_VIDEO_WMV9LevelMax      = 0x7FFFFFFF
++} OMX_VIDEO_WMVLEVELTYPE;
++
++/** Microsoft MPEG-4 */
++typedef enum OMX_VIDEO_MSMPEG4VERSIONTYPE {
++    OMX_VIDEO_MSMPEG4VersionUnused,
++    OMX_VIDEO_MSMPEG4Version1,
++    OMX_VIDEO_MSMPEG4Version2,
++    OMX_VIDEO_MSMPEG4Version3,
++    OMX_VIDEO_MSMPEG4VersionMax       = 0x7FFFFFFF
++} OMX_VIDEO_MSMPEG4VERSIONTYPE;
++
++typedef struct OMX_VIDEO_PARAM_MSMPEG4VERSIONTYPE {
++    OMX_U32 nSize;
++    OMX_VERSIONTYPE nVersion;
++    OMX_U32 nPortIndex;
++    OMX_VIDEO_MSMPEG4VERSIONTYPE eVersion;
++} OMX_VIDEO_PARAM_MSMPEG4VERSIONTYPE;
++
++/** Divx */
++typedef enum OMX_VIDEO_DIVXVERSIONTYPE {
++    OMX_VIDEO_DIVXVersionUnused,
++    OMX_VIDEO_DIVXVersion1,
++    OMX_VIDEO_DIVXVersion2,
++    OMX_VIDEO_DIVXVersion3,
++    OMX_VIDEO_DIVXVersion4,
++    OMX_VIDEO_DIVXVersion5,
++    OMX_VIDEO_DIVXVersionMax       = 0x7FFFFFFF
++} OMX_VIDEO_DIVXVERSIONTYPE;
++
++typedef struct OMX_VIDEO_PARAM_DIVXVERSIONTYPE {
++    OMX_U32 nSize;
++    OMX_VERSIONTYPE nVersion;
++    OMX_U32 nPortIndex;
++    OMX_VIDEO_DIVXVERSIONTYPE eVersion;
++} OMX_VIDEO_PARAM_DIVXVERSIONTYPE;
++
++/** Output stride */
++typedef struct OMX_VIDEO_PARAM_STRIDETYPE {
++    OMX_U32 nSize;
++    OMX_VERSIONTYPE nVersion;
++    OMX_U32 nPortIndex;
++    OMX_S32 nStride;
++    OMX_S32 nStrideY;
++    OMX_S32 nStrideCbCr;
++} OMX_VIDEO_PARAM_STRIDETYPE;
+ #ifdef __cplusplus
+ }
+ #endif /* __cplusplus */

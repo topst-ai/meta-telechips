@@ -1,0 +1,12 @@
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomx.c	2021-11-04 11:13:54.561045987 +0900
++++ gst-omx-1.16.2/omx/gstomx.c	2021-11-03 19:08:23.794290700 +0900
+@@ -3462,6 +3462,9 @@
+ #ifdef HAVE_HEVC
+   , gst_omx_h265_enc_get_type, gst_omx_h265_dec_get_type
+ #endif
++#ifdef INCLUDE_DIVX_DEC
++  , gst_omx_divx_dec_get_type
++#endif
+ };
+ 
+ struct TypeOffest

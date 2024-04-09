@@ -1,0 +1,21 @@
+diff -Naur before_0/omx/gstomxbufferpool.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxbufferpool.c
+--- before_0/omx/gstomxbufferpool.c	2021-05-18 17:08:20.038487476 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxbufferpool.c	2021-05-18 17:55:14.844092484 +0900
+@@ -522,13 +522,14 @@
+ 
+       for (i = 0; i < GST_VIDEO_INFO_N_PLANES (&pool->video_info); i++) {
+         if (info.stride[i] != stride[i] || info.offset[i] != offset[i]) {
+-          GST_DEBUG_OBJECT (pool,
++          GST_LOG_OBJECT (pool,
+               "Need to copy output frames because of stride/offset mismatch: plane %d stride %d (expected: %d) offset %"
+               G_GSIZE_FORMAT " (expected: %" G_GSIZE_FORMAT
+               ") nStride: %d nSliceHeight: %d ", i, stride[i], info.stride[i],
+               offset[i], info.offset[i], nstride, nslice);
+-
+-          need_copy = TRUE;
++          stride[i] = info.stride[i];
++          offset[i] = info.offset[i];
++          //need_copy = TRUE;
+           break;
+         }
+       }

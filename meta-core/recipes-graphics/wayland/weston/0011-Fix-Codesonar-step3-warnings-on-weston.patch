@@ -1,0 +1,64 @@
+From f333d41c3ecaa1d86321efa400ae29bfde5fc4aa Mon Sep 17 00:00:00 2001
+From: Jay Jeon <inbest@telechips.com>
+Date: Tue, 2 Feb 2021 09:18:01 +0000
+Subject: [PATCH] Fix Codesonar step3 warnings on weston
+
+Change-Id: I772d9bab3c3496a20ee074d4dc4232878516eef2
+
+diff --git a/desktop-shell/shell.c b/desktop-shell/shell.c
+index 17cea593..7c4d5a4e 100644
+--- a/desktop-shell/shell.c
++++ b/desktop-shell/shell.c
+@@ -4331,7 +4331,7 @@ weston_view_set_initial_position(struct weston_view *view,
+ 	struct weston_output *output, *target_output = NULL;
+ 	struct weston_seat *seat;
+ 	pixman_rectangle32_t area;
+-	struct shell_surface *shsurf = get_shell_surface(view->surface);
++	struct shell_surface *shsurf;
+ 	struct weston_geometry geometry;
+ 
+ 	/* As a heuristic place the new window on the same output as the
+@@ -4356,6 +4356,11 @@ weston_view_set_initial_position(struct weston_view *view,
+ 		}
+ 	}
+ 
++	if(view == NULL) {
++		weston_log("Error: invalid view");
++		return;
++	}
++
+ 	if (!target_output) {
+ 		weston_view_set_position(view, 10 + random() % 400,
+ 					 10 + random() % 400);
+@@ -4370,12 +4375,23 @@ weston_view_set_initial_position(struct weston_view *view,
+ 
+ 	x = area.x;
+ 	y = area.y;
+-	range_x = area.width - view->surface->width;
+-	range_y = area.height - view->surface->height;
+ 
+-	geometry = weston_desktop_surface_get_geometry(shsurf->desktop_surface);
+-	x = geometry.x;
+-	y = geometry.y;
++	if(view->surface == NULL) {
++		weston_log("Error: invalid surface");
++		return;
++	} else {
++		range_x = area.width - view->surface->width;
++		range_y = area.height - view->surface->height;
++	}
++
++	shsurf = get_shell_surface(view->surface);
++	if(shsurf != NULL) {
++		if(shsurf->desktop_surface != NULL) {
++			geometry = weston_desktop_surface_get_geometry(shsurf->desktop_surface);
++			x = geometry.x;
++			y = geometry.y;
++		}
++	}
+ 
+ 	weston_view_set_position(view, x, y);
+ }
+-- 
+2.24.1
+

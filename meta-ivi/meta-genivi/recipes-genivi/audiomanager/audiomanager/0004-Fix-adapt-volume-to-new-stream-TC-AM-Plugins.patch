@@ -1,0 +1,55 @@
+From a3948a35125403cc8f724cb9ebe27ca34871ef33 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=EC=9E=84=EC=98=81=ED=98=84=28Lim=20Young=20Hyun=29?=
+ <limdh3@telechips.com>
+Date: Thu, 16 Dec 2021 13:44:46 +0900
+Subject: [PATCH] [bug] Fix funtions to adapt volume to new stream
+
+---
+ .../src/RoutingSenderPULSE.cpp                     | 24 ++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+diff --git a/PluginRoutingInterfacePulse/src/RoutingSenderPULSE.cpp b/PluginRoutingInterfacePulse/src/RoutingSenderPULSE.cpp
+index de28ad0..3992a0f 100644
+--- a/PluginRoutingInterfacePulse/src/RoutingSenderPULSE.cpp
++++ b/PluginRoutingInterfacePulse/src/RoutingSenderPULSE.cpp
+@@ -762,6 +762,7 @@ void RoutingSenderPULSE::getSinkInputInfoCallback(pa_context *c, const pa_sink_i
+             logInfo("PULSE - sink details:"
+                     , " sinkIndex: ", i->sink, "sinkID: ", itersink->first);
+ 
++            m_sinkToPASink[iter->sink.sinkID] = i->sink;
+             m_sourceToPASinkInput[iter->source.sourceID] = i->index;
+ 			m_sourceToChannels[iter->source.sourceID] = i->volume.channels;
+ 
+@@ -804,6 +805,29 @@ void RoutingSenderPULSE::getSinkInputInfoCallback(pa_context *c, const pa_sink_i
+ 			    am_mainConnectionID_t mainConnectionID = 0;
+ 			    this->m_routingReceiver->hookPulseConnectionRequest(iter->source.sourceID, itersink->first, mainConnectionID, m_sourceToVolume[iter->source.sourceID]);
+ 			}
++			//check of controller already requested vol adjustment  for this source
++			bool requiresVolUpdate = false;
++			for (int j = 0; j < i->volume.channels; j++)
++			{
++				if ((i->volume.values[j]*MAX_SOURCE_VOLUME / MAX_PULSE_VOLUME) != m_sourceToVolume[iter->source.sourceID])
++				{
++					{
++						requiresVolUpdate = true;
++						logInfo("PULSE - sink registerd with vol:", (i->volume.values[j]*MAX_SOURCE_VOLUME / MAX_PULSE_VOLUME),
++								"; should be changed to:",
++								m_sourceToVolume[iter->source.sourceID]);
++						break;
++					}
++				}
++			}
++			if (requiresVolUpdate)
++			{
++				routing_sender_sink_volume(
++						this->m_paContext,
++						m_sinkToPASink[iter->sink.sinkID],
++						m_sourceToVolume[iter->source.sourceID],
++						this);
++			}
+             //TODO: check mute state was requested by controller.
+             break;
+         }
+-- 
+1.9.3
+

@@ -1,0 +1,8 @@
+[Match]
+Name=usb*
+
+[Link]
+MTUBytes=1500
+
+[Network]
+DHCP=yes

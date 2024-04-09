@@ -1,0 +1,31 @@
+From 17bb69044af8030046e85257b847eb3c0cb7adb1 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tim-Philipp=20M=C3=BCller?= <tim@centricular.com>
+Date: Sun, 23 May 2021 13:24:21 +0100
+Subject: wavparse: guard against overflow when comparing chunk sizes
+
+Could be rewritten as lsize > (size - 8) a well, but the
+extra check seems clearer. Doesn't look like it was problematic,
+lsize wasn't actually used when parsing the sub-chunks.
+
+Part-of: <https://gitlab.freedesktop.org/gstreamer/gst-plugins-good/-/merge_requests/1000>
+---
+ gst/wavparse/gstwavparse.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+(limited to 'gst/wavparse/gstwavparse.c')
+
+diff --git a/gst/wavparse/gstwavparse.c b/gst/wavparse/gstwavparse.c
+index a09720658..336bdb779 100644
+--- a/gst/wavparse/gstwavparse.c
++++ b/gst/wavparse/gstwavparse.c
+@@ -926,7 +926,7 @@ gst_wavparse_adtl_chunk (GstWavParse * wav, const guint8 * data, guint32 size)
+     ltag = GST_READ_UINT32_LE (data + offset);
+     lsize = GST_READ_UINT32_LE (data + offset + 4);
+ 
+-    if (lsize + 8 > size) {
++    if (lsize > (G_MAXUINT - 8) || lsize + 8 > size) {
+       GST_WARNING_OBJECT (wav, "Invalid adtl size: %u + 8 > %u", lsize, size);
+       return FALSE;
+     }
+-- 
+cgit v1.2.1

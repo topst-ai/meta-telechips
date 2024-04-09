@@ -1,0 +1,16 @@
+[Unit]
+Description=Android Debug Bridge
+
+[Service]
+Type=forking
+Restart=on-failure
+ExecStartPre=/usr/bin/android-gadget-setup on
+ExecStart=/sbin/start-stop-daemon -S --pidfile /var/run/adbd.pid --make-pidfile --background -x /usr/bin/adbd
+ExecStartPost=/usr/bin/android-gadget-setup device
+ExecStop=/sbin/start-stop-daemon -K -p /var/run/adbd.pid -o -x /usr/bin/adbd
+ExecStopPost=/bin/rm -f /var/run/adbd.pid
+ExecStopPost=/usr/bin/android-gadget-setup off
+StandardOutput=null
+
+[Install]
+WantedBy=basic.target

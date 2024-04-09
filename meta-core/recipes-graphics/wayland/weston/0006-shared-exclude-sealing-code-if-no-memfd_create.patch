@@ -1,0 +1,67 @@
+From fc490e9b6bacded055823b7aead0d98af14778cf Mon Sep 17 00:00:00 2001
+From: Brendan King <Brendan.King@imgtec.com>
+Date: Tue, 4 Feb 2020 09:39:37 +0000
+Subject: [PATCH 6/6] shared: exclude sealing code if no memfd_create
+
+Add HAVE_MEMFD_CREATE guards around the file sealing code in
+os-compatibility.c. The code is only required if a platform supports
+memfd_create, but may cause build failures on platforms that don't
+support it.
+---
+ shared/os-compatibility.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/shared/os-compatibility.c b/shared/os-compatibility.c
+index ddc37807..c9c79d02 100644
+--- a/shared/os-compatibility.c
++++ b/shared/os-compatibility.c
+@@ -39,7 +39,9 @@
+ 
+ #include "os-compatibility.h"
+ 
++#ifdef HAVE_MEMFD_CREATE
+ #define READONLY_SEALS (F_SEAL_SHRINK | F_SEAL_GROW | F_SEAL_WRITE)
++#endif
+ 
+ int
+ os_fd_set_cloexec(int fd)
+@@ -339,9 +341,10 @@ os_ro_anonymous_file_get_fd(struct ro_anonymous_file *file,
+ 			    enum ro_anonymous_file_mapmode mapmode)
+ {
+ 	void *src, *dst;
+-	int seals, fd;
++	int fd;
+ 
+-	seals = fcntl(file->fd, F_GET_SEALS);
++#ifdef HAVE_MEMFD_CREATE
++	int seals = fcntl(file->fd, F_GET_SEALS);
+ 
+ 	/* file was sealed for read-only and we don't have to support MAP_SHARED
+ 	 * so we can simply pass the memfd fd
+@@ -353,6 +356,7 @@ os_ro_anonymous_file_get_fd(struct ro_anonymous_file *file,
+ 	/* for all other cases we create a new anonymous file that can be mapped
+ 	 * with MAP_SHARED and copy the contents to it and return that instead
+ 	 */
++#endif
+ 	fd = os_create_anonymous_file(file->size);
+ 	if (fd == -1)
+ 		return fd;
+@@ -389,6 +393,7 @@ os_ro_anonymous_file_get_fd(struct ro_anonymous_file *file,
+ int
+ os_ro_anonymous_file_put_fd(int fd)
+ {
++#ifdef HAVE_MEMFD_CREATE
+ 	int seals = fcntl(fd, F_GET_SEALS);
+ 	if (seals == -1 && errno != EINVAL)
+ 		return -1;
+@@ -399,6 +404,7 @@ os_ro_anonymous_file_put_fd(int fd)
+ 	 * close.
+ 	 */
+ 	if (seals == -1 || !(seals & F_SEAL_WRITE))
++#endif
+ 		close(fd);
+ 
+ 	return 0;
+-- 
+2.17.1
+

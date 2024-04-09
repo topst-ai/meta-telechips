@@ -1,0 +1,15 @@
+# Copyright (c) 2012 Wind River Systems, Inc.
+# AudioManager systemd service file
+[Unit]
+Description=AudioManager
+Wants=pulseaudio.service
+After=pulseaudio.service dlt.service
+StartLimitBurst=0
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/AudioManager -T
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

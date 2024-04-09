@@ -1,0 +1,407 @@
+From 3778bb8aa96614442be992abe968dad40782f418 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=EC=9E=84=EC=98=81=ED=98=84=28Lim=20Young=20Hyun=29?=
+ <limdh3@telechips.com>
+Date: Mon, 13 Sep 2021 15:20:41 +0900
+Subject: [PATCH] 0002-Modify-TC-AM-Plugins-TCC805x.patch
+
+---
+ .../include/RoutingSenderMainloopPULSE.h           |  4 +-
+ .../include/RoutingSenderPULSE.h                   |  1 +
+ .../src/RoutingSenderMainloopPULSE.cpp             | 84 ++++++++--------------
+ .../src/RoutingSenderPULSE.cpp                     | 71 +++++++-----------
+ 4 files changed, 57 insertions(+), 103 deletions(-)
+
+diff --git a/PluginRoutingInterfacePulse/include/RoutingSenderMainloopPULSE.h b/PluginRoutingInterfacePulse/include/RoutingSenderMainloopPULSE.h
+index 4ef7887..aede25f 100644
+--- a/PluginRoutingInterfacePulse/include/RoutingSenderMainloopPULSE.h
++++ b/PluginRoutingInterfacePulse/include/RoutingSenderMainloopPULSE.h
+@@ -28,7 +28,7 @@
+ 
+ bool routing_sender_create_mainloop(void *thiz);
+ 
+-void * routing_sender_start_mainloop(void *thiz);
++void routing_sender_release_mainloop(void);
+ 
+ void routing_sender_get_sink_info_callback(
+         pa_context *c,
+@@ -81,6 +81,7 @@ bool routing_sender_sink_input_volume_ramp(
+         uint32_t sink_input_index,
+         uint32_t crt_volume,
+         uint32_t volume,
++        uint8_t channels,
+         uint16_t ramp_time,
+         void *thiz);
+ 
+@@ -88,6 +89,7 @@ bool routing_sender_sink_input_volume(
+         pa_context *c,
+         uint32_t sink_input_index,
+         uint32_t volume,
++        uint8_t channels,
+         void *thiz);
+ 
+ bool routing_sender_sink_input_mute(
+diff --git a/PluginRoutingInterfacePulse/include/RoutingSenderPULSE.h b/PluginRoutingInterfacePulse/include/RoutingSenderPULSE.h
+index 93a30bf..7445032 100644
+--- a/PluginRoutingInterfacePulse/include/RoutingSenderPULSE.h
++++ b/PluginRoutingInterfacePulse/include/RoutingSenderPULSE.h
+@@ -128,6 +128,7 @@ private:
+     std::vector<RoutingSenderPULSEConnection>       m_activeConnections;
+     std::map<uint16_t, uint16_t>                    m_sinkToVolume;
+     std::map<uint16_t, uint16_t>                    m_sourceToVolume;
++    std::map<uint16_t, uint8_t>	                    m_sourceToChannels;
+ 
+ /* As create stream or delete stream in Pulseaudio, Pulseaudio Automately connect/disconnect to AM.
+  * Application no longer need to call Connect or Disconnect that is DBus API
+diff --git a/PluginRoutingInterfacePulse/src/RoutingSenderMainloopPULSE.cpp b/PluginRoutingInterfacePulse/src/RoutingSenderMainloopPULSE.cpp
+index 7e23a55..2dc1b43 100644
+--- a/PluginRoutingInterfacePulse/src/RoutingSenderMainloopPULSE.cpp
++++ b/PluginRoutingInterfacePulse/src/RoutingSenderMainloopPULSE.cpp
+@@ -21,13 +21,11 @@
+ 
+ /* Includes */
+ 
+-#include <pthread.h>
+ #include "CAmDltWrapper.h"
+ #include "RoutingSenderPULSE.h"
+ #include "RoutingSenderMainloopPULSE.h"
+ 
+-static pthread_t        *p_thread;
+-static pa_mainloop      *main_loop;
++static pa_threaded_mainloop      *main_loop;
+ 
+ /* struct used for ramp_volume changing */
+ typedef struct ramp_volume
+@@ -53,18 +51,6 @@ DLT_IMPORT_CONTEXT(routingPulse)
+ 
+ bool routing_sender_create_mainloop(void *thiz)
+ {
+-    if (!thiz) {
+-        logError("Can not create an working thread for Pulse Audio without a Routing plugin\n");
+-        return false;
+-    }
+-    p_thread = (pthread_t *) malloc(sizeof(pthread_t));
+-    pthread_create(p_thread, NULL, routing_sender_start_mainloop, thiz);
+-    return true;
+-}
+-
+-
+-void* routing_sender_start_mainloop(void *thiz)
+-{
+     pa_mainloop_api  *mainloop_api;
+     pa_proplist      *proplist;
+     pa_context       *context;
+@@ -81,13 +67,13 @@ void* routing_sender_start_mainloop(void *thiz)
+         goto end;
+     }
+ 
+-    if (!(main_loop = pa_mainloop_new()))
++    if (!(main_loop = pa_threaded_mainloop_new()))
+     {
+         logError("Can not prepare Pulse Audio main loop: pa_mainloop_new\n");
+         goto end;
+     }
+ 
+-    if (!(mainloop_api = pa_mainloop_get_api(main_loop)))
++    if (!(mainloop_api = pa_threaded_mainloop_get_api(main_loop)))
+     {
+         logError("Can not prepare Pulse Audio main loop: pa_mainloop_get_api\n");
+         goto end;
+@@ -101,6 +87,7 @@ void* routing_sender_start_mainloop(void *thiz)
+ 
+     pa_context_set_state_callback(context, routing_sender_context_state_callback, thiz);
+ 
++
+     if (pa_context_connect(context, NULL, pa_context_flags_t(0), NULL) < 0)
+     {
+         logError("Can not prepare Pulse Audio main loop: pa_context_new_with_proplist\n");
+@@ -108,7 +95,7 @@ void* routing_sender_start_mainloop(void *thiz)
+     }
+     ((RoutingSenderPULSE *) thiz)->setPAContext(context);
+ 
+-    pa_mainloop_run(main_loop, &ret);
++    pa_threaded_mainloop_start(main_loop);
+ 
+ end:
+     if (ret == QUIT_REASON_PA_DOWN)
+@@ -130,15 +117,11 @@ end:
+ 
+         if (main_loop)
+         {
+-            //pa_signal_done();
+-            pa_signal_done();
+-            pa_mainloop_free(main_loop);
++		pa_threaded_mainloop_signal(main_loop, 0);
++			pa_threaded_mainloop_free(main_loop);
+             main_loop = NULL;
+         }
+ 
+-        //... pulse audio is down ... retry to connect
+-        usleep(100000);
+-        routing_sender_start_mainloop(thiz);
+     }
+     //TDOO: else if -check other value for "ret"
+     else
+@@ -147,6 +130,11 @@ end:
+     }
+ }
+ 
++void routing_sender_release_mainloop(void)
++{
++	pa_threaded_mainloop_stop(main_loop);
++	pa_threaded_mainloop_free(main_loop);
++}
+ 
+ void routing_sender_pa_event_callback(pa_context *c, pa_subscription_event_type_t t, uint32_t idx, void *thiz)
+ {
+@@ -273,10 +261,9 @@ void routing_sender_subscriber_callback(pa_context *c, int success, void *thiz)
+ 
+ void routing_sender_context_state_callback(pa_context *c, void *thiz)
+  {
+-
+     if (pa_context_get_state(c) == PA_CONTEXT_FAILED)
+     {
+-        pa_mainloop_quit(main_loop, QUIT_REASON_PA_DOWN);
++        pa_threaded_mainloop_signal(main_loop, 0);
+     }
+     if (pa_context_get_state(c) == PA_CONTEXT_READY)
+     {
+@@ -473,7 +460,7 @@ static void routing_sender_sink_input_volume_cb(pa_context *c, int success, void
+ 
+ }
+ 
+-bool routing_sender_sink_input_volume_ramp(pa_context *c, uint32_t sink_input_index, uint32_t crt_volume, uint32_t volume, uint16_t ramp_time, void *thiz)
++bool routing_sender_sink_input_volume_ramp(pa_context *c, uint32_t sink_input_index, uint32_t crt_volume, uint32_t volume, uint8_t channels, uint16_t ramp_time, void *thiz)
+ {
+     if (pa_context_get_state(c) == PA_CONTEXT_READY)
+     {
+@@ -487,9 +474,12 @@ bool routing_sender_sink_input_volume_ramp(pa_context *c, uint32_t sink_input_in
+             test_volume += volume > crt_volume ? 1 : -1;
+ 
+             pa_cvolume *volumeCh = (pa_cvolume *) malloc(sizeof(pa_cvolume));
+-            volumeCh->channels = 1;//TODO: check is stream is mono / stereo
+-            volumeCh->values[0] = test_volume;
+-
++			pa_cvolume_set(volumeCh, channels, (volume * MAX_PULSE_VOLUME) / 100);
++			if (main_loop == NULL)
++			{
++	        logError("main_loop is NULL\n");
++				return false;
++			}
+             pa_operation *o = pa_context_set_sink_input_volume(c, sink_input_index, volumeCh, NULL, NULL);
+             if (o)
+             {
+@@ -502,10 +492,6 @@ bool routing_sender_sink_input_volume_ramp(pa_context *c, uint32_t sink_input_in
+                 return false;
+             }
+ 
+-            volumeCh->channels = 2;//TODO: check is stream is mono / stereo
+-            volumeCh->values[0] = test_volume;
+-            volumeCh->values[1] = test_volume;
+-
+             ramp_volume * l_ramp_volume = (ramp_volume *) &iter->second;
+             logInfo("routing_sender_sink_input_volume_ramp: searching ",sink_input_index,"found ramp_vlume struct with sinkInputId ",l_ramp_volume->sink_input_index," (should be equal) ");
+             l_ramp_volume->volume_ini = (crt_volume * MAX_PULSE_VOLUME) / 100;
+@@ -530,10 +516,8 @@ bool routing_sender_sink_input_volume_ramp(pa_context *c, uint32_t sink_input_in
+         {
+             logInfo("routing_sender_sink_input_volume_ramp: didn't find struct with sinkInputId ", sink_input_index);
+             /* make-it the old traditional way */
+-            return routing_sender_sink_input_volume(c, sink_input_index, volume, thiz);
++            return routing_sender_sink_input_volume(c, sink_input_index, volume, channels, thiz);
+         }
+-
+-
+     }
+     else
+     {
+@@ -543,13 +527,17 @@ bool routing_sender_sink_input_volume_ramp(pa_context *c, uint32_t sink_input_in
+     return true;
+ }
+ 
+-bool routing_sender_sink_input_volume(pa_context *c, uint32_t sink_input_index, uint32_t volume, void *thiz)
++bool routing_sender_sink_input_volume(pa_context *c, uint32_t sink_input_index, uint32_t volume, uint8_t channels, void *thiz)
+ {
+     if (pa_context_get_state(c) == PA_CONTEXT_READY)
+     {
+         pa_cvolume *volumeCh = (pa_cvolume *) malloc(sizeof(pa_cvolume));
+-        volumeCh->channels = 1;//TODO: check is stream is mono / stereo
+-        volumeCh->values[0] = (volume * MAX_PULSE_VOLUME) / 100;
++		pa_cvolume_set(volumeCh, channels, (volume * MAX_PULSE_VOLUME) / 100);
++		if (main_loop == NULL)
++		{
++            logError("main_loop is NULL\n");
++			return false;
++		}
+ 
+         pa_operation *o = pa_context_set_sink_input_volume(c, sink_input_index, volumeCh, NULL, thiz);
+         if (o)
+@@ -562,22 +550,6 @@ bool routing_sender_sink_input_volume(pa_context *c, uint32_t sink_input_index,
+                     "pa_context_set_sink_input_volume");
+             return false;
+         }
+-
+-        volumeCh->channels = 2;//TODO: check is stream is mono / stereo
+-        volumeCh->values[0] = (volume * MAX_PULSE_VOLUME) / 100;
+-        volumeCh->values[1] = (volume * MAX_PULSE_VOLUME) / 100;
+-
+-        o = pa_context_set_sink_input_volume(c, sink_input_index, volumeCh, NULL, NULL);
+-        if (o)
+-        {
+-            pa_operation_unref(o);
+-        }
+-        else
+-        {
+-            logError("Unable to create Pulse Audio operation:",
+-                    "pa_context_set_sink_input_volume");
+-            return false;
+-        }
+     }
+     else
+     {
+diff --git a/PluginRoutingInterfacePulse/src/RoutingSenderPULSE.cpp b/PluginRoutingInterfacePulse/src/RoutingSenderPULSE.cpp
+index d8726f5..de28ad0 100644
+--- a/PluginRoutingInterfacePulse/src/RoutingSenderPULSE.cpp
++++ b/PluginRoutingInterfacePulse/src/RoutingSenderPULSE.cpp
+@@ -283,6 +283,7 @@ void RoutingSenderPULSE::setRoutingReady(uint16_t handle)
+             ,m_sources[i].name
+             , "(", m_sources[i].propertyName , ", ", m_sources[i].propertyValue, ")");
+         m_sourceToVolume[l_newSourceID] = MAX_SOURCE_VOLUME;//initially all the sources are at 100%
++        m_sourceToChannels[l_newSourceID] = 2;				//initially all the sources channels are at stereo
+     }
+ 
+     //register sinks (source outputs & sources)
+@@ -323,7 +324,7 @@ void RoutingSenderPULSE::setRoutingReady(uint16_t handle)
+ void RoutingSenderPULSE::setRoutingRundown(uint16_t handle)
+ {
+     this->m_routingReceiver->confirmRoutingRundown(handle, am::E_OK);
+-    //TODO: implement this
++    routing_sender_release_mainloop();
+ }
+ 
+ am_Error_e RoutingSenderPULSE::asyncAbort(const am_Handle_s handle)
+@@ -549,6 +550,7 @@ am_Error_e RoutingSenderPULSE::asyncSetSourceVolume(
+                     this->m_paContext,
+                     this->m_sourceToPASinkInput[sourceID],
+                     volume,
++                    this->m_sourceToChannels[sourceID],
+                     this);
+ 			this->m_sources[source_idx].source.volume = volume;
+         }
+@@ -559,6 +561,7 @@ am_Error_e RoutingSenderPULSE::asyncSetSourceVolume(
+                     this->m_sourceToPASinkInput[sourceID],
+                     crt_volume,
+                     volume,
++                    this->m_sourceToChannels[sourceID],
+                     (uint16_t)time,
+                     this);
+ 			this->m_sources[source_idx].source.volume = volume;
+@@ -720,7 +723,6 @@ am_Error_e RoutingSenderPULSE::asyncSetSourceNotificationConfiguration(const am_
+  * Private methods
+  ******************************************************************************/
+ 
+-
+ void RoutingSenderPULSE::getSinkInputInfoCallback(pa_context *c, const pa_sink_input_info *i, void *userdata)
+ {
+     if (i == NULL)
+@@ -743,7 +745,7 @@ void RoutingSenderPULSE::getSinkInputInfoCallback(pa_context *c, const pa_sink_i
+               std::string::npos != iter->propertyValue.find(property_value)) )
+         {
+             logInfo("PULSE - sink input registered:"
+-                , " sinkInputIndex:", i->index, "sourceID:", iter->source.sourceID);
++                , " sinkInputIndex:", i->index, "sourceID:", iter->source.sourceID, "channels:", i->volume.channels);
+ 
+             logInfo("PULSE - sink input details:"
+                     , " prop_val: ", property_value, " iter->prop_val: ", iter->propertyValue);
+@@ -761,6 +763,7 @@ void RoutingSenderPULSE::getSinkInputInfoCallback(pa_context *c, const pa_sink_i
+                     , " sinkIndex: ", i->sink, "sinkID: ", itersink->first);
+ 
+             m_sourceToPASinkInput[iter->source.sourceID] = i->index;
++			m_sourceToChannels[iter->source.sourceID] = i->volume.channels;
+ 
+             //iterate pending connection request
+             // -> if there is a connection pending such that sink input "i" matches source from Connect() - create the connection in pulse
+@@ -768,30 +771,30 @@ void RoutingSenderPULSE::getSinkInputInfoCallback(pa_context *c, const pa_sink_i
+             std::vector<RoutingSenderPULSEConnection>::iterator iterConnEnd = m_activeConnections.end();
+ 			if(iterConn != iterConnEnd)
+ 			{
+-		for (; iterConn < iterConnEnd; ++iterConn)
+-                {
+-                    if (iterConn->sourceID == iter->source.sourceID)
+-                    {
+-                        logInfo("PULSE - asyncConnect() - connectionID:", iterConn->connectionID,
+-                                "move sinkInputIndex:", m_sourceToPASinkInput[iterConn->sourceID], "to sinkIndex:", m_sinkToPASink[iterConn->sinkID]);
++				for (; iterConn < iterConnEnd; ++iterConn)
++				{
++					if (iterConn->sourceID == iter->source.sourceID)
++					{
++						logInfo("PULSE - asyncConnect() - connectionID:", iterConn->connectionID,
++								"move sinkInputIndex:", m_sourceToPASinkInput[iterConn->sourceID], "to sinkIndex:", m_sinkToPASink[iterConn->sinkID]);
+ 
+ 						if(m_sinkToPASink[iterConn->sinkID] != 0)
+ 						{
+-                            routing_sender_move_sink_input(
+-                                    this->m_paContext,
+-                                    m_sourceToPASinkInput[iterConn->sourceID],
+-                                    m_sinkToPASink[iterConn->sinkID],
+-                                    this);
+-
+-                            //TODO: add callback for pulse move sink input -> to send confirmation; for the moment directly send confirmation
+-                        this->m_routingReceiver->ackConnect(iterConn->handle, iterConn->connectionID, am::E_OK);
++							routing_sender_move_sink_input(
++									c,
++									m_sourceToPASinkInput[iterConn->sourceID],
++									m_sinkToPASink[iterConn->sinkID],
++									this);
++
++							//TODO: add callback for pulse move sink input -> to send confirmation; for the moment directly send confirmation
++							this->m_routingReceiver->ackConnect(iterConn->handle, iterConn->connectionID, am::E_OK);
+ 						}
+-                    }
++					}
+ 					else
+ 					{
+-			logInfo("PULSE - try connect");
+-					am_mainConnectionID_t mainConnectionID = 0;
+-					this->m_routingReceiver->hookPulseConnectionRequest(iter->source.sourceID, itersink->first, mainConnectionID);
++						logInfo("PULSE - try connect");
++						am_mainConnectionID_t mainConnectionID = 0;
++						this->m_routingReceiver->hookPulseConnectionRequest(iter->source.sourceID, itersink->first, mainConnectionID, m_sourceToVolume[iter->source.sourceID]);
+ 					}
+                 }
+ 			}
+@@ -799,32 +802,8 @@ void RoutingSenderPULSE::getSinkInputInfoCallback(pa_context *c, const pa_sink_i
+ 			{
+                 logInfo("PULSE - try connect");
+ 			    am_mainConnectionID_t mainConnectionID = 0;
+-			    this->m_routingReceiver->hookPulseConnectionRequest(iter->source.sourceID, itersink->first, mainConnectionID);
+-				//m_PASinkInputtomainConnectionID[i->index] = mainConnectionID;
++			    this->m_routingReceiver->hookPulseConnectionRequest(iter->source.sourceID, itersink->first, mainConnectionID, m_sourceToVolume[iter->source.sourceID]);
+ 			}
+-            //check of controller already requested vol adjustment  for this source
+-            bool requiresVolUpdate = false;
+-            for (int j = 0; j < i->volume.channels; j++)
+-            {
+-                if ((i->volume.values[j]*MAX_SOURCE_VOLUME / MAX_PULSE_VOLUME) != m_sourceToVolume[iter->source.sourceID])
+-                {
+-					{
+-						requiresVolUpdate = true;
+-                        logInfo("PULSE - sink registerd with vol:", (i->volume.values[j]*MAX_SOURCE_VOLUME / MAX_PULSE_VOLUME),
+-                                "; should be changed to:",
+-                                m_sourceToVolume[iter->source.sourceID]);
+-                        break;
+-					}
+-                 }
+-            }
+-            if (requiresVolUpdate)
+-            {
+-                routing_sender_sink_input_volume(
+-                        this->m_paContext,
+-                        m_sourceToPASinkInput[iter->source.sourceID],
+-                        m_sourceToVolume[iter->source.sourceID],
+-                        this);
+-            }
+             //TODO: check mute state was requested by controller.
+             break;
+         }
+-- 
+1.9.3
+

@@ -1,0 +1,15 @@
+[Unit]
+Description=Weston Wayland compositor startup
+RequiresMountsFor=/run
+After=systemd-user-sessions.service
+
+[Service]
+User=root
+EnvironmentFile=-/etc/sysconfig/weston
+ExecStartPre=/bin/mkdir -p /run/user/root
+ExecStartPre=/bin/chmod 0700 /run/user/root
+ExecStart=/usr/bin/openvt -v -e /usr/bin/weston -- $OPTARGS
+ExecStop=/usr/bin/killall -s KILL weston
+
+[Install]
+WantedBy=multi-user.target

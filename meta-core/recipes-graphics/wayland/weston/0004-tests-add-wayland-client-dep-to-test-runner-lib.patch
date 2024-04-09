@@ -1,0 +1,27 @@
+From a43f7554854a6032d1a5f06e7bb79960679457ff Mon Sep 17 00:00:00 2001
+From: Brendan King <Brendan.King@imgtec.com>
+Date: Fri, 31 Jan 2020 09:59:30 +0000
+Subject: [PATCH 4/4] tests: add wayland client dep to test runner lib
+
+The test runner library may fail to build, because it can't find
+the wayland-util header file. Fix this by adding a wayland client
+dependency to the library.
+---
+ tests/meson.build | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/tests/meson.build b/tests/meson.build
+index b9646921..60959013 100644
+--- a/tests/meson.build
++++ b/tests/meson.build
+@@ -12,6 +12,7 @@ lib_test_runner = static_library(
+ 	'test-runner',
+ 	'weston-test-runner.c',
+ 	include_directories: common_inc,
++	dependencies: dep_wayland_client,
+ 	install: false,
+ )
+ dep_test_runner = declare_dependency(link_with: lib_test_runner)
+-- 
+2.17.1
+

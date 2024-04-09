@@ -1,0 +1,34 @@
+From 63058718f2d4fc8ce875a834d2d3757885cc378e Mon Sep 17 00:00:00 2001
+From: Helena Kim <kyh@telechips.com>
+Date: Tue, 6 Oct 2020 07:21:14 +0000
+Subject: [PATCH] [fix] element:prevent media lock-up (IM962A-89)
+
+---
+ gst/gstelement.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/gst/gstelement.c b/gst/gstelement.c
+index 73de61e..63a0fd5 100644
+--- a/gst/gstelement.c
++++ b/gst/gstelement.c
+@@ -1595,7 +1595,7 @@ gst_element_send_event (GstElement * element, GstEvent * event)
+ 
+   oclass = GST_ELEMENT_GET_CLASS (element);
+ 
+-  GST_STATE_LOCK (element);
++  //GST_STATE_LOCK (element);
+   if (oclass->send_event) {
+     GST_CAT_DEBUG (GST_CAT_ELEMENT_PADS, "send %s event on element %s",
+         GST_EVENT_TYPE_NAME (event), GST_ELEMENT_NAME (element));
+@@ -1603,7 +1603,7 @@ gst_element_send_event (GstElement * element, GstEvent * event)
+   } else {
+     gst_event_unref (event);
+   }
+-  GST_STATE_UNLOCK (element);
++  //GST_STATE_UNLOCK (element);
+ 
+   return result;
+ }
+-- 
+2.13.3
+

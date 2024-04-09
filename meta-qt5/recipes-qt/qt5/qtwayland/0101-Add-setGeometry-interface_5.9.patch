@@ -1,0 +1,105 @@
+From 125d39dce4e372779a6ceb76aa4b3c042e55ec1c Mon Sep 17 00:00:00 2001
+From: Wily Taekhyun Shin <thshin@telechips.com>
+Date: Mon, 25 Jun 2018 06:59:04 +0000
+Subject: [PATCH] Add-setGeometry-interface
+
+---
+ src/3rdparty/protocol/wayland.xml     | 23 +++++++++++++++++++++++
+ src/client/qwaylandshellsurface_p.h   |  1 +
+ src/client/qwaylandwindow.cpp         |  3 +++
+ src/client/qwaylandwlshellsurface.cpp |  6 ++++++
+ src/client/qwaylandwlshellsurface_p.h |  1 +
+ 5 files changed, 34 insertions(+)
+
+diff --git a/src/3rdparty/protocol/wayland.xml b/src/3rdparty/protocol/wayland.xml
+index bb457bcf..a8c75bea 100644
+--- a/src/3rdparty/protocol/wayland.xml
++++ b/src/3rdparty/protocol/wayland.xml
+@@ -871,6 +871,29 @@
+       <arg name="flags" type="uint"/>
+     </request>
+ 
++    <request name="set_window_geometry">
++      <description summary="set the new window geometry">
++        The window geometry of a window is its "visible bounds" from the
++        user's perspective. Client-side decorations often have invisible
++        portions like drop-shadows which should be ignored for the
++        purposes of aligning, placing and constraining windows.
++
++        The default value is the full bounds of the surface, including any
++        subsurfaces. Once the window geometry of the surface is set once,
++        it is not possible to unset it, and it will remain the same until
++        set_window_geometry is called again, even if a new subsurface or
++        buffer is attached.
++
++        If responding to a configure event, the window geometry in here
++        must respect the sizing negotiations specified by the states in
++        the configure event.
++      </description>
++      <arg name="x" type="int"/>
++      <arg name="y" type="int"/>
++      <arg name="width" type="int"/>
++      <arg name="height" type="int"/>
++    </request>
++
+     <request name="set_maximized">
+       <description summary="make the surface a maximized surface">
+ 	Map the surface as a maximized surface.
+diff --git a/src/client/qwaylandshellsurface_p.h b/src/client/qwaylandshellsurface_p.h
+index 06d92ba0..f1018798 100644
+--- a/src/client/qwaylandshellsurface_p.h
++++ b/src/client/qwaylandshellsurface_p.h
+@@ -98,6 +98,7 @@ public:
+     virtual void setType(Qt::WindowType type, QWaylandWindow *transientParent) = 0;
+ 
+ protected:
++    virtual void setGeometry() {}
+     virtual void setMaximized() {}
+     virtual void setFullscreen() {}
+     virtual void setNormal() {}
+diff --git a/src/client/qwaylandwindow.cpp b/src/client/qwaylandwindow.cpp
+index ac84e12b..92af6141 100644
+--- a/src/client/qwaylandwindow.cpp
++++ b/src/client/qwaylandwindow.cpp
+@@ -335,6 +335,9 @@ void QWaylandWindow::setGeometry(const QRect &rect)
+         mSentInitialResize = true;
+     }
+     sendExposeEvent(QRect(QPoint(), geometry().size()));
++    if (mShellSurface) {
++        mShellSurface->setGeometry();
++    }
+ }
+ 
+ 
+diff --git a/src/client/qwaylandwlshellsurface.cpp b/src/client/qwaylandwlshellsurface.cpp
+index 92223f45..81b704fb 100644
+--- a/src/client/qwaylandwlshellsurface.cpp
++++ b/src/client/qwaylandwlshellsurface.cpp
+@@ -123,6 +123,12 @@ void QWaylandWlShellSurface::sendProperty(const QString &name, const QVariant &v
+         m_extendedWindow->updateGenericProperty(name, value);
+ }
+ 
++void QWaylandWlShellSurface::setGeometry()
++{
++    //printf("Qwaylandwlshellsurface setGeometry x:%d, y:%d, w:%d, h:%d\n", m_window->window()->geometry().x(), m_window->window()->geometry().y(), m_window->window()->geometry().width(), m_window->window()->geometry().height());
++    set_window_geometry(m_window->window()->geometry().x(), m_window->window()->geometry().y(), m_window->window()->geometry().width(), m_window->window()->geometry().height());
++}
++
+ void QWaylandWlShellSurface::setMaximized()
+ {
+     m_maximized = true;
+diff --git a/src/client/qwaylandwlshellsurface_p.h b/src/client/qwaylandwlshellsurface_p.h
+index 94e3417a..a3a87a02 100644
+--- a/src/client/qwaylandwlshellsurface_p.h
++++ b/src/client/qwaylandwlshellsurface_p.h
+@@ -95,6 +95,7 @@ public:
+     void setType(Qt::WindowType type, QWaylandWindow *transientParent) override;
+ 
+ private:
++    void setGeometry() Q_DECL_OVERRIDE;
+     void setMaximized() override;
+     void setFullscreen() override;
+     void setNormal() override;
+-- 
+2.13.3
+

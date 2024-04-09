@@ -1,0 +1,32 @@
+diff -Naur before/gst/isomp4/qtdemux.c 1.16.2-r0/gst-plugins-good-1.16.2/gst/isomp4/qtdemux.c
+--- before/gst/isomp4/qtdemux.c	2021-02-03 10:47:18.949489698 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/gst/isomp4/qtdemux.c	2021-02-03 11:29:54.562301738 +0900
+@@ -14632,8 +14632,8 @@
+           "systemstream", G_TYPE_BOOLEAN, FALSE, NULL);
+       break;
+     case 0x6C:                 /* MJPEG */
+-      caps =
+-          gst_caps_new_simple ("image/jpeg", "parsed", G_TYPE_BOOLEAN, TRUE,
++	  caps =
++          gst_caps_new_simple ("video/x-jpeg", "parsed", G_TYPE_BOOLEAN, TRUE,
+           NULL);
+       codec_name = "Motion-JPEG";
+       break;
+@@ -14768,7 +14768,7 @@
+     case FOURCC_jpeg:
+       _codec ("JPEG still images");
+       caps =
+-          gst_caps_new_simple ("image/jpeg", "parsed", G_TYPE_BOOLEAN, TRUE,
++          gst_caps_new_simple ("video/x-jpeg", "parsed", G_TYPE_BOOLEAN, TRUE,
+           NULL);
+       break;
+     case GST_MAKE_FOURCC ('m', 'j', 'p', 'a'):
+@@ -14777,7 +14777,7 @@
+     case GST_MAKE_FOURCC ('d', 'm', 'b', '1'):
+       _codec ("Motion-JPEG");
+       caps =
+-          gst_caps_new_simple ("image/jpeg", "parsed", G_TYPE_BOOLEAN, TRUE,
++          gst_caps_new_simple ("video/x-jpeg", "parsed", G_TYPE_BOOLEAN, TRUE,
+           NULL);
+       break;
+     case GST_MAKE_FOURCC ('m', 'j', 'p', 'b'):

@@ -1,0 +1,29 @@
+From 73b9bcb1df683d1ff8ca6e24e76a468b3090fe90 Mon Sep 17 00:00:00 2001
+From: Helena Kim <kyh@telechips.com>
+Date: Tue, 22 Feb 2022 09:40:52 +0000
+Subject: [PATCH] [fix] wavparse: check null buffer at gst_wavparse_cue_chuck()
+
+TCS : IS004A-13200 (WAV)
+---
+ gst/wavparse/gstwavparse.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/gst/wavparse/gstwavparse.c b/gst/wavparse/gstwavparse.c
+index 859ffed..8608f6d 100644
+--- a/gst/wavparse/gstwavparse.c
++++ b/gst/wavparse/gstwavparse.c
+@@ -761,6 +761,11 @@ gst_wavparse_cue_chunk (GstWavParse * wav, const guint8 * data, guint32 size)
+     return TRUE;
+   }
+ 
++  if (data == NULL) {
++    GST_WARNING_OBJECT (wav, "broken file data %p, size %d", data, size);
++    return FALSE;
++  }
++
+   ncues = GST_READ_UINT32_LE (data);
+ 
+   if (size < 4 + ncues * 24) {
+-- 
+2.13.3
+

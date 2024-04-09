@@ -1,0 +1,29 @@
+diff -Naur before/libs/gst/base/gstbaseparse.c after/libs/gst/base/gstbaseparse.c
+--- before/libs/gst/base/gstbaseparse.c	2016-07-25 19:12:31.000000000 +0900
++++ after/libs/gst/base/gstbaseparse.c	2020-03-24 09:56:44.890501548 +0900
+@@ -4931,3 +4931,12 @@
+ 
+   GST_OBJECT_UNLOCK (parse);
+ }
++
++void gst_base_parse_skip_offset(GstBaseParse *parse, gsize offset)
++{
++	g_return_if_fail(GST_IS_BASE_PARSE(parse));
++
++	gst_adapter_flush(parse->priv->adapter, offset);
++
++	parse->priv->offset += offset;
++}
+diff -Naur before/libs/gst/base/gstbaseparse.h after/libs/gst/base/gstbaseparse.h
+--- before/libs/gst/base/gstbaseparse.h	2016-03-24 20:36:30.000000000 +0900
++++ after/libs/gst/base/gstbaseparse.h	2020-03-24 09:55:52.499222400 +0900
+@@ -349,6 +349,9 @@
+                                                  GstTagList    * tags,
+                                                  GstTagMergeMode mode);
+ 
++GST_BASE_API
++void gst_base_parse_skip_offset(GstBaseParse *parse, gsize offset);
++
+ #ifdef G_DEFINE_AUTOPTR_CLEANUP_FUNC
+ G_DEFINE_AUTOPTR_CLEANUP_FUNC(GstBaseParseFrame, gst_base_parse_frame_free)
+ #endif

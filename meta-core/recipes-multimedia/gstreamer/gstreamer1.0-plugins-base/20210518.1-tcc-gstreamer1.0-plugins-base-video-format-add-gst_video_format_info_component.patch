@@ -1,0 +1,157 @@
+video-format: add gst_video_format_info_component()
+New API to find out which components are packed in a given plane.
+Will prevent us from assuming a 1-1 mapping between planes and
+components.
+
+diff --git a/gst-libs/gst/video/video-format.c b/gst-libs/gst/video/video-format.c
+index 7da1a510d..8cefee1a5 100644
+--- a/gst-libs/gst/video/video-format.c
++++ b/gst-libs/gst/video/video-format.c
+@@ -6101,3 +6101,33 @@ gst_video_format_get_palette (GstVideoFormat format, gsize * size)
+       return NULL;
+   }
+ }
++
++/**
++ * gst_video_format_info_component:
++ * @info: #GstVideoFormatInfo
++ * @plane: a plane number
++ * @components: (out): array used to store component numbers
++ *
++ * Fill @components with the number of all the components packed in plane @p
++ * for the format @info. A value of -1 in @components indicates that no more
++ * components are packed in the plane.
++ *
++ * Since: 1.18
++ */
++void
++gst_video_format_info_component (const GstVideoFormatInfo * info, guint plane,
++    gint components[GST_VIDEO_MAX_COMPONENTS])
++{
++  guint c, i = 0;
++
++  /* Reverse mapping of info->plane */
++  for (c = 0; c < GST_VIDEO_FORMAT_INFO_N_COMPONENTS (info); c++) {
++    if (GST_VIDEO_FORMAT_INFO_PLANE (info, c) == plane) {
++      components[i] = c;
++      i++;
++    }
++  }
++
++  for (c = i; c < GST_VIDEO_MAX_COMPONENTS; c++)
++    components[c] = -1;
++}
+diff --git a/gst-libs/gst/video/video-format.h b/gst-libs/gst/video/video-format.h
+index 4ab1604c8..48f0b5f81 100644
+--- a/gst-libs/gst/video/video-format.h
++++ b/gst-libs/gst/video/video-format.h
+@@ -518,6 +518,9 @@ struct _GstVideoFormatInfo {
+ #define GST_VIDEO_FORMAT_INFO_TILE_WS(info) ((info)->tile_ws)
+ #define GST_VIDEO_FORMAT_INFO_TILE_HS(info) ((info)->tile_hs)
+ 
++GST_VIDEO_API
++void gst_video_format_info_component                  (const GstVideoFormatInfo *info, guint plane, gint components[GST_VIDEO_MAX_COMPONENTS]);
++
+ /* format properties */
+ 
+ GST_VIDEO_API
+diff --git a/tests/check/libs/video.c b/tests/check/libs/video.c
+index 391f8459c..7b901a660 100644
+--- a/tests/check/libs/video.c
++++ b/tests/check/libs/video.c
+@@ -3214,6 +3214,95 @@ GST_START_TEST (test_video_color_from_to_iso)
+ 
+ GST_END_TEST;
+ 
++GST_START_TEST (test_video_format_info_plane_to_components)
++{
++  const GstVideoFormatInfo *info;
++  gint comps[GST_VIDEO_MAX_COMPONENTS];
++
++  /* RGB: 1 plane, 3 components */
++  info = gst_video_format_get_info (GST_VIDEO_FORMAT_RGB);
++
++  gst_video_format_info_component (info, 0, comps);
++  g_assert_cmpint (comps[0], ==, 0);
++  g_assert_cmpint (comps[1], ==, 1);
++  g_assert_cmpint (comps[2], ==, 2);
++  g_assert_cmpint (comps[3], ==, -1);
++
++  gst_video_format_info_component (info, 1, comps);
++  g_assert_cmpint (comps[0], ==, -1);
++  g_assert_cmpint (comps[1], ==, -1);
++  g_assert_cmpint (comps[2], ==, -1);
++  g_assert_cmpint (comps[3], ==, -1);
++
++  gst_video_format_info_component (info, 2, comps);
++  g_assert_cmpint (comps[0], ==, -1);
++  g_assert_cmpint (comps[1], ==, -1);
++  g_assert_cmpint (comps[2], ==, -1);
++  g_assert_cmpint (comps[3], ==, -1);
++
++  gst_video_format_info_component (info, 3, comps);
++  g_assert_cmpint (comps[0], ==, -1);
++  g_assert_cmpint (comps[1], ==, -1);
++  g_assert_cmpint (comps[2], ==, -1);
++  g_assert_cmpint (comps[3], ==, -1);
++
++  /* I420: 3 planes, 3 components */
++  info = gst_video_format_get_info (GST_VIDEO_FORMAT_I420);
++
++  gst_video_format_info_component (info, 0, comps);
++  g_assert_cmpint (comps[0], ==, 0);
++  g_assert_cmpint (comps[1], ==, -1);
++  g_assert_cmpint (comps[2], ==, -1);
++  g_assert_cmpint (comps[3], ==, -1);
++
++  gst_video_format_info_component (info, 1, comps);
++  g_assert_cmpint (comps[0], ==, 1);
++  g_assert_cmpint (comps[1], ==, -1);
++  g_assert_cmpint (comps[2], ==, -1);
++  g_assert_cmpint (comps[3], ==, -1);
++
++  gst_video_format_info_component (info, 2, comps);
++  g_assert_cmpint (comps[0], ==, 2);
++  g_assert_cmpint (comps[1], ==, -1);
++  g_assert_cmpint (comps[2], ==, -1);
++  g_assert_cmpint (comps[3], ==, -1);
++
++  gst_video_format_info_component (info, 3, comps);
++  g_assert_cmpint (comps[0], ==, -1);
++  g_assert_cmpint (comps[1], ==, -1);
++  g_assert_cmpint (comps[2], ==, -1);
++  g_assert_cmpint (comps[3], ==, -1);
++
++  /* NV12: 2 planes, 3 components */
++  info = gst_video_format_get_info (GST_VIDEO_FORMAT_NV12);
++
++  gst_video_format_info_component (info, 0, comps);
++  g_assert_cmpint (comps[0], ==, 0);
++  g_assert_cmpint (comps[1], ==, -1);
++  g_assert_cmpint (comps[2], ==, -1);
++  g_assert_cmpint (comps[3], ==, -1);
++
++  gst_video_format_info_component (info, 1, comps);
++  g_assert_cmpint (comps[0], ==, 1);
++  g_assert_cmpint (comps[1], ==, 2);
++  g_assert_cmpint (comps[2], ==, -1);
++  g_assert_cmpint (comps[3], ==, -1);
++
++  gst_video_format_info_component (info, 2, comps);
++  g_assert_cmpint (comps[0], ==, -1);
++  g_assert_cmpint (comps[1], ==, -1);
++  g_assert_cmpint (comps[2], ==, -1);
++  g_assert_cmpint (comps[3], ==, -1);
++
++  gst_video_format_info_component (info, 3, comps);
++  g_assert_cmpint (comps[0], ==, -1);
++  g_assert_cmpint (comps[1], ==, -1);
++  g_assert_cmpint (comps[2], ==, -1);
++  g_assert_cmpint (comps[3], ==, -1);
++}
++
++GST_END_TEST;
++
+ static Suite *
+ video_suite (void)
+ {

@@ -1,0 +1,18 @@
+diff -Naur before/gst/gstbuffer.c 1.16.2-r0/gstreamer-1.16.2/gst/gstbuffer.c
+--- before/gst/gstbuffer.c	2019-11-03 00:59:15.000000000 +0900
++++ 1.16.2-r0/gstreamer-1.16.2/gst/gstbuffer.c	2021-03-16 18:06:57.529375176 +0900
+@@ -1662,7 +1662,13 @@
+     g_return_val_if_fail (bufsize >= offset, FALSE);
+     size = bufsize - offset;
+   }
+-  g_return_val_if_fail (bufmax >= bufoffs + offset + size, FALSE);
++  //g_return_val_if_fail (bufmax >= bufoffs + offset + size, FALSE);
++  if(bufmax < bufoffs + offset + size) {
++    GST_TRACE("skip this warning: bufmax(%" G_GSSIZE_FORMAT ") >= bufoffs(%"
++      G_GSSIZE_FORMAT ") + offset(%" G_GSSIZE_FORMAT ") + size(%"
++      G_GSSIZE_FORMAT ") failed", bufmax, bufoffs, offset, size);
++    return TRUE;
++  }
+ 
+   /* no change */
+   if (offset == 0 && size == bufsize)

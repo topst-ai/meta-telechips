@@ -1,0 +1,35 @@
+From b0d92078fbf8fc9a95aa6ad2a291720b18c0a67c Mon Sep 17 00:00:00 2001
+From: Frank Binns <frank.binns@imgtec.com>
+Date: Wed, 17 Jun 2015 15:37:18 +0100
+Subject: [PATCH] Force Mesa to use the PVR driver for platform devices
+
+For platform devices, Mesa uses the DRM driver name to determine which DRI
+driver to load. This doesn't work in the multi-DRM driver model where there
+are separate DRM drivers for the display and GPU. This is because we normally
+want Mesa to deal with the display driver and the name of this won't match
+that of the DRI driver. For the time being, take the easy approach and just
+force it to use the PVR DRI driver.
+
+---
+ src/loader/loader.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/loader/loader.c b/src/loader/loader.c
+index c896fdc..168ebf1 100644
+--- a/src/loader/loader.c
++++ b/src/loader/loader.c
+@@ -476,10 +476,14 @@ loader_get_driver_for_fd(int fd)
+ #endif
+ 
+    if (!loader_get_pci_id_for_fd(fd, &vendor_id, &chip_id)) {
++#if 1
++	   return strdup("pvr");
++#else
+       driver = loader_get_kernel_driver_name(fd);
+       if (driver)
+          log_(_LOADER_INFO, "using driver %s for %d\n", driver, fd);
+       return driver;
++#endif
+    }
+ 
+    for (i = 0; i < ARRAY_SIZE(driver_map); i++) {

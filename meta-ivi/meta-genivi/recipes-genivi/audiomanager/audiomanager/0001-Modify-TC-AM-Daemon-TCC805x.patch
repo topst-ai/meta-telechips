@@ -1,0 +1,489 @@
+From fe09e4b515acfe70f76b128e8d211965de334097 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=EC=9E=84=EC=98=81=ED=98=84=28Lim=20Young=20Hyun=29?=
+ <limdh3@telechips.com>
+Date: Mon, 20 Jul 2020 13:22:40 +0000
+Subject: [PATCH] Modify-TC-AM-Daemon-TCC805x
+
+%% original patch: 0001-Modify-TC-AM-Daemon-TCC805x.patch
+---
+ .../include/CAmCommandReceiver.h              |  3 +++
+ AudioManagerDaemon/include/CAmCommandSender.h |  2 ++
+ .../include/CAmControlReceiver.h              |  1 +
+ AudioManagerDaemon/include/CAmControlSender.h |  1 +
+ .../include/CAmDatabaseHandlerMap.h           |  1 +
+ .../include/CAmDatabaseHandlerSQLite.h        |  1 +
+ .../include/CAmDatabaseObserver.h             |  2 ++
+ .../include/CAmRoutingReceiver.h              |  2 ++
+ .../include/IAmDatabaseHandler.h              |  1 +
+ AudioManagerDaemon/src/CAmCommandReceiver.cpp | 16 ++++++++++++
+ AudioManagerDaemon/src/CAmCommandSender.cpp   | 10 +++++++
+ AudioManagerDaemon/src/CAmControlReceiver.cpp |  5 ++++
+ AudioManagerDaemon/src/CAmControlSender.cpp   |  6 +++++
+ .../src/CAmDatabaseHandlerMap.cpp             | 26 ++++++++++++++++++-
+ .../src/CAmDatabaseObserver.cpp               | 10 +++++++
+ AudioManagerDaemon/src/CAmRoutingReceiver.cpp | 10 +++++++
+ AudioManagerDaemon/src/main.cpp               |  2 +-
+ include/IAmCommand.h                          | 20 +++++++++++++-
+ include/IAmControl.h                          | 13 +++++++++-
+ include/IAmRouting.h                          |  8 ++++++
+ include/audiomanagertypes.h                   |  1 +
+ 21 files changed, 137 insertions(+), 4 deletions(-)
+
+diff --git a/AudioManagerDaemon/include/CAmCommandReceiver.h b/AudioManagerDaemon/include/CAmCommandReceiver.h
+index dcf0038..7afe46e 100644
+--- a/AudioManagerDaemon/include/CAmCommandReceiver.h
++++ b/AudioManagerDaemon/include/CAmCommandReceiver.h
+@@ -46,11 +46,14 @@ public:
+     am_Error_e connect(const am_sourceID_t sourceID, const am_sinkID_t sinkID, am_mainConnectionID_t& mainConnectionID);
+     am_Error_e disconnect(const am_mainConnectionID_t mainConnectionID);
+     am_Error_e setVolume(const am_sinkID_t sinkID, const am_mainVolume_t volume);
++    am_Error_e setSourceVolume(const am_sourceID_t sourceID, const am_mainVolume_t volume);
+     am_Error_e volumeStep(const am_sinkID_t sinkID, const int16_t volumeStep);
+     am_Error_e setSinkMuteState(const am_sinkID_t sinkID, const am_MuteState_e muteState);
+     am_Error_e setMainSinkSoundProperty(const am_MainSoundProperty_s& soundProperty, const am_sinkID_t sinkID);
+     am_Error_e setMainSourceSoundProperty(const am_MainSoundProperty_s& soundProperty, const am_sourceID_t sourceID);
+     am_Error_e setSystemProperty(const am_SystemProperty_s& property);
++	am_Error_e getVolume(const am_sinkID_t sinkID, am_mainVolume_t& mainVolume) const;
++	am_Error_e getSourceVolume(const am_sourceID_t sourceID, am_mainVolume_t& mainVolume) const;
+     am_Error_e getListMainConnections(std::vector<am_MainConnectionType_s>& listConnections) const;
+     am_Error_e getListMainSinks(std::vector<am_SinkType_s>& listMainSinks) const;
+     am_Error_e getListMainSources(std::vector<am_SourceType_s>& listMainSources) const;
+diff --git a/AudioManagerDaemon/include/CAmCommandSender.h b/AudioManagerDaemon/include/CAmCommandSender.h
+index 82363de..2f329f4 100644
+--- a/AudioManagerDaemon/include/CAmCommandSender.h
++++ b/AudioManagerDaemon/include/CAmCommandSender.h
+@@ -57,11 +57,13 @@ public:
+     void cbNumberOfSinkClassesChanged();
+     void cbNumberOfSourceClassesChanged();
+     void cbMainConnectionStateChanged(const am_mainConnectionID_t connectionID, const am_ConnectionState_e connectionState);
++    void cbMainSourceChanged(const am_sourceID_t sourceID);
+     void cbMainSinkSoundPropertyChanged(const am_sinkID_t sinkID, const am_MainSoundProperty_s& soundProperty);
+     void cbMainSourceSoundPropertyChanged(const am_sourceID_t sourceID, const am_MainSoundProperty_s& soundProperty);
+     void cbSinkAvailabilityChanged(const am_sinkID_t sinkID, const am_Availability_s& availability);
+     void cbSourceAvailabilityChanged(const am_sourceID_t sourceID, const am_Availability_s& availability);
+     void cbVolumeChanged(const am_sinkID_t sinkID, const am_mainVolume_t volume);
++    void cbSourceVolumeChanged(const am_sourceID_t sourceID, const am_mainVolume_t volume);
+     void cbSinkMuteStateChanged(const am_sinkID_t sinkID, const am_MuteState_e muteState);
+     void cbSystemPropertyChanged(const am_SystemProperty_s& systemProperty);
+     void cbTimingInformationChanged(const am_mainConnectionID_t mainConnectionID, const am_timeSync_t time);
+diff --git a/AudioManagerDaemon/include/CAmControlReceiver.h b/AudioManagerDaemon/include/CAmControlReceiver.h
+index 029845c..75a0d5f 100644
+--- a/AudioManagerDaemon/include/CAmControlReceiver.h
++++ b/AudioManagerDaemon/include/CAmControlReceiver.h
+@@ -73,6 +73,7 @@ public:
+     am_Error_e changeMainConnectionRouteDB(const am_mainConnectionID_t mainconnectionID, const std::vector<am_connectionID_t>& listConnectionID);
+     am_Error_e changeMainConnectionStateDB(const am_mainConnectionID_t mainconnectionID, const am_ConnectionState_e connectionState);
+     am_Error_e changeSinkMainVolumeDB(const am_mainVolume_t mainVolume, const am_sinkID_t sinkID);
++    am_Error_e changeSourceMainVolumeDB(const am_mainVolume_t mainVolume, const am_sourceID_t sourceID);
+     am_Error_e changeSinkAvailabilityDB(const am_Availability_s& availability, const am_sinkID_t sinkID);
+     am_Error_e changDomainStateDB(const am_DomainState_e domainState, const am_domainID_t domainID);
+     am_Error_e changeSinkMuteStateDB(const am_MuteState_e muteState, const am_sinkID_t sinkID);
+diff --git a/AudioManagerDaemon/include/CAmControlSender.h b/AudioManagerDaemon/include/CAmControlSender.h
+index 026fdf1..8705f4b 100644
+--- a/AudioManagerDaemon/include/CAmControlSender.h
++++ b/AudioManagerDaemon/include/CAmControlSender.h
+@@ -53,6 +53,7 @@ public:
+     am_Error_e hookUserSetMainSourceSoundProperty(const am_sourceID_t sourceID, const am_MainSoundProperty_s& soundProperty) ;
+     am_Error_e hookUserSetSystemProperty(const am_SystemProperty_s& property) ;
+     am_Error_e hookUserVolumeChange(const am_sinkID_t SinkID, const am_mainVolume_t newVolume) ;
++    am_Error_e hookUserSourceVolumeChange(const am_sinkID_t SourceID, const am_mainVolume_t newVolume) ;
+     am_Error_e hookUserVolumeStep(const am_sinkID_t SinkID, const int16_t increment) ;
+     am_Error_e hookUserSetSinkMuteState(const am_sinkID_t sinkID, const am_MuteState_e muteState) ;
+     am_Error_e hookSystemRegisterDomain(const am_Domain_s& domainData, am_domainID_t& domainID) ;
+diff --git a/AudioManagerDaemon/include/CAmDatabaseHandlerMap.h b/AudioManagerDaemon/include/CAmDatabaseHandlerMap.h
+index e0faa38..d53d0b8 100644
+--- a/AudioManagerDaemon/include/CAmDatabaseHandlerMap.h
++++ b/AudioManagerDaemon/include/CAmDatabaseHandlerMap.h
+@@ -88,6 +88,7 @@ public:
+     am_Error_e changeMainConnectionRouteDB(const am_mainConnectionID_t mainconnectionID, const std::vector<am_connectionID_t>& listConnectionID);
+     am_Error_e changeMainConnectionStateDB(const am_mainConnectionID_t mainconnectionID, const am_ConnectionState_e connectionState);
+     am_Error_e changeSinkMainVolumeDB(const am_mainVolume_t mainVolume, const am_sinkID_t sinkID);
++    am_Error_e changeSourceMainVolumeDB(const am_mainVolume_t mainVolume, const am_sourceID_t sourceID);
+     am_Error_e changeSinkAvailabilityDB(const am_Availability_s& availability, const am_sinkID_t sinkID);
+     am_Error_e changDomainStateDB(const am_DomainState_e domainState, const am_domainID_t domainID);
+     am_Error_e changeSinkMuteStateDB(const am_MuteState_e muteState, const am_sinkID_t sinkID);
+diff --git a/AudioManagerDaemon/include/CAmDatabaseHandlerSQLite.h b/AudioManagerDaemon/include/CAmDatabaseHandlerSQLite.h
+index c9f41eb..285a9e3 100644
+--- a/AudioManagerDaemon/include/CAmDatabaseHandlerSQLite.h
++++ b/AudioManagerDaemon/include/CAmDatabaseHandlerSQLite.h
+@@ -83,6 +83,7 @@ public:
+     am_Error_e changeMainConnectionRouteDB(const am_mainConnectionID_t mainconnectionID, const std::vector<am_connectionID_t>& listConnectionID);
+     am_Error_e changeMainConnectionStateDB(const am_mainConnectionID_t mainconnectionID, const am_ConnectionState_e connectionState);
+     am_Error_e changeSinkMainVolumeDB(const am_mainVolume_t mainVolume, const am_sinkID_t sinkID);
++    am_Error_e changeSourceMainVolumeDB(const am_mainVolume_t mainVolume, const am_sourceID_t sourceID);
+     am_Error_e changeSinkAvailabilityDB(const am_Availability_s& availability, const am_sinkID_t sinkID);
+     am_Error_e changDomainStateDB(const am_DomainState_e domainState, const am_domainID_t domainID);
+     am_Error_e changeSinkMuteStateDB(const am_MuteState_e muteState, const am_sinkID_t sinkID);
+diff --git a/AudioManagerDaemon/include/CAmDatabaseObserver.h b/AudioManagerDaemon/include/CAmDatabaseObserver.h
+index 7d18be4..57137b3 100644
+--- a/AudioManagerDaemon/include/CAmDatabaseObserver.h
++++ b/AudioManagerDaemon/include/CAmDatabaseObserver.h
+@@ -62,11 +62,13 @@ public:
+     void removeConverter(const am_converterID_t converterID);
+     void removeCrossfader(const am_crossfaderID_t crossfaderID);
+     void mainConnectionStateChanged(const am_mainConnectionID_t connectionID, const am_ConnectionState_e connectionState);
++	void mainSourceChanged(const am_sourceID_t sourceID);
+     void mainSinkSoundPropertyChanged(const am_sinkID_t sinkID, const am_MainSoundProperty_s& SoundProperty);
+     void mainSourceSoundPropertyChanged(const am_sourceID_t sourceID, const am_MainSoundProperty_s& SoundProperty);
+     void sinkAvailabilityChanged(const am_sinkID_t sinkID, const am_Availability_s& availability);
+     void sourceAvailabilityChanged(const am_sourceID_t sourceID, const am_Availability_s& availability);
+     void volumeChanged(const am_sinkID_t sinkID, const am_mainVolume_t volume);
++    void sourcevolumeChanged(const am_sourceID_t sourceID, const am_mainVolume_t volume);
+     void sinkMuteStateChanged(const am_sinkID_t sinkID, const am_MuteState_e muteState);
+     void systemPropertyChanged(const am_SystemProperty_s& SystemProperty);
+     void timingInformationChanged(const am_mainConnectionID_t mainConnection, const am_timeSync_t time);
+diff --git a/AudioManagerDaemon/include/CAmRoutingReceiver.h b/AudioManagerDaemon/include/CAmRoutingReceiver.h
+index 82626c6..bb518da 100644
+--- a/AudioManagerDaemon/include/CAmRoutingReceiver.h
++++ b/AudioManagerDaemon/include/CAmRoutingReceiver.h
+@@ -79,6 +79,8 @@ public:
+     void hookSourceAvailablityStatusChange(const am_sourceID_t sourceID, const am_Availability_s& availability);
+     void hookDomainStateChange(const am_domainID_t domainID, const am_DomainState_e domainState);
+     void hookTimingInformationChanged(const am_connectionID_t connectionID, const am_timeSync_t delay);
++	void hookPulseConnectionRequest(const am_sourceID_t sourceID, const am_sinkID_t sinkID, am_mainConnectionID_t & mainConnectionID);
++	void hookPulseDisconnectionRequest(const am_mainConnectionID_t mainConnectionID);
+     void sendChangedData(const std::vector<am_EarlyData_s>& earlyData);
+     am_Error_e getDBusConnectionWrapper(CAmDbusWrapper*& dbusConnectionWrapper) const;
+     am_Error_e getSocketHandler(CAmSocketHandler*& socketHandler) const;
+diff --git a/AudioManagerDaemon/include/IAmDatabaseHandler.h b/AudioManagerDaemon/include/IAmDatabaseHandler.h
+index d1e5e03..20af543 100644
+--- a/AudioManagerDaemon/include/IAmDatabaseHandler.h
++++ b/AudioManagerDaemon/include/IAmDatabaseHandler.h
+@@ -75,6 +75,7 @@ public:
+     virtual am_Error_e changeMainConnectionRouteDB(const am_mainConnectionID_t mainconnectionID, const std::vector<am_connectionID_t>& listConnectionID) = 0;
+     virtual am_Error_e changeMainConnectionStateDB(const am_mainConnectionID_t mainconnectionID, const am_ConnectionState_e connectionState) = 0;
+     virtual am_Error_e changeSinkMainVolumeDB(const am_mainVolume_t mainVolume, const am_sinkID_t sinkID) = 0;
++    virtual am_Error_e changeSourceMainVolumeDB(const am_mainVolume_t mainVolume, const am_sourceID_t sourceID) = 0;
+     virtual am_Error_e changeSinkAvailabilityDB(const am_Availability_s& availability, const am_sinkID_t sinkID) = 0;
+     virtual am_Error_e changDomainStateDB(const am_DomainState_e domainState, const am_domainID_t domainID) = 0;
+     virtual am_Error_e changeSinkMuteStateDB(const am_MuteState_e muteState, const am_sinkID_t sinkID) = 0;
+diff --git a/AudioManagerDaemon/src/CAmCommandReceiver.cpp b/AudioManagerDaemon/src/CAmCommandReceiver.cpp
+index a6eff97..3fb0766 100644
+--- a/AudioManagerDaemon/src/CAmCommandReceiver.cpp
++++ b/AudioManagerDaemon/src/CAmCommandReceiver.cpp
+@@ -92,6 +92,12 @@ am_Error_e CAmCommandReceiver::setVolume(const am_sinkID_t sinkID, const am_main
+     return (mControlSender->hookUserVolumeChange(sinkID, volume));
+ }
+ 
++am_Error_e CAmCommandReceiver::setSourceVolume(const am_sourceID_t sourceID, const am_mainVolume_t volume)
++{
++    logInfo("CommandReceiver::setVolume got called, sourceID=", sourceID, "volume=", volume);
++    return (mControlSender->hookUserSourceVolumeChange(sourceID, volume));
++}
++
+ am_Error_e CAmCommandReceiver::volumeStep(const am_sinkID_t sinkID, const int16_t volumeStep)
+ {
+     logInfo("CommandReceiver::volumeStep got called, sinkID=", sinkID, "volumeStep=", volumeStep);
+@@ -122,6 +128,16 @@ am_Error_e CAmCommandReceiver::setSystemProperty(const am_SystemProperty_s & pro
+     return (mControlSender->hookUserSetSystemProperty(property));
+ }
+ 
++am_Error_e CAmCommandReceiver::getVolume(const am_sinkID_t sinkID, am_mainVolume_t& mainVolume) const
++{
++	    return (mDatabaseHandler->getSinkVolume(sinkID, mainVolume));
++}
++
++am_Error_e CAmCommandReceiver::getSourceVolume(const am_sourceID_t sourceID, am_mainVolume_t& mainVolume) const
++{
++	    return (mDatabaseHandler->getSourceVolume(sourceID, mainVolume));
++}
++
+ am_Error_e CAmCommandReceiver::getListMainConnections(std::vector<am_MainConnectionType_s> & listConnections) const
+ {
+     return (mDatabaseHandler->getListVisibleMainConnections(listConnections));
+diff --git a/AudioManagerDaemon/src/CAmCommandSender.cpp b/AudioManagerDaemon/src/CAmCommandSender.cpp
+index c41c01d..034a3df 100644
+--- a/AudioManagerDaemon/src/CAmCommandSender.cpp
++++ b/AudioManagerDaemon/src/CAmCommandSender.cpp
+@@ -194,6 +194,11 @@ void CAmCommandSender::cbMainConnectionStateChanged(const am_mainConnectionID_t
+     CALL_ALL_INTERFACES(cbMainConnectionStateChanged(connectionID,connectionState))
+ }
+ 
++void CAmCommandSender::cbMainSourceChanged(const am_sourceID_t sourceID)
++{
++    CALL_ALL_INTERFACES(cbMainSourceChanged(sourceID))
++}
++
+ void CAmCommandSender::cbMainSinkSoundPropertyChanged(const am_sinkID_t sinkID, const am_MainSoundProperty_s& SoundProperty)
+ {
+     CALL_ALL_INTERFACES(cbMainSinkSoundPropertyChanged(sinkID,SoundProperty))
+@@ -219,6 +224,11 @@ void CAmCommandSender::cbVolumeChanged(const am_sinkID_t sinkID, const am_mainVo
+     CALL_ALL_INTERFACES(cbVolumeChanged(sinkID,volume))
+ }
+ 
++void CAmCommandSender::cbSourceVolumeChanged(const am_sourceID_t sourceID, const am_mainVolume_t volume)
++{
++    CALL_ALL_INTERFACES(cbSourceVolumeChanged(sourceID,volume))
++}
++
+ void CAmCommandSender::cbSinkMuteStateChanged(const am_sinkID_t sinkID, const am_MuteState_e muteState)
+ {
+     CALL_ALL_INTERFACES(cbSinkMuteStateChanged(sinkID,muteState))
+diff --git a/AudioManagerDaemon/src/CAmControlReceiver.cpp b/AudioManagerDaemon/src/CAmControlReceiver.cpp
+index 56913ec..0530a53 100644
+--- a/AudioManagerDaemon/src/CAmControlReceiver.cpp
++++ b/AudioManagerDaemon/src/CAmControlReceiver.cpp
+@@ -226,6 +226,11 @@ am_Error_e CAmControlReceiver::changeSinkMainVolumeDB(const am_mainVolume_t main
+     return (mDatabaseHandler->changeSinkMainVolumeDB(mainVolume, sinkID));
+ }
+ 
++am_Error_e CAmControlReceiver::changeSourceMainVolumeDB(const am_mainVolume_t mainVolume, const am_sourceID_t sourceID)
++{
++    return (mDatabaseHandler->changeSourceMainVolumeDB(mainVolume, sourceID));
++}
++
+ am_Error_e CAmControlReceiver::changeSinkAvailabilityDB(const am_Availability_s & availability, const am_sinkID_t sinkID)
+ {
+     return (mDatabaseHandler->changeSinkAvailabilityDB(availability, sinkID));
+diff --git a/AudioManagerDaemon/src/CAmControlSender.cpp b/AudioManagerDaemon/src/CAmControlSender.cpp
+index 6b81619..5dfbbe8 100644
+--- a/AudioManagerDaemon/src/CAmControlSender.cpp
++++ b/AudioManagerDaemon/src/CAmControlSender.cpp
+@@ -135,6 +135,12 @@ am_Error_e CAmControlSender::hookUserVolumeChange(const am_sinkID_t sinkID, cons
+     return (mController->hookUserVolumeChange(sinkID, newVolume));
+ }
+ 
++am_Error_e CAmControlSender::hookUserSourceVolumeChange(const am_sourceID_t sourceID, const am_mainVolume_t newVolume)
++{
++    assert(mController);
++    return (mController->hookUserSourceVolumeChange(sourceID, newVolume));
++}
++
+ am_Error_e CAmControlSender::hookUserVolumeStep(const am_sinkID_t sinkID, const int16_t increment)
+ {
+     assert(mController);
+diff --git a/AudioManagerDaemon/src/CAmDatabaseHandlerMap.cpp b/AudioManagerDaemon/src/CAmDatabaseHandlerMap.cpp
+index 383e433..0294e46 100644
+--- a/AudioManagerDaemon/src/CAmDatabaseHandlerMap.cpp
++++ b/AudioManagerDaemon/src/CAmDatabaseHandlerMap.cpp
+@@ -577,6 +577,7 @@ am_Error_e CAmDatabaseHandlerMap::enterMainConnectionDB(const am_MainConnection_
+         mMappedData.mMainConnectionMap[nextID].getMainConnectionType(mainConnection);
+         mpDatabaseObserver->newMainConnection(mainConnection);
+         mpDatabaseObserver->mainConnectionStateChanged(connectionID, mMappedData.mMainConnectionMap[nextID].connectionState);
++		mpDatabaseObserver->mainSourceChanged(mainConnectionData.sourceID);
+     }
+ 
+     //finally, we update the delay value for the maintable
+@@ -1156,6 +1157,25 @@ am_Error_e CAmDatabaseHandlerMap::changeSinkMainVolumeDB(const am_mainVolume_t m
+     return (E_OK);
+ }
+ 
++am_Error_e CAmDatabaseHandlerMap::changeSourceMainVolumeDB(const am_mainVolume_t mainVolume, const am_sourceID_t sourceID)
++{
++    assert(sourceID!=0);
++
++    if (!existSource(sourceID))
++    {
++        return (E_NON_EXISTENT);
++    }
++
++    DB_COND_UPDATE_RIE(mMappedData.mSinkMap[sourceID].mainVolume, mainVolume);
++
++    logInfo("DatabaseHandler::changeSourceMainVolumeDB changed mainVolume of source:", sourceID, "to:", mainVolume);
++
++    if (mpDatabaseObserver)
++        mpDatabaseObserver->sourcevolumeChanged(sourceID, mainVolume);
++
++    return (E_OK);
++}
++
+ am_Error_e CAmDatabaseHandlerMap::changeSinkAvailabilityDB(const am_Availability_s & availability, const am_sinkID_t sinkID)
+ {
+     assert(sinkID!=0);
+@@ -1312,12 +1332,16 @@ am_Error_e CAmDatabaseHandlerMap::removeMainConnectionDB(const am_mainConnection
+     }
+ 
+     mMappedData.mMainConnectionMap.erase(mainConnectionID);
+-
+     logInfo("DatabaseHandler::removeMainConnectionDB removed:", mainConnectionID);
++	logInfo("DatabaseHandler::CurrentMainConnectionDB :", mMappedData.mCurrentMainConnectionID.mCurrentValue);
+     if (mpDatabaseObserver)
+     {
+         mpDatabaseObserver->mainConnectionStateChanged(mainConnectionID, CS_DISCONNECTED);
+         mpDatabaseObserver->removedMainConnection(mainConnectionID);
++		if (mMappedData.mCurrentMainConnectionID.mCurrentValue == mainConnectionID)
++		{
++			mpDatabaseObserver->mainSourceChanged(am_sourceID_t(100));
++		}
+     }
+     return (E_OK);
+ }
+diff --git a/AudioManagerDaemon/src/CAmDatabaseObserver.cpp b/AudioManagerDaemon/src/CAmDatabaseObserver.cpp
+index acac639..f1be51d 100644
+--- a/AudioManagerDaemon/src/CAmDatabaseObserver.cpp
++++ b/AudioManagerDaemon/src/CAmDatabaseObserver.cpp
+@@ -177,6 +177,11 @@ void CAmDatabaseObserver::mainConnectionStateChanged(const am_mainConnectionID_t
+     mSerializer.asyncCall<CAmCommandSender, const am_connectionID_t, const am_ConnectionState_e>(mCommandSender, &CAmCommandSender::cbMainConnectionStateChanged, connectionID, connectionState);
+ }
+ 
++void CAmDatabaseObserver::mainSourceChanged(const am_sourceID_t sourceID)
++{
++    mSerializer.asyncCall<CAmCommandSender, const am_sourceID_t>(mCommandSender, &CAmCommandSender::cbMainSourceChanged, sourceID);
++}
++
+ void CAmDatabaseObserver::mainSinkSoundPropertyChanged(const am_sinkID_t sinkID, const am_MainSoundProperty_s& SoundProperty)
+ {
+     mSerializer.asyncCall<CAmCommandSender, const am_sinkID_t, const am_MainSoundProperty_s>(mCommandSender, &CAmCommandSender::cbMainSinkSoundPropertyChanged, sinkID, SoundProperty);
+@@ -202,6 +207,11 @@ void CAmDatabaseObserver::volumeChanged(const am_sinkID_t sinkID, const am_mainV
+     mSerializer.asyncCall<CAmCommandSender, const am_sinkID_t, const am_mainVolume_t>(mCommandSender, &CAmCommandSender::cbVolumeChanged, sinkID, volume);
+ }
+ 
++void CAmDatabaseObserver::sourcevolumeChanged(const am_sourceID_t sourceID, const am_mainVolume_t volume)
++{
++    mSerializer.asyncCall<CAmCommandSender, const am_sourceID_t, const am_mainVolume_t>(mCommandSender, &CAmCommandSender::cbSourceVolumeChanged, sourceID, volume);
++}
++
+ void CAmDatabaseObserver::sinkMuteStateChanged(const am_sinkID_t sinkID, const am_MuteState_e muteState)
+ {
+     mSerializer.asyncCall<CAmCommandSender, const am_sinkID_t, const am_MuteState_e>(mCommandSender, &CAmCommandSender::cbSinkMuteStateChanged, sinkID, muteState);
+diff --git a/AudioManagerDaemon/src/CAmRoutingReceiver.cpp b/AudioManagerDaemon/src/CAmRoutingReceiver.cpp
+index 4628136..85404df 100644
+--- a/AudioManagerDaemon/src/CAmRoutingReceiver.cpp
++++ b/AudioManagerDaemon/src/CAmRoutingReceiver.cpp
+@@ -326,6 +326,16 @@ void CAmRoutingReceiver::hookTimingInformationChanged(const am_connectionID_t co
+     mpControlSender->hookSystemSingleTimingInformationChanged(connectionID,delay);
+ }
+ 
++void CAmRoutingReceiver::hookPulseConnectionRequest(const am_sourceID_t sourceID, const am_sinkID_t sinkID, am_mainConnectionID_t & mainConnectionID)
++{
++	mpControlSender->hookUserConnectionRequest(sourceID, sinkID, mainConnectionID);
++}
++
++void CAmRoutingReceiver::hookPulseDisconnectionRequest(const am_mainConnectionID_t mainConnectionID)
++{
++	mpControlSender->hookUserDisconnectionRequest(mainConnectionID);
++}
++
+ void CAmRoutingReceiver::sendChangedData(const std::vector<am_EarlyData_s> & earlyData)
+ {
+     mpControlSender->hookSystemReceiveEarlyData(earlyData);
+diff --git a/AudioManagerDaemon/src/main.cpp b/AudioManagerDaemon/src/main.cpp
+index a7f1c9f..84983a5 100755
+--- a/AudioManagerDaemon/src/main.cpp
++++ b/AudioManagerDaemon/src/main.cpp
+@@ -95,7 +95,7 @@ TCLAP::ValueArg<std::string> commandPluginDir("l","CommandPluginDir","path for l
+ TCLAP::ValueArg<std::string> databasePath ("p","databasePath","path for sqlite database (default is in memory)",false,":memory:","string");
+ TCLAP::ValueArg<unsigned int> telnetPort ("t","telnetport","The port that is used for telnet",false,DEFAULT_TELNETPORT,"int");
+ TCLAP::ValueArg<unsigned int> maxConnections ("m","maxConnections","Maximal number of connections for telnet",false,MAX_TELNETCONNECTIONS,"int");
+-TCLAP::SwitchArg dbusWrapperTypeBool ("t","dbusType","DbusType to be used by CAmDbusWrapper: if option is selected, DBUS_SYSTEM is used otherwise DBUS_SESSION",false);
++TCLAP::SwitchArg dbusWrapperTypeBool ("T","dbusType","DbusType to be used by CAmDbusWrapper: if option is selected, DBUS_SYSTEM is used otherwise DBUS_SESSION",false);
+ TCLAP::SwitchArg enableNoDLTDebug ("V","logDlt","print DLT logs to stdout",false);
+ TCLAP::SwitchArg currentSettings("i","currentSettings","print current settings and exit",false);
+ TCLAP::SwitchArg daemonizeAM("d","daemonize","daemonize Audiomanager. Better use systemd...",false);
+diff --git a/include/IAmCommand.h b/include/IAmCommand.h
+index 33f855a..fdcfea8 100644
+--- a/include/IAmCommand.h
++++ b/include/IAmCommand.h
+@@ -92,6 +92,12 @@ public:
+ 	 * @return E_OK on success, E_UNKNOWN on error and E_OUT_OF_RANGE if the value is
+ 	 * not in the given volume range.
+ 	 */
++	virtual am_Error_e setSourceVolume(const am_sourceID_t sourceID, const am_mainVolume_t volume) =0;
++	/**
++	 * This function is used to increment or decrement the current volume for a source.
++	 * @return E_OK on success, E_UNKNOWN on error and E_OUT_OF_RANGE if the value is
++	 * not in the given volume range.
++	 */
+ 	virtual am_Error_e volumeStep(const am_sinkID_t sinkID, const int16_t volumeStep) =0;
+ 	/**
+ 	 * sets the mute state of a sink
+@@ -125,6 +131,10 @@ public:
+ 	 * returns the actual list of MainConnections
+ 	 * @return E_OK on success, E_DATABASE_ERROR on error 
+ 	 */
++	virtual am_Error_e getVolume(const am_sinkID_t sinkID, am_mainVolume_t& mainVolume) const =0;
++
++	virtual am_Error_e getSourceVolume(const am_sourceID_t sourceID, am_mainVolume_t& mainVolume) const =0;
++
+ 	virtual am_Error_e getListMainConnections(std::vector<am_MainConnectionType_s>& listConnections) const =0;
+ 	/**
+ 	 * returns the actual list of Sinks
+@@ -314,7 +324,11 @@ public:
+ 	 */
+ 	virtual void cbMainConnectionStateChanged(const am_mainConnectionID_t connectionID, const am_ConnectionState_e connectionState) =0;
+ 	/**
+-	 * this callback indicates that a sinkSoundProperty has changed.
++	 * this callback indicates that a source has changed.
++	 */
++	virtual void cbMainSourceChanged(const am_sourceID_t sourceID) =0;
++	/**
++	 * this callback indicates that a sinkSoundProperty has changed.
+ 	 */
+ 	virtual void cbMainSinkSoundPropertyChanged(const am_sinkID_t sinkID, const am_MainSoundProperty_s& soundProperty) =0;
+ 	/**
+@@ -333,6 +347,10 @@ public:
+ 	 * this callback indicates a volume change on the indicated sink
+ 	 */
+ 	virtual void cbVolumeChanged(const am_sinkID_t sinkID, const am_mainVolume_t volume) =0;
++	/**
++	 * this callback indicates a volume change on the indicated source
++	 */
++	virtual void cbSourceVolumeChanged(const am_sourceID_t sourceID, const am_mainVolume_t volume) =0;
+ 	/**
+ 	 * this callback indicates a mute state change on a sink.
+ 	 */
+diff --git a/include/IAmControl.h b/include/IAmControl.h
+index a95bb05..f1f7b20 100644
+--- a/include/IAmControl.h
++++ b/include/IAmControl.h
+@@ -277,7 +277,13 @@ public:
+ 	 */
+ 	virtual am_Error_e changeSinkMainVolumeDB(const am_mainVolume_t mainVolume, const am_sinkID_t sinkID) =0;
+ 	/**
+-	 * changes the availablility of a sink
++	 * changes the sink volume of a sink
++	 * @return E_OK on success, E_DATABASE_ERROR on error, E_NON_EXISTENT if sink was
++	 * not found
++	 */
++	virtual am_Error_e changeSourceMainVolumeDB(const am_mainVolume_t mainVolume, const am_sourceID_t sourceID) =0;
++	/**
++	 * changes the availablility of a source
+ 	 * @return E_OK on success, E_DATABASE_ERROR on error, E_NON_EXISTENT if sink was
+ 	 * not found
+ 	 */
+@@ -781,6 +787,11 @@ public:
+ 	 * @return E_OK on success, E_OUT_OF_RANGE if out of range, E_UNKNOWN on error
+ 	 */
+ 	virtual am_Error_e hookUserVolumeChange(const am_sinkID_t SinkID, const am_mainVolume_t newVolume) =0;
++	/**
++	 * sets a user volume as increment
++	 * @return E_OK on success, E_OUT_OF_RANGE if out of range, E_UNKNOWN on error
++	 */
++	virtual am_Error_e hookUserSourceVolumeChange(const am_sourceID_t SourceID, const am_mainVolume_t newVolume) =0;
+ 	/**
+ 	 * sets a user volume as increment
+ 	 * @return E_OK on success, E_OUT_OF_RANGE if out of range, E_UNKNOWN on error
+diff --git a/include/IAmRouting.h b/include/IAmRouting.h
+index 14f1146..60baa5e 100644
+--- a/include/IAmRouting.h
++++ b/include/IAmRouting.h
+@@ -251,6 +251,14 @@ public:
+ 	 * is called when the timinginformation (delay) changed for a connection.
+ 	 */
+ 	virtual void hookTimingInformationChanged(const am_connectionID_t connectionID, const am_timeSync_t delay) =0;
++	/**
++	 * is called when the pulseaudio request connection.
++	 */
++	virtual void hookPulseConnectionRequest(const am_sourceID_t sourceID, const am_sinkID_t sinkID, am_mainConnectionID_t & mainConnectionID) =0;
++	/**
++	 * is called when the pulseaudio request disconnection.
++	 */
++	virtual void hookPulseDisconnectionRequest(const am_mainConnectionID_t mainConnectionID) =0;
+ 	/**
+ 	 * this function is used to send out all data that has been changed in an early
+ 	 * state.
+diff --git a/include/audiomanagertypes.h b/include/audiomanagertypes.h
+index aeb802d..6fb24e5 100755
+--- a/include/audiomanagertypes.h
++++ b/include/audiomanagertypes.h
+@@ -80,6 +80,7 @@ typedef uint16_t am_speed_t;
+  */
+ typedef int16_t am_volume_t;
+ static const am_volume_t AM_MUTE = -3000;
++static const am_volume_t AM_UNMUTE = 3000;
+ 
+ /**
+  * This is the volume presented on the command interface. It is in the duty of the
+-- 
+2.24.1
+

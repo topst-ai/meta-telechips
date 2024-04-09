@@ -1,0 +1,30 @@
+From 9e7521c0261bb17f37ca0dfb86bedf084294968f Mon Sep 17 00:00:00 2001
+From: Brendan King <Brendan.King@imgtec.com>
+Date: Mon, 3 Feb 2020 09:17:43 +0000
+Subject: [PATCH 5/5] shared: fix implicit declaration of mmap warning
+
+The sys/mman.h header file is conditionally included in
+os-compatibility.c, but used unconditionally, resulting
+in implicit declaration warnings and undeclared identifier
+errors if HAVE_MEMFD_CREATE isn't defined.
+---
+ shared/os-compatibility.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/shared/os-compatibility.c b/shared/os-compatibility.c
+index 5e1ce479..ddc37807 100644
+--- a/shared/os-compatibility.c
++++ b/shared/os-compatibility.c
+@@ -35,9 +35,7 @@
+ #include <stdlib.h>
+ #include <libweston/zalloc.h>
+ 
+-#ifdef HAVE_MEMFD_CREATE
+ #include <sys/mman.h>
+-#endif
+ 
+ #include "os-compatibility.h"
+ 
+-- 
+2.17.1
+

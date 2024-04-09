@@ -1,0 +1,25 @@
+#  This file was modified by Telechips.
+#
+#  If use different sound driver or built-in sound driver, you must modify this file to suit your environment.
+#  Because sys-devices-platform-sound\x400-sound-card0.device of is name of Telechips Sound Driver Module.
+#
+#  We used the sound driver as a module, so we modified it to start after the driver insmod.
+#  When using another sound driver or built-in sound driver,
+#  delete sys-devices-platform-sound\x400-sound-card0.device from Requires and After.
+
+[Unit]
+Description=Customized Pulseaudio Daemon by Telechips
+Requires=dbus.service
+After=dbus.service
+Before=alsa-state.service
+
+[Service]
+Type=notify
+PrivateTmp=true
+ExecStart=/usr/bin/pulseaudio --system -n -F /etc/pulse/tc_set.pa
+Restart=always
+TimeoutSec=5
+Nice=-10
+
+[Install]
+WantedBy=multi-user.target

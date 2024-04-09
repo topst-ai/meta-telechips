@@ -1,0 +1,38 @@
+From 6829e432cd3db4436860ccae32e2b799c08173bb Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=EC=9E=84=EC=98=81=ED=98=84=28Lim=20Young=20Hyun=29?=
+ <limdh3@telechips.com>
+Date: Mon, 2 Dec 2019 15:45:35 +0900
+Subject: [PATCH] Modify configs to adapt T-Sound
+
+---
+ PluginControlInterfacePulse/data/libPluginControlInterface.conf      | 2 +-
+ PluginRoutingInterfacePulse/data/libPluginRoutingInterfacePULSE.conf | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/PluginControlInterfacePulse/data/libPluginControlInterface.conf b/PluginControlInterfacePulse/data/libPluginControlInterface.conf
+index 6698184..b60e5f2 100644
+--- a/PluginControlInterfacePulse/data/libPluginControlInterface.conf
++++ b/PluginControlInterfacePulse/data/libPluginControlInterface.conf
+@@ -65,7 +65,7 @@ Primary|Main
+ Entertainment>Primary
+ Analogic>Secondary
+ Navigation>Secondary
+-Telephony>Secondary
++Telephony>Calling
+ TTS>Secondary
+ ############################################################################
+ # Mixing rule should be something like:
+diff --git a/PluginRoutingInterfacePulse/data/libPluginRoutingInterfacePULSE.conf b/PluginRoutingInterfacePulse/data/libPluginRoutingInterfacePULSE.conf
+index 53fb620..d3cce5f 100644
+--- a/PluginRoutingInterfacePulse/data/libPluginRoutingInterfacePULSE.conf
++++ b/PluginRoutingInterfacePulse/data/libPluginRoutingInterfacePULSE.conf
+@@ -52,5 +52,6 @@ Source|Source|MIC|Microphone|media.role|capture
+ ####################
+ Sink|Sink|HifiAudio|Primary|na|na
+ Sink|Sink|HifiAudio|Secondary|na|na
++Sink|Sink|HifiAudio|Calling|na|na
+ # !END
+ 
+-- 
+1.9.3
+

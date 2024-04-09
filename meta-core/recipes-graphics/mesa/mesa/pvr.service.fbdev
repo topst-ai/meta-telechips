@@ -1,0 +1,15 @@
+[Unit]
+Description=PowerVR consumer services
+Before=systemd-journald.service systemd-udev-trigger.service systemd-udevd.service sysinit.target
+DefaultDependencies=no
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/sysconfig/pvr.config
+ExecStartPre=/sbin/modprobe pvrsrvkm $PVR_SRVKM_PARAMS
+ExecStart=/sbin/modprobe dc_fbdev $PVR_DISPLAY_PARAMS
+ExecStop=/sbin/modprobe -r pvrsrvkm
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target

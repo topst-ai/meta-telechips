@@ -1,0 +1,737 @@
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstomxdivxdec.c after/omx/gstomxdivxdec.c
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomxdivxdec.c	2020-08-10 14:37:58.380385636 +0900
++++ after/omx/gstomxdivxdec.c	2020-08-10 14:15:03.625440591 +0900
+@@ -121,7 +121,7 @@
+     gst_omx_component_set_parameter (dec->dec, OMX_IndexParamVideoDivxVersion, &param);
+   }
+ 
+-  //gst_omx_video_dec_set_property_config (dec);
++  gst_omx_video_dec_set_property_config (dec);
+ 
+   return TRUE;
+ }
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstomxh263dec.c after/omx/gstomxh263dec.c
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomxh263dec.c	2019-12-03 05:08:10.000000000 +0900
++++ after/omx/gstomxh263dec.c	2020-08-10 14:15:13.560795119 +0900
+@@ -95,5 +95,7 @@
+   port_def.format.video.eCompressionFormat = OMX_VIDEO_CodingH263;
+   ret = gst_omx_port_update_port_definition (port, &port_def) == OMX_ErrorNone;
+ 
++  gst_omx_video_dec_set_property_config (dec);
++
+   return ret;
+ }
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstomxh264dec.c after/omx/gstomxh264dec.c
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomxh264dec.c	2019-12-03 05:08:10.000000000 +0900
++++ after/omx/gstomxh264dec.c	2020-08-10 14:15:20.101549991 +0900
+@@ -188,5 +188,7 @@
+       return FALSE;
+   }
+ 
++  gst_omx_video_dec_set_property_config(dec);
++
+   return TRUE;
+ }
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstomxh265dec.c after/omx/gstomxh265dec.c
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomxh265dec.c	2020-08-10 14:37:58.523386806 +0900
++++ after/omx/gstomxh265dec.c	2020-08-10 14:15:29.860649625 +0900
+@@ -199,5 +199,7 @@
+       return FALSE;
+   }
+ 
++  gst_omx_video_dec_set_property_config (dec);
++
+   return TRUE;
+ }
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstomxmjpegdec.c after/omx/gstomxmjpegdec.c
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomxmjpegdec.c	2019-12-03 05:08:10.000000000 +0900
++++ after/omx/gstomxmjpegdec.c	2020-08-10 14:15:45.327744679 +0900
+@@ -94,5 +94,20 @@
+   port_def.format.video.eCompressionFormat = OMX_VIDEO_CodingMJPEG;
+   ret = gst_omx_port_update_port_definition (port, &port_def) == OMX_ErrorNone;
+ 
++  {
++    // Output port configuration (colorspace, frame-rate)
++    OMX_VIDEO_PARAM_PORTFORMATTYPE param;
++    GST_OMX_INIT_STRUCT (&param);
++
++    param.nPortIndex = dec->dec_out_port->index;
++
++    gst_omx_component_get_parameter (dec->dec, OMX_IndexParamVideoPortFormat, &param);
++
++    param.nIndex             = 0;
++    param.eCompressionFormat = OMX_VIDEO_CodingUnused;
++    param.eColorFormat       = OMX_COLOR_FormatYUV420PlanarTc;
++
++    gst_omx_component_set_parameter (dec->dec, OMX_IndexParamVideoPortFormat, &param);
++  }
+   return ret;
+ }
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstomxmpeg2videodec.c after/omx/gstomxmpeg2videodec.c
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomxmpeg2videodec.c	2019-12-03 05:08:10.000000000 +0900
++++ after/omx/gstomxmpeg2videodec.c	2020-08-10 14:18:53.361383057 +0900
+@@ -97,5 +97,7 @@
+   port_def.format.video.eCompressionFormat = OMX_VIDEO_CodingMPEG2;
+   ret = gst_omx_port_update_port_definition (port, &port_def) == OMX_ErrorNone;
+ 
++  gst_omx_video_dec_set_property_config (dec);
++
+   return ret;
+ }
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstomxmpeg4videodec.c after/omx/gstomxmpeg4videodec.c
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomxmpeg4videodec.c	2019-12-03 05:08:10.000000000 +0900
++++ after/omx/gstomxmpeg4videodec.c	2020-08-10 14:19:00.135452008 +0900
+@@ -98,5 +98,7 @@
+   port_def.format.video.eCompressionFormat = OMX_VIDEO_CodingMPEG4;
+   ret = gst_omx_port_update_port_definition (port, &port_def) == OMX_ErrorNone;
+ 
++  gst_omx_video_dec_set_property_config (dec);
++
+   return ret;
+ }
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c after/omx/gstomxvideodec.c
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c	2020-08-10 14:37:58.592387371 +0900
++++ after/omx/gstomxvideodec.c	2020-08-10 14:37:00.720178693 +0900
+@@ -88,12 +88,60 @@
+ {
+   PROP_0,
+   PROP_INTERNAL_ENTROPY_BUFFERS,
++  PROP_THUMBNAIL_MODE,
++  PROP_USE_CURRENT_FRAME,
++  PROP_USE_CURRENT_KEYFRAME,
++  PROP_SEQ_INIT_FAIL_MAX,
++  PROP_MB_ERROR_REPORTING,
++  PROP_DECODING_ERROR_REPORTING,
++  PROP_DECODING_ERROR_REPORTING_REPEAT,
++  PROP_DECODING_ERROR_REPORTING_PERIOD,
++  PROP_USE_RING_MODE,
++  PROP_TC_VDEC_EXTFUNC, // 170724.1.no-buffer-delay
+ };
+ 
+ #define GST_OMX_VIDEO_DEC_INTERNAL_ENTROPY_BUFFERS_DEFAULT (5)
+ 
++/* properties */
++#define DEFAULT_THUMBNAIL_MODE        FALSE
++#define DEFAULT_CURRENT_FRAME_OUTPUT    FALSE
++#define DEFAULT_CURRENT_KEYFRAME_OUTPUT   FALSE
++#define DEFAULT_SEQ_INIT_FAIL_MAX     300
++#define DEFAULT_MB_ERROR_REPORTING      FALSE
++#define DEFAULT_DEC_ERROR_REPORTING     FALSE
++#define DEFAULT_DEC_ERROR_REPORT_REPEAT   FALSE
++#define DEFAULT_DEC_ERROR_REPORT_PERIOD   150
++#define DEFAULT_DEC_ENABLE_RING_MODE    FALSE
++
+ /* class initialization */
+ 
++// 170724.1.no-buffer-delay
++typedef enum {
++  GST_OMX_VDEC_NO_BUFFER_DELAY          = (1 << 2)
++} GstOmxVdecExtFuncFlags;
++
++#define C_FLAGS(v) ((guint) v)
++#define GST_TYPE_OMX_VDEC_EXTFUNC_FLAGS (gst_omx_vdec_extfunc_flags_get_type())
++GType
++gst_omx_vdec_extfunc_flags_get_type (void)
++{
++  static const GFlagsValue values[] = {
++    {C_FLAGS (GST_OMX_VDEC_NO_BUFFER_DELAY), "Enable no-bufferdelay mode", "noBufferDelay"},
++    {0, NULL, NULL}
++  };
++  static volatile GType id = 0;
++
++  if (g_once_init_enter ((gsize *) & id)) {
++    GType _id;
++
++    _id = g_flags_register_static ("OmxVdecExtFuncFlags", values);
++
++    g_once_init_leave ((gsize *) & id, _id);
++  }
++
++  return id;
++}
++
+ #define DEBUG_INIT \
+   GST_DEBUG_CATEGORY_INIT (gst_omx_video_dec_debug_category, "omxvideodec", 0, \
+       "debug category for gst-omx video decoder base class");
+@@ -110,12 +158,119 @@
+   GstOMXVideoDec *self = GST_OMX_VIDEO_DEC (object);
+ #endif
+ 
++  GstOMXVideoDec *videodec = GST_OMX_VIDEO_DEC(object);
++
+   switch (prop_id) {
+ #ifdef USE_OMX_TARGET_ZYNQ_USCALE_PLUS
+     case PROP_INTERNAL_ENTROPY_BUFFERS:
+       self->internal_entropy_buffers = g_value_get_uint (value);
+       break;
+ #endif
++    case PROP_THUMBNAIL_MODE:
++    {
++      gboolean val = g_value_get_boolean(value);
++      if(videodec->dec)
++        gst_omx_component_set_config(videodec->dec, OMX_IndexConfigVideoThumbnailMode, &val);
++      videodec->bThumbnailMode = val;
++    }
++    break;
++    case PROP_USE_CURRENT_FRAME:
++    {
++      gboolean val = g_value_get_boolean(value);
++      if(videodec->dec)
++        gst_omx_component_set_config(videodec->dec, OMX_IndexConfigCurrentFrameOutput, &val);
++      videodec->bCurrFrameOutput = val;
++    }
++    break;
++    case PROP_USE_CURRENT_KEYFRAME:
++    {
++      gboolean val = g_value_get_boolean(value);
++      if(videodec->dec)
++        gst_omx_component_set_config(videodec->dec, OMX_IndexConfigCurrentKeyframeOutput, &val);
++      videodec->bCurrKeyFrameOutput = val;
++    }
++    break;
++    case PROP_SEQ_INIT_FAIL_MAX:
++    {
++      guint32 val = g_value_get_uint(value);
++      if(videodec->dec)
++        gst_omx_component_set_config(videodec->dec, OMX_IndexConfigVideoSequenceInitFailMax, &val);
++      videodec->uiSeqInitFailMax = val;
++    }
++    break;
++    case PROP_MB_ERROR_REPORTING:
++    {
++      OMX_CONFIG_MBERRORREPORTINGTYPE config;
++      gboolean val = g_value_get_boolean(value);
++      videodec->bMbErrorReport = val;
++      config.bEnabled = videodec->bMbErrorReport;
++      if(videodec->dec)
++        gst_omx_component_set_config(videodec->dec, OMX_IndexConfigVideoMBErrorReporting, &config);
++    }
++    break;
++    case PROP_DECODING_ERROR_REPORTING:
++    {
++      OMX_CONFIG_DECODINGERRORREPORTINGTYPE config;
++      gboolean val = g_value_get_boolean(value);
++      GST_OMX_INIT_STRUCT(&config);
++      videodec->bDecErrorReport = val;
++      if(videodec->dec)
++      {
++        gst_omx_component_get_config(videodec->dec, OMX_IndexConfigDecodingErrorReporting, &config);
++        config.bEnable = videodec->bDecErrorReport;
++        config.bRepeat = videodec->bDecErrorReportRepeat;
++        config.nPeriod = videodec->uiDecErrorReportPeriod;
++        gst_omx_component_set_config(videodec->dec, OMX_IndexConfigDecodingErrorReporting, &config);
++      }
++    }
++    break;
++    case PROP_DECODING_ERROR_REPORTING_REPEAT:
++    {
++      OMX_CONFIG_DECODINGERRORREPORTINGTYPE config;
++      gboolean val = g_value_get_boolean(value);
++      GST_OMX_INIT_STRUCT(&config);
++      videodec->bDecErrorReportRepeat = val;
++      if(videodec->dec)
++      {
++        gst_omx_component_get_config(videodec->dec, OMX_IndexConfigDecodingErrorReporting, &config);
++        config.bEnable = videodec->bDecErrorReport;
++        config.bRepeat = videodec->bDecErrorReportRepeat;
++        config.nPeriod = videodec->uiDecErrorReportPeriod;
++        gst_omx_component_set_config(videodec->dec, OMX_IndexConfigDecodingErrorReporting, &config);
++      }
++    }
++    break;
++    case PROP_DECODING_ERROR_REPORTING_PERIOD:
++    {
++      OMX_CONFIG_DECODINGERRORREPORTINGTYPE config;
++      guint32 val = g_value_get_uint(value);
++      GST_OMX_INIT_STRUCT(&config);
++      videodec->uiDecErrorReportPeriod = val;
++      if(videodec->dec)
++      {
++        gst_omx_component_get_config(videodec->dec, OMX_IndexConfigDecodingErrorReporting, &config);
++        config.bEnable = videodec->bDecErrorReport;
++        config.bRepeat = videodec->bDecErrorReportRepeat;
++        config.nPeriod = videodec->uiDecErrorReportPeriod;
++        gst_omx_component_set_config(videodec->dec, OMX_IndexConfigDecodingErrorReporting, &config);
++      }
++    }
++    break;
++    case PROP_USE_RING_MODE:
++    {
++      gboolean val = g_value_get_boolean(value);
++      if(videodec->dec)
++        gst_omx_component_set_config(videodec->dec, OMX_IndexConfigVideoRingModeEnable, &val);
++      videodec->bEnableRingMode = val;
++    }
++    break;
++    case PROP_TC_VDEC_EXTFUNC: // 170724.1.no-buffer-delay
++    {
++      guint32 val = g_value_get_flags(value);
++      if(videodec->dec)
++        gst_omx_component_set_config(videodec->dec, OMX_IndexConfigTcProperty, &val);
++    }
++    break;
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+       break;
+@@ -129,6 +284,7 @@
+ #ifdef USE_OMX_TARGET_ZYNQ_USCALE_PLUS
+   GstOMXVideoDec *self = GST_OMX_VIDEO_DEC (object);
+ #endif
++  GstOMXVideoDec * videodec = GST_OMX_VIDEO_DEC(object);
+ 
+   switch (prop_id) {
+ #ifdef USE_OMX_TARGET_ZYNQ_USCALE_PLUS
+@@ -136,6 +292,123 @@
+       g_value_set_uint (value, self->internal_entropy_buffers);
+       break;
+ #endif
++    case PROP_THUMBNAIL_MODE:
++    {
++      if(videodec->dec)
++        gst_omx_component_get_config(videodec->dec, OMX_IndexConfigCurrentKeyframeOutput, &videodec->bThumbnailMode);
++
++      g_value_set_boolean(value, videodec->bThumbnailMode);
++    }
++    break;
++    case PROP_USE_CURRENT_FRAME:
++    {
++      if(videodec->dec)
++        gst_omx_component_get_config(videodec->dec, OMX_IndexConfigCurrentFrameOutput, &videodec->bCurrFrameOutput);
++
++      g_value_set_boolean(value, videodec->bCurrFrameOutput);
++    }
++    break;
++    case PROP_USE_CURRENT_KEYFRAME:
++    {
++      if(videodec->dec)
++        gst_omx_component_get_config(videodec->dec, OMX_IndexConfigCurrentKeyframeOutput, &videodec->bCurrKeyFrameOutput);
++
++      g_value_set_boolean(value, videodec->bCurrKeyFrameOutput);
++    }
++    break;
++    case PROP_SEQ_INIT_FAIL_MAX:
++    {
++      if(videodec->dec)
++        gst_omx_component_get_config(videodec->dec, OMX_IndexConfigVideoSequenceInitFailMax, &videodec->uiSeqInitFailMax);
++
++      g_value_set_uint(value, videodec->uiSeqInitFailMax);
++    }
++    break;
++    case PROP_MB_ERROR_REPORTING:
++    {
++      if(videodec->dec)
++      {
++        OMX_CONFIG_MBERRORREPORTINGTYPE config;
++
++        GST_OMX_INIT_STRUCT(&config);
++
++        gst_omx_component_get_config(videodec->dec, OMX_IndexConfigVideoMBErrorReporting, &config);
++
++        videodec->bMbErrorReport = config.bEnabled;
++      }
++      g_value_set_boolean(value, videodec->bMbErrorReport);
++    }
++    break;
++    case PROP_DECODING_ERROR_REPORTING:
++    {
++      if(videodec->dec)
++      {
++        OMX_CONFIG_DECODINGERRORREPORTINGTYPE config;
++
++        GST_OMX_INIT_STRUCT(&config);
++
++        gst_omx_component_get_config(videodec->dec, OMX_IndexConfigDecodingErrorReporting, &config);
++
++        videodec->bDecErrorReport = config.bEnable;
++        videodec->bDecErrorReportRepeat = config.bRepeat;
++        videodec->uiDecErrorReportPeriod = config.nPeriod;
++      }
++      g_value_set_boolean(value, videodec->bDecErrorReport);
++    }
++    break;
++    case PROP_DECODING_ERROR_REPORTING_REPEAT:
++    {
++      if(videodec->dec)
++      {
++        OMX_CONFIG_DECODINGERRORREPORTINGTYPE config;
++
++        GST_OMX_INIT_STRUCT(&config);
++
++        gst_omx_component_get_config(videodec->dec, OMX_IndexConfigDecodingErrorReporting, &config);
++
++        videodec->bDecErrorReport = config.bEnable;
++        videodec->bDecErrorReportRepeat = config.bRepeat;
++        videodec->uiDecErrorReportPeriod = config.nPeriod;
++      }
++      g_value_set_boolean(value, videodec->bDecErrorReportRepeat);
++    }
++    break;
++    case PROP_DECODING_ERROR_REPORTING_PERIOD:
++    {
++      if(videodec->dec)
++      {
++        OMX_CONFIG_DECODINGERRORREPORTINGTYPE config;
++
++        GST_OMX_INIT_STRUCT(&config);
++
++        gst_omx_component_get_config(videodec->dec, OMX_IndexConfigDecodingErrorReporting, &config);
++
++        videodec->bDecErrorReport = config.bEnable;
++        videodec->bDecErrorReportRepeat = config.bRepeat;
++        videodec->uiDecErrorReportPeriod = config.nPeriod;
++      }
++      g_value_set_uint(value, videodec->uiDecErrorReportPeriod);
++    }
++    break;
++    case PROP_USE_RING_MODE:
++    {
++      if(videodec->dec)
++        gst_omx_component_get_config(videodec->dec, OMX_IndexConfigVideoRingModeEnable, &videodec->bEnableRingMode);
++
++      g_value_set_boolean(value, videodec->bEnableRingMode);
++    }
++    break;
++    case PROP_TC_VDEC_EXTFUNC: // 170724.1.no-buffer-delay
++    {
++      guint32 valProperty = 0;
++      if(videodec->dec)
++      {
++        gst_omx_component_get_config(videodec->dec, OMX_IndexConfigTcProperty, &valProperty);
++      }
++
++      g_value_set_flags(value, valProperty);
++    }
++    break;
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+       break;
+@@ -190,6 +463,74 @@
+       "RGBA") "; "
+ #endif
+       GST_VIDEO_CAPS_MAKE (GST_OMX_VIDEO_SUPPORTED_FORMATS);
++
++  g_object_class_install_property(
++    gobject_class,
++    PROP_THUMBNAIL_MODE,
++    g_param_spec_boolean("thumbnail-mode", "Enable thumbnail mode", "Whether or not to use thumbnail-mode",
++      DEFAULT_THUMBNAIL_MODE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
++  g_object_class_install_property(
++    gobject_class,
++    PROP_USE_CURRENT_FRAME,
++    g_param_spec_boolean("use-current-frame", "Use currently decoded output frame as component output",
++      "Use currently decoded output frame as component output but not reordered.",
++      DEFAULT_CURRENT_FRAME_OUTPUT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
++  g_object_class_install_property(
++    gobject_class,
++    PROP_USE_CURRENT_KEYFRAME,
++    g_param_spec_boolean("use-current-keyframe", "Use currently decoded output frame as component output only if it is keyframe",
++      "Use currently decoded output frame as component output only if it is keyframe.",
++      DEFAULT_CURRENT_KEYFRAME_OUTPUT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
++  g_object_class_install_property(
++    gobject_class,
++    PROP_SEQ_INIT_FAIL_MAX,
++    g_param_spec_uint("seqinit-fail-max", "Max count of sequence header initialization failure",
++      "Max count of sequence header initialization failure.",
++      1, G_MAXUINT, DEFAULT_SEQ_INIT_FAIL_MAX, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
++  g_object_class_install_property(
++    gobject_class,
++    PROP_USE_RING_MODE,
++    g_param_spec_boolean("use-ring-mode", "Enable ring-buffer mode mode", "Whether or not to use ring-buffer mode",
++      DEFAULT_DEC_ENABLE_RING_MODE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++#if 0 // currently not supported
++  g_object_class_install_property(
++      gobject_class,
++      PROP_MB_ERROR_REPORTING,
++      g_param_spec_boolean("mb-error-report", "Enable reporting of MB error", "Whether or not to receive MB error reporting",
++        DEFAULT_MB_ERROR_REPORTING, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++#endif
++
++  g_object_class_install_property(
++      gobject_class,
++      PROP_DECODING_ERROR_REPORTING,
++      g_param_spec_boolean("dec-error-report", "Enable reporting of decoding error", "Whether or not to receive decoding error reporting",
++        DEFAULT_DEC_ERROR_REPORTING, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
++  g_object_class_install_property(
++      gobject_class,
++      PROP_DECODING_ERROR_REPORTING_REPEAT,
++      g_param_spec_boolean("dec-error-report-repeat", "Enable repetition of decoding error reporting",
++        "Max count of sequence header initialization failure.",
++        DEFAULT_DEC_ERROR_REPORT_REPEAT, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
++  g_object_class_install_property(
++      gobject_class,
++      PROP_DECODING_ERROR_REPORTING_PERIOD,
++      g_param_spec_uint("dec-error-report-period", "Period of decoding error reporting (decoding failure count)",
++        "Period of decoding error reporting (decoding failure count).",
++        1, G_MAXUINT, DEFAULT_DEC_ERROR_REPORT_PERIOD, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
++  // 170724.1.no-buffer-delay
++  g_object_class_install_property(
++      gobject_class,
++      PROP_TC_VDEC_EXTFUNC,
++      g_param_spec_flags("dec-omx-vdec-extfunc", "flags", "Flags to control VdecVpu ExtFunction",
++      GST_TYPE_OMX_VDEC_EXTFUNC_FLAGS, 0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
+ }
+ 
+ static void
+@@ -209,6 +550,17 @@
+ 
+   g_mutex_init (&self->drain_lock);
+   g_cond_init (&self->drain_cond);
++
++  self->bThumbnailMode      = DEFAULT_THUMBNAIL_MODE;
++  self->bCurrFrameOutput      = DEFAULT_CURRENT_FRAME_OUTPUT;
++  self->bCurrKeyFrameOutput     = DEFAULT_CURRENT_KEYFRAME_OUTPUT;
++  self->uiSeqInitFailMax      = DEFAULT_SEQ_INIT_FAIL_MAX;
++  self->bMbErrorReport      = DEFAULT_MB_ERROR_REPORTING;
++  self->bDecErrorReport       = DEFAULT_DEC_ERROR_REPORTING;
++  self->bDecErrorReportRepeat   = DEFAULT_DEC_ERROR_REPORT_REPEAT;
++  self->uiDecErrorReportPeriod  = DEFAULT_DEC_ERROR_REPORT_PERIOD;
++  self->bEnableRingMode       = DEFAULT_DEC_ENABLE_RING_MODE;
++
+ }
+ 
+ #ifdef USE_OMX_TARGET_ZYNQ_USCALE_PLUS
+@@ -592,7 +944,7 @@
+         dst_width[0] = GST_VIDEO_INFO_WIDTH (vinfo);
+         break;
+       case GST_VIDEO_FORMAT_I420:
+-		case GST_VIDEO_FORMAT_I420_TC:
++      case GST_VIDEO_FORMAT_I420_TC:
+         dst_width[0] = GST_VIDEO_INFO_WIDTH (vinfo);
+         src_stride[1] = nstride / 2;
+         src_size[1] = (src_stride[1] * nslice) / 2;
+@@ -604,7 +956,7 @@
+         dst_height[2] = GST_VIDEO_INFO_HEIGHT (vinfo) / 2;
+         break;
+       case GST_VIDEO_FORMAT_NV12:
+-		case GST_VIDEO_FORMAT_NV12_TC:
++      case GST_VIDEO_FORMAT_NV12_TC:
+         dst_width[0] = GST_VIDEO_INFO_WIDTH (vinfo);
+         src_stride[1] = nstride;
+         src_size[1] = src_stride[1] * nslice / 2;
+@@ -644,7 +996,7 @@
+       guint8 *dst = GST_VIDEO_FRAME_PLANE_DATA(&frame, 0);
+       src = inbuf->omx_buf->pBuffer + inbuf->omx_buf->nOffset;
+       memcpy(dst, src, inbuf->omx_buf->nFilledLen);
+-	} else {
++    } else {
+       src = inbuf->omx_buf->pBuffer + inbuf->omx_buf->nOffset;
+       for (p = 0; p < GST_VIDEO_INFO_N_PLANES (vinfo); p++) {
+         const guint8 *data;
+@@ -3339,3 +3691,42 @@
+       GST_VIDEO_DECODER_CLASS
+       (gst_omx_video_dec_parent_class)->propose_allocation (bdec, query);
+ }
++
++gboolean gst_omx_video_dec_set_property_config(GstOMXVideoDec *self)
++{
++  if(gst_omx_component_set_config(self->dec, OMX_IndexConfigCurrentKeyframeOutput, &self->bThumbnailMode) != OMX_ErrorNone)
++    return FALSE;
++
++  if(gst_omx_component_set_config(self->dec, OMX_IndexConfigCurrentFrameOutput, &self->bCurrFrameOutput) != OMX_ErrorNone)
++    return FALSE;
++
++  if(gst_omx_component_set_config(self->dec, OMX_IndexConfigCurrentKeyframeOutput, &self->bCurrKeyFrameOutput) != OMX_ErrorNone)
++    return FALSE;
++
++  if(gst_omx_component_set_config(self->dec, OMX_IndexConfigVideoSequenceInitFailMax, &self->uiSeqInitFailMax) != OMX_ErrorNone)
++    return FALSE;
++  if(gst_omx_component_set_config(self->dec, OMX_IndexConfigVideoRingModeEnable, &self->bEnableRingMode) != OMX_ErrorNone)
++    return FALSE;
++
++  OMX_CONFIG_MBERRORREPORTINGTYPE mb_error_config;
++
++  GST_OMX_INIT_STRUCT(&mb_error_config);
++
++  mb_error_config.bEnabled = self->bMbErrorReport;
++
++  if(gst_omx_component_set_config(self->dec, OMX_IndexConfigVideoMBErrorReporting, &mb_error_config) != OMX_ErrorNone)
++    return FALSE;
++
++  OMX_CONFIG_DECODINGERRORREPORTINGTYPE dec_error_config;
++
++  GST_OMX_INIT_STRUCT(&dec_error_config);
++
++  dec_error_config.bEnable = self->bDecErrorReport;
++  dec_error_config.bRepeat = self->bDecErrorReportRepeat;
++  dec_error_config.nPeriod = self->uiDecErrorReportPeriod;
++
++  if(gst_omx_component_set_config(self->dec, OMX_IndexConfigDecodingErrorReporting, &dec_error_config) != OMX_ErrorNone)
++    return FALSE;
++
++  return TRUE;
++}
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.h after/omx/gstomxvideodec.h
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.h	2020-08-10 14:37:58.524386814 +0900
++++ after/omx/gstomxvideodec.h	2020-08-10 14:22:22.246776044 +0900
+@@ -80,6 +80,16 @@
+   /* TRUE if EOS buffers shouldn't be forwarded */
+   gboolean draining; /* protected by drain_lock */
+ 
++  gboolean bThumbnailMode;
++  gboolean bCurrFrameOutput;
++  gboolean bCurrKeyFrameOutput;
++  guint uiSeqInitFailMax;
++  gboolean bMbErrorReport;
++  gboolean bDecErrorReport;
++  gboolean bDecErrorReportRepeat;
++  guint uiDecErrorReportPeriod;
++  gboolean bEnableRingMode;
++
+   GstFlowReturn downstream_flow_ret;
+   /* Initially FALSE. Switched to TRUE when all requirements
+    * are met to try setting up the decoder with OMX_UseBuffer.
+@@ -118,6 +128,8 @@
+ 
+ GType gst_omx_video_dec_get_type (void);
+ 
++gboolean gst_omx_video_dec_set_property_config(GstOMXVideoDec *self);
++
+ G_END_DECLS
+ 
+ #endif /* __GST_OMX_VIDEO_DEC_H__ */
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvp8dec.c after/omx/gstomxvp8dec.c
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvp8dec.c	2019-12-03 05:08:10.000000000 +0900
++++ after/omx/gstomxvp8dec.c	2020-08-10 14:19:07.152244677 +0900
+@@ -95,5 +95,7 @@
+       (OMX_VIDEO_CODINGTYPE) OMX_VIDEO_CodingVP8;
+   ret = gst_omx_port_update_port_definition (port, &port_def) == OMX_ErrorNone;
+ 
++  gst_omx_video_dec_set_property_config (dec);
++
+   return ret;
+ }
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvp9dec.c after/omx/gstomxvp9dec.c
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvp9dec.c	2020-08-10 14:37:58.381385644 +0900
++++ after/omx/gstomxvp9dec.c	2020-08-10 14:19:15.427684431 +0900
+@@ -116,7 +116,7 @@
+   port_def.format.video.eCompressionFormat = OMX_VIDEO_CodingVP9;
+   ret = gst_omx_port_update_port_definition (port, &port_def) == OMX_ErrorNone;
+ 
+-  //gst_omx_video_dec_set_property_config (dec);
++  gst_omx_video_dec_set_property_config (dec);
+ 
+   return ret;
+ }
+diff -Naur 1.16.2-r0/gst-omx-1.16.2/omx/gstomxwmvdec.c after/omx/gstomxwmvdec.c
+--- 1.16.2-r0/gst-omx-1.16.2/omx/gstomxwmvdec.c	2019-12-03 05:08:10.000000000 +0900
++++ after/omx/gstomxwmvdec.c	2020-08-10 14:21:38.982623485 +0900
+@@ -60,11 +60,20 @@
+   videodec_class->set_format = GST_DEBUG_FUNCPTR (gst_omx_wmv_dec_set_format);
+ 
+   videodec_class->cdata.default_sink_template_caps = "video/x-wmv, "
++#if defined(INCLUDE_WMV78_DEC) && defined(INCLUDE_WMV9_DEC)
++	  "wmvversion=(int) [1,3], "
++#elif defined(INCLUDE_WMV78_DEC)
++	  "wmvversion=(int) [1,2], "
++#elif defined(INCLUDE_WMV9_DEC)
++	  "wmvversion=(int) 3, "
++#else
++	  "wmvversion=(int) -1, "
++#endif
+       "width=(int) [1,MAX], " "height=(int) [1,MAX]";
+ 
+   gst_element_class_set_static_metadata (element_class,
+       "OpenMAX WMV Video Decoder",
+-      "Codec/Decoder/Video/Hardware",
++      "Codec/Decoder/Video/Hardware(Partial Software)",
+       "Decode WMV video streams",
+       "Sebastian Dröge <sebastian.droege@collabora.co.uk>");
+ 
+@@ -88,11 +97,89 @@
+     GstVideoCodecState * state)
+ {
+   gboolean ret;
++  gint32 wmvversion = 0;
++  gchar *szfourcc = 0;
++  const gchar *mime;
+   OMX_PARAM_PORTDEFINITIONTYPE port_def;
+ 
++  GstStructure *structure = gst_caps_get_structure(state->caps, 0);
++  gst_structure_get_int(structure,      "wmvversion", &wmvversion);
++  szfourcc = gst_structure_get_string(structure,   "format");
++
+   gst_omx_port_get_port_definition (port, &port_def);
+   port_def.format.video.eCompressionFormat = OMX_VIDEO_CodingWMV;
+   ret = gst_omx_port_update_port_definition (port, &port_def) == OMX_ErrorNone;
+ 
++  if (wmvversion)  {
++	  OMX_VIDEO_PARAM_WMVTYPE param;
++	  GST_OMX_INIT_STRUCT (&param);
++
++	  param.nPortIndex = port->index;
++
++	  switch (wmvversion) {
++	  case 1:	param.eFormat = OMX_VIDEO_WMVFormat7;		break;
++	  case 2:	param.eFormat = OMX_VIDEO_WMVFormat8;		break;
++	  case 3:	param.eFormat = OMX_VIDEO_WMVFormat9;		break;
++	  default:	param.eFormat = OMX_VIDEO_WMVFormatUnused;	break;
++	  }
++
++	  gst_omx_component_set_parameter (dec->dec, OMX_IndexParamVideoWmv, &param);
++
++	  // Profile & Level for WMV9
++	  if (wmvversion == 3)
++	  {
++		  guint32 fourcc = 0;
++		  OMX_VIDEO_PARAM_PROFILELEVELTYPE param;
++		  GST_OMX_INIT_STRUCT (&param);
++
++		  if (szfourcc) {
++			  fourcc = szfourcc[3];  fourcc <<= 8;
++			  fourcc |= szfourcc[2]; fourcc <<= 8;
++			  fourcc |= szfourcc[1]; fourcc <<= 8;
++			  fourcc |= szfourcc[0];
++		  }
++
++		  param.nPortIndex = port->index;
++
++		  switch (fourcc) {
++		  case 0x31435657:  //'WVC1'
++		  case 0x31637677:  //'wvc1'
++		  case 0x41564D57:  //'WMVA'
++		  case 0x61766D77:  //'wmva'
++		  case 0x20214356:  //'VC1 '
++		  case 0x20316376:  //'vc1 '
++			  param.eProfile = OMX_VIDEO_WMV9ProfileAdvanced;
++			  break;
++		  default:
++			  param.eProfile = OMX_VIDEO_WMV9ProfileSimple;
++			  param.eProfile = OMX_VIDEO_WMV9ProfileMain;
++			  break;
++		  }
++
++		  param.eLevel        = OMX_VIDEO_WMV9LevelMax;
++		  param.nProfileIndex = 0;
++
++		  gst_omx_component_set_parameter (dec->dec, OMX_IndexParamVideoProfileLevelCurrent, &param);
++	  }
++	  else
++	  {
++		  // Output port configuration (colorspace, frame-rate)
++		  OMX_VIDEO_PARAM_PORTFORMATTYPE param;
++		  GST_OMX_INIT_STRUCT (&param);
++
++		  param.nPortIndex = dec->dec_out_port->index;
++
++		  gst_omx_component_get_parameter (dec->dec, OMX_IndexParamVideoPortFormat, &param);
++
++		  param.nIndex             = 0;
++		  param.eCompressionFormat = OMX_VIDEO_CodingUnused;
++		  param.eColorFormat       = OMX_COLOR_FormatYUV420PlanarTc;
++
++		  gst_omx_component_set_parameter (dec->dec, OMX_IndexParamVideoPortFormat, &param);
++	  }
++  }
++
++  gst_omx_video_dec_set_property_config (dec);
++
+   return ret;
+ }

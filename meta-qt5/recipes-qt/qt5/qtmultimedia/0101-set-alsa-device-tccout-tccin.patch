@@ -1,0 +1,56 @@
+From 8e5c363a01380c0b3f1ebff2f518426724cc91b9 Mon Sep 17 00:00:00 2001
+From: Wily Taekhyun Shin <thshin@telechips.com>
+Date: Sun, 25 Sep 2016 16:43:12 +0900
+Subject: [PATCH] set alsa device tccout/tccin
+
+---
+ src/plugins/alsa/qalsaaudiodeviceinfo.cpp | 4 ++--
+ src/plugins/alsa/qalsaaudioinput.cpp      | 2 +-
+ src/plugins/alsa/qalsaaudiooutput.cpp     | 2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/plugins/alsa/qalsaaudiodeviceinfo.cpp b/src/plugins/alsa/qalsaaudiodeviceinfo.cpp
+index c7650d1..da1ddb8 100644
+--- a/src/plugins/alsa/qalsaaudiodeviceinfo.cpp
++++ b/src/plugins/alsa/qalsaaudiodeviceinfo.cpp
+@@ -150,9 +150,9 @@ bool QAlsaAudioDeviceInfo::open()
+         dev = device;
+ 
+     if(mode == QAudio::AudioOutput) {
+-        err=snd_pcm_open( &handle,dev.toLocal8Bit().constData(),SND_PCM_STREAM_PLAYBACK,0);
++        err=snd_pcm_open( &handle,"plug:tccout",SND_PCM_STREAM_PLAYBACK,0);
+     } else {
+-        err=snd_pcm_open( &handle,dev.toLocal8Bit().constData(),SND_PCM_STREAM_CAPTURE,0);
++        err=snd_pcm_open( &handle,"plug:tccin",SND_PCM_STREAM_CAPTURE,0);
+     }
+     if(err < 0) {
+         handle = 0;
+diff --git a/src/plugins/alsa/qalsaaudioinput.cpp b/src/plugins/alsa/qalsaaudioinput.cpp
+index 599e101..d6d2ba9 100644
+--- a/src/plugins/alsa/qalsaaudioinput.cpp
++++ b/src/plugins/alsa/qalsaaudioinput.cpp
+@@ -318,7 +318,7 @@ bool QAlsaAudioInput::open()
+ 
+     // Step 1: try and open the device
+     while((count < 5) && (err < 0)) {
+-        err=snd_pcm_open(&handle,dev.toLocal8Bit().constData(),SND_PCM_STREAM_CAPTURE,0);
++        err=snd_pcm_open(&handle,"plug:tccin",SND_PCM_STREAM_CAPTURE,0);
+         if(err < 0)
+             count++;
+     }
+diff --git a/src/plugins/alsa/qalsaaudiooutput.cpp b/src/plugins/alsa/qalsaaudiooutput.cpp
+index 5793713..3024179 100644
+--- a/src/plugins/alsa/qalsaaudiooutput.cpp
++++ b/src/plugins/alsa/qalsaaudiooutput.cpp
+@@ -322,7 +322,7 @@ bool QAlsaAudioOutput::open()
+ 
+     // Step 1: try and open the device
+     while((count < 5) && (err < 0)) {
+-        err=snd_pcm_open(&handle,dev.toLocal8Bit().constData(),SND_PCM_STREAM_PLAYBACK,0);
++        err=snd_pcm_open(&handle,"plug:tccout",SND_PCM_STREAM_PLAYBACK,0);
+         if(err < 0)
+             count++;
+     }
+-- 
+1.7.11.7
+

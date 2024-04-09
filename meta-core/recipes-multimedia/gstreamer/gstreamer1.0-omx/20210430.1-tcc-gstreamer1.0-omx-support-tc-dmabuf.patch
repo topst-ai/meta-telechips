@@ -1,0 +1,1155 @@
+diff -Naur before/omx/gstomx.h after/omx/gstomx.h
+--- before/omx/gstomx.h	2019-12-03 05:08:20.000000000 +0900
++++ after/omx/gstomx.h	2020-10-05 13:55:58.909145569 +0900
+@@ -487,6 +487,8 @@
+ void              gst_omx_buffer_set_omx_buf (GstBuffer * buffer, GstOMXBuffer * omx_buf);
+ GstOMXBuffer *    gst_omx_buffer_get_omx_buf (GstBuffer * buffer);
+ 
++OMX_ERRORTYPE gst_omx_component_buf_clear(GstOMXComponent *comp,unsigned int buf_index);
++
+ /* refered by plugin_init */
+ GST_DEBUG_CATEGORY_EXTERN (gst_omx_video_debug_category);
+ 
+diff -Naur before/omx/gstomxvideo.c after/omx/gstomxvideo.c
+--- before/omx/gstomxvideo.c	2020-09-10 18:12:46.955643675 +0900
++++ after/omx/gstomxvideo.c	2020-10-05 14:13:27.280411410 +0900
+@@ -83,10 +83,10 @@
+       format = GST_VIDEO_FORMAT_BGR;
+       break;
+ 	case OMX_COLOR_FormatYUV420PlanarTc:
+-		format = GST_VIDEO_FORMAT_I420_TC;
++		format = GST_VIDEO_FORMAT_I420;
+ 		break;
+ 	case OMX_COLOR_FormatYUV420SemiPlanarTc:
+-		format = GST_VIDEO_FORMAT_NV12_TC;
++		format = GST_VIDEO_FORMAT_NV12;
+ 		break;
+ #ifdef USE_OMX_TARGET_ZYNQ_USCALE_PLUS
+       /* Formats defined in extensions have their own enum so disable to -Wswitch warning */
+diff -Naur before/omx/gstomxvideodec.c after/omx/gstomxvideodec.c
+--- before/omx/gstomxvideodec.c	2020-09-10 18:12:47.814651339 +0900
++++ after/omx/gstomxvideodec.c	2020-10-05 14:13:07.142625520 +0900
+@@ -52,6 +52,9 @@
+ #include "gstomxvideo.h"
+ #include "gstomxvideodec.h"
+ 
++#include "gstvpudmabuf.h"
++#define gst_omx_video_dec_parent_class parent_class
++
+ GST_DEBUG_CATEGORY_STATIC (gst_omx_video_dec_debug_category);
+ #define GST_CAT_DEFAULT gst_omx_video_dec_debug_category
+ 
+@@ -85,6 +88,7 @@
+     self);
+ static gboolean gst_omx_video_dec_deallocate_output_buffers (GstOMXVideoDec
+     * self);
++static gboolean gst_omx_video_dec_src_query (GstVideoDecoder * decoder, GstQuery * query);
+ 
+ enum
+ {
+@@ -462,6 +466,8 @@
+ 	klass->parent_sink_event = video_decoder_class->sink_event;
+ 	video_decoder_class->sink_event = gst_omx_video_dec_sink_event;
+ 
++  video_decoder_class->src_query          = GST_DEBUG_FUNCPTR(gst_omx_video_dec_src_query);
++
+   klass->cdata.type = GST_OMX_COMPONENT_TYPE_FILTER;
+   klass->cdata.default_src_template_caps =
+ #if defined (HAVE_GST_GL)
+@@ -539,6 +545,33 @@
+ 
+ }
+ 
++void gst_omx_video_dec_disp_buf_clear_callback(void *vData, int buf_index,void *vOmxBuf)
++{
++	GstOMXVideoDec * videodec = (GstOMXVideoDec *)vData;
++	if(GST_IS_OMX_VIDEO_DEC(videodec))
++	{
++		if(videodec->dec)
++		{
++			//printf("%s %d videodec %p , buf_index %d \n",__func__,__LINE__,videodec,buf_index);
++			gst_omx_component_set_config(videodec->dec, OMX_IndexConfigTcDispBufIndex, &buf_index);
++		}
++		else
++		{
++			printf("%s %d videodec->dec is null \n",__func__,__LINE__);
++		}
++	}
++	else
++	{
++		printf("%s %d invalid OMX_VIDEO_DEC object\n",__func__,__LINE__);
++	}
++	if(vOmxBuf && GST_IS_BUFFER(vOmxBuf))
++	{
++		GstBuffer *omx_buf = GST_BUFFER_CAST(vOmxBuf);//(GstBuffer *)vOmxBuf;
++		//printf("%s %d vOmxBuf unref \n",__func__,__LINE__);
++		gst_buffer_unref(omx_buf);
++	}
++}
++
+ static void
+ gst_omx_video_dec_init (GstOMXVideoDec * self)
+ {
+@@ -566,7 +599,42 @@
+   self->bDecErrorReportRepeat   = DEFAULT_DEC_ERROR_REPORT_REPEAT;
+   self->uiDecErrorReportPeriod  = DEFAULT_DEC_ERROR_REPORT_PERIOD;
+   self->bEnableRingMode       = DEFAULT_DEC_ENABLE_RING_MODE;
++  self->bTcV4l2Sink           = FALSE;
++}
+ 
++static gboolean gst_omx_video_dec_src_query (GstVideoDecoder * decoder, GstQuery * query)
++{
++  gboolean ret = FALSE;
++
++  switch (GST_QUERY_TYPE (query)) {
++    case GST_QUERY_CUSTOM:{
++      const GstStructure *s;
++      s = gst_query_get_structure (query);
++      if (s)
++      {
++        if(gst_structure_has_name (s, "GstV4l2SinkQuery"))
++        {
++          gboolean is_tcvdec = FALSE;
++          GstOMXVideoDec *self = GST_OMX_VIDEO_DEC(decoder);
++
++          if(gst_structure_get_boolean (s, "is-tcvdec", &is_tcvdec))
++          {
++            gst_structure_set (s,"is-tcvdec", G_TYPE_BOOLEAN, TRUE,NULL);
++            ret = TRUE;
++          }
++		  self->bTcV4l2Sink = TRUE;
++		  printf("%s %d self->bTcV4l2Sink %d \n",__func__,__LINE__,self->bTcV4l2Sink);
++        }
++      }
++      break;
++    }
++  }
++
++  if(ret == FALSE)
++  {
++    ret = GST_VIDEO_DECODER_CLASS (parent_class)->src_query (decoder, query);
++  }
++  return ret;
+ }
+ 
+ #ifdef USE_OMX_TARGET_ZYNQ_USCALE_PLUS
+@@ -617,6 +685,13 @@
+ 
+   GST_DEBUG_OBJECT (self, "Opening decoder");
+ 
++  if(self->dmabuf_allocator)
++  {
++    gst_object_unref(self->dmabuf_allocator);
++    self->dmabuf_allocator = NULL;
++  }
++  self->dmabuf_allocator = gst_vpudmabuf_allocator_new(gst_omx_video_dec_disp_buf_clear_callback,(void *)self);
++
+   self->dec =
+       gst_omx_component_new (GST_OBJECT_CAST (self), klass->cdata.core_name,
+       klass->cdata.component_name, klass->cdata.component_role,
+@@ -730,6 +805,9 @@
+ 
+   GST_DEBUG_OBJECT (self, "Shutting down decoder");
+ 
++  if(self->dmabuf_allocator)
++    gst_vpudmabuf_allocator_clean_callback(self->dmabuf_allocator);
++
+ #if defined (USE_OMX_TARGET_RPI) && defined (HAVE_GST_GL)
+   state = gst_omx_component_get_state (self->egl_render, 0);
+   if (state > OMX_StateLoaded || state == OMX_StateInvalid) {
+@@ -814,6 +892,12 @@
+ {
+   GstOMXVideoDec *self = GST_OMX_VIDEO_DEC (object);
+ 
++  if(self->dmabuf_allocator)
++  {
++    gst_object_unref(self->dmabuf_allocator);
++    self->dmabuf_allocator = NULL;
++  }
++
+   g_mutex_clear (&self->drain_lock);
+   g_cond_clear (&self->drain_cond);
+ 
+@@ -1016,7 +1100,10 @@
+         break;
+     }
+ 
+-    if(GST_VIDEO_INFO_FORMAT(vinfo) == GST_VIDEO_FORMAT_I420_TC || GST_VIDEO_INFO_FORMAT(vinfo) == GST_VIDEO_FORMAT_NV12_TC)
++    if(GST_VIDEO_INFO_FORMAT(vinfo) == GST_VIDEO_FORMAT_I420_TC ||
++       GST_VIDEO_INFO_FORMAT(vinfo) == GST_VIDEO_FORMAT_NV12_TC ||
++       GST_VIDEO_INFO_FORMAT(vinfo) == GST_VIDEO_FORMAT_I420 ||
++       GST_VIDEO_INFO_FORMAT(vinfo) == GST_VIDEO_FORMAT_NV12)
+     {
+       guint8 *dst = GST_VIDEO_FRAME_PLANE_DATA(&frame, 0);
+       src = inbuf->omx_buf->pBuffer + inbuf->omx_buf->nOffset;
+@@ -1976,6 +2063,102 @@
+   g_mutex_unlock (&self->drain_lock);
+ }
+ 
++GstBuffer *gst_omx_video_dec_omx_buf_to_dma_buf(GstOMXVideoDec *self,GstBuffer *outbuf)
++{
++  GstVideoCodecState *state =
++      gst_video_decoder_get_output_state (GST_VIDEO_DECODER (self));
++  GstVideoInfo *vinfo = &state->info;
++
++	if(self && outbuf)
++	{
++		GstMapInfo map;
++		GstBuffer *newoutbuf = NULL;
++		unsigned long phys_addr = 0;
++		unsigned long phys_buf_size = 0;
++		unsigned char *pBuffer = NULL;
++		int dispIndex = -1;
++		GstMemory *memory = NULL;
++		gst_buffer_map(outbuf, &map, GST_MAP_READ);
++		pBuffer = gst_vpudmabuf_check_video_out_info(map.data, map.size,&phys_buf_size,&phys_addr,&dispIndex);
++		//printf("%s %d outbuf %p phys_addr 0x%lx, size 0x%lx \n",__func__,__LINE__,outbuf,phys_addr,phys_buf_size);
++
++		if(pBuffer)
++		{
++			if(self->dmabuf_allocator)
++			{
++				memory = gst_vpudmabuf_allocator_alloc(self->dmabuf_allocator,
++																	phys_addr,
++																	phys_buf_size,
++																	pBuffer,
++																	dispIndex);
++				if(memory)
++				{
++					newoutbuf = gst_buffer_new ();
++					if(newoutbuf)
++					{
++						gsize offset = 0;
++						gsize maxsize = 0;
++						//newoutbuf = gst_buffer_make_writable(newoutbuf);
++						gst_buffer_append_memory (newoutbuf, memory);
++						//newoutbuf = gst_buffer_make_writable(newoutbuf);
++						//printf("%s %d buf size %d, mem size %d\n",__func__,__LINE__,
++						//	(int)gst_buffer_get_size(newoutbuf),(int)gst_memory_get_sizes(memory,&offset,&maxsize));
++						if(gst_buffer_copy_into (newoutbuf, outbuf, GST_BUFFER_COPY_METADATA, 0, -1) == FALSE)
++						{
++							GST_ERROR_OBJECT(self,"gst_buffer_copy_into() is failed");
++							// TODO : ERROR LOG
++						}
++						else {
++							GstVideoMeta *meta;
++							//gst_buffer_make_writable(newoutbuf);
++							meta = gst_buffer_get_video_meta(newoutbuf);
++							if(!meta)
++							{
++								meta = gst_buffer_add_video_meta (newoutbuf, GST_VIDEO_FRAME_FLAG_NONE,
++									GST_VIDEO_INFO_FORMAT (vinfo),
++									GST_VIDEO_INFO_WIDTH (vinfo),
++									GST_VIDEO_INFO_HEIGHT (vinfo));
++							}
++
++							gst_vpudmabuf_update_video_meta(meta,map.data, map.size);
++							GST_LOG_OBJECT (self,"gst_vpudmabuf_update_video_meta memory %p",memory);
++						}
++					}
++					else {
++						GST_ERROR_OBJECT(self, "gst_buffer_new() is failed");
++						gst_memory_unref(memory);
++					}
++				}
++				else {
++					GST_ERROR_OBJECT(self, "vpu dma_buf is NULL");
++				}
++			}
++			else
++			{
++				GST_ERROR_OBJECT(self, "dmabuf_allocator is null");
++				// TODO : ERROR LOG
++			}
++		}
++
++		gst_buffer_unmap(outbuf, &map);
++		if(newoutbuf)
++		{
++			gboolean refSuccess = FALSE;
++			if(memory)
++			{
++				refSuccess = gst_vpudmabuf_ref_omx_buffer(memory,outbuf);
++			}
++
++			if(refSuccess == FALSE)
++			{
++				gst_buffer_unref(outbuf);
++			}
++			outbuf = newoutbuf;
++		}
++	}
++	return outbuf;
++}
++
+ static void
+ gst_omx_video_dec_loop (GstOMXVideoDec * self)
+ {
+@@ -2065,6 +2248,29 @@
+           format, port_def.format.video.nFrameWidth,
+           port_def.format.video.nFrameHeight, self->input_state);
+ 
++			// start
++			if(state)
++			{
++				if (state->caps)
++					gst_caps_unref(state->caps);
++				state->caps = gst_video_info_to_caps (&state->info);
++
++				if(state->caps)
++				{
++					GST_INFO_OBJECT(self,"\x1b[47m \x1b[31m connecting with tc-vdec flag\x1b[0m");
++					gst_caps_set_simple (state->caps, "tc-vdec",G_TYPE_BOOLEAN, TRUE, NULL);
++				}
++				else
++				{
++					GST_ERROR_OBJECT(self, "\x1b[47m \x1b[31m can not find state->caps \x1b[0m ");
++				}
++			}
++			else
++			{
++				GST_ERROR_OBJECT(self, "\x1b[47m \x1b[31m state is null \x1b[0m");
++			}
++			// end
++
+       /* Take framerate and pixel-aspect-ratio from sinkpad caps */
+ 
+       if (!gst_video_decoder_negotiate (GST_VIDEO_DECODER (self))) {
+@@ -2190,10 +2396,16 @@
+         goto invalid_buffer;
+       }
+ 
+-      if (GST_OMX_BUFFER_POOL (self->out_port_pool)->need_copy)
++      if (GST_OMX_BUFFER_POOL (self->out_port_pool)->need_copy){
+         outbuf =
+             copy_frame (&GST_OMX_BUFFER_POOL (self->out_port_pool)->video_info,
+             outbuf);
++        printf("%s %d buf %p copy_frame() outbuf %p\n",__func__,__LINE__,buf,outbuf);
++      }
++      else {
++        if (self->bTcV4l2Sink == FALSE)
++          outbuf = gst_omx_video_dec_omx_buf_to_dma_buf(self,outbuf);
++      }
+ 
+       frame->output_buffer = outbuf;
+ 
+@@ -2217,6 +2429,8 @@
+           gst_omx_port_release_buffer (port, buf);
+           goto invalid_buffer;
+         }
++		if (self->bTcV4l2Sink == FALSE)
++          frame->output_buffer = gst_omx_video_dec_omx_buf_to_dma_buf(self,frame->output_buffer);
+         flow_ret =
+             gst_video_decoder_finish_frame (GST_VIDEO_DECODER (self), frame);
+         frame = NULL;
+diff -Naur before/omx/gstomxvideodec.h after/omx/gstomxvideodec.h
+--- before/omx/gstomxvideodec.h	2020-09-10 18:12:47.654649912 +0900
++++ after/omx/gstomxvideodec.h	2020-10-05 13:57:21.103155038 +0900
+@@ -114,6 +114,8 @@
+ #ifdef USE_OMX_TARGET_ZYNQ_USCALE_PLUS
+   guint32 internal_entropy_buffers;
+ #endif
++  GstAllocator *dmabuf_allocator;
++  gboolean bTcV4l2Sink;
+ };
+ 
+ struct _GstOMXVideoDecClass
+diff -Naur before/omx/gstvpudmabuf.c after/omx/gstvpudmabuf.c
+--- before/omx/gstvpudmabuf.c	1970-01-01 09:00:00.000000000 +0900
++++ after/omx/gstvpudmabuf.c	2020-09-28 11:44:58.128549500 +0900
+@@ -0,0 +1,682 @@
++// SPDX-License-Identifier: LGPL-2.1-or-later
++/*
++ * Copyright (C) Telechips Inc.
++ */
++
++#include <stdio.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <sys/ioctl.h>
++#include <sys/mman.h>
++#include <errno.h>
++#include<string.h>
++
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++
++#include "gst/video/gstvideometa.h"
++#include <gst/allocators/gstfdmemory.h>
++#include <gst/allocators/gstdmabuf.h>
++
++#include "gstvpudmabuf.h"
++
++/**
++ * SECTION:gstdmabuf
++ * @short_description: Memory wrapper for Linux dmabuf memory
++ * @see_also: #GstMemory
++ *
++ * Since: 1.2
++ */
++
++#ifdef HAVE_MMAP
++#include <sys/mman.h>
++#include <unistd.h>
++#endif
++#include "gstvpudmabuf.h"
++#include <tcc_video_private.h>
++#include <mach/tcc_mem_ioctl.h>
++
++#define VPU_MEM_DEVICE "/dev/vpu_mem"
++
++GST_DEBUG_CATEGORY_STATIC (vpudmabuf_debug);
++#define GST_CAT_DEFAULT vpudmabuf_debug
++
++typedef struct _GstVpuDmaAllocatorPrivate GstVpuDmaAllocatorPrivate;
++
++struct _GstVpuDmaMemory
++{
++	GstMemory mem;
++	GstFdMemoryFlags flags;
++	gint fd;
++	gpointer data;
++	gint mmapping_flags;
++	gint mmap_count;
++	GMutex lock;
++
++	unsigned char* pBuffer;
++	unsigned long offset;
++	unsigned long phys_addr;
++	unsigned long *map_ptr;
++	unsigned long size;
++	int disp_index;
++	void *omx_buf;
++};
++
++
++struct _GstVpuDmaAllocatorPrivate
++{
++	int fd_vpu_mem;
++	gboolean flag;
++};
++
++#define MAX_TRASH_COUNT 200
++
++struct _GstVpuDmaBufAllocator
++{
++	GstFdAllocator parent;
++	GstVpuDmaAllocatorPrivate *priv;
++	vpudmabuf_clear_cb clear_cb;
++	GstVpuDmaMemory *trash_mem[MAX_TRASH_COUNT];
++	int trash_count;
++	void *user_data;
++};
++
++
++GType gst_vpudmabuf_mem_get_type (void);
++G_DEFINE_TYPE (GstVpuDmaBufAllocator, gst_vpudmabuf_mem, GST_TYPE_FD_ALLOCATOR);
++
++static void gst_vpudmabuf_finalize(GObject *object);
++
++#define vpumem_dbg //printf
++#define ALIGN_MMAP_SHIFT (12)
++#if 0
++static inline GstMemory *_vpudma_mem_new (GstAllocator * allocator,
++    									int dmafd,gsize size)
++{
++	GstMemory *memory = NULL;
++	memory = gst_fd_allocator_alloc(allocator,dmafd,size,GST_FD_MEMORY_FLAG_MAP_PRIVATE); // GST_FD_MEMORY_FLAG_NONE // GST_FD_MEMORY_FLAG_MAP_PRIVATE // GST_FD_MEMORY_FLAG_KEEP_MAPPED
++	GST_LOG("memory %p , dmafd %d, size 0x%lx",memory,dmafd,size);
++
++	return memory;
++}
++
++
++
++static gpointer _vpudma_mem_map (GstVpuDmaMemory * mem, gsize maxsize, GstMapFlags flags)
++{
++	//gpointer data = NULL;
++	#if 1
++    unsigned long * map_ptr = MAP_FAILED;
++
++	//if(GST_IS_VPUDMABUF_ALLOCATOR (mem->mem.allocator), NULL)
++	{
++		GstVpuDmaBufAllocator *vpudmaallocator;
++		GstVpuDmaAllocatorPrivate * priv;
++		unsigned long alignedAddr = 0;
++		unsigned long offset = 0;
++		unsigned long alignUnit = (1<<ALIGN_MMAP_SHIFT);
++		unsigned long *pl_phys_addr;
++		gsize real_size = maxsize;
++		alignedAddr = (mem->phys_addr >> ALIGN_MMAP_SHIFT) << ALIGN_MMAP_SHIFT;
++		offset = mem->phys_addr - alignedAddr;
++		real_size = ((maxsize + alignUnit - 1)>> ALIGN_MMAP_SHIFT) << ALIGN_MMAP_SHIFT;
++		pl_phys_addr = (unsigned long *)alignedAddr;
++
++		vpudmaallocator = GST_VPUDMABUF_ALLOCATOR(mem->mem.allocator);
++		priv = vpudmaallocator->priv;
++
++		//map_ptr = (unsigned long *)mmap((void *)pl_phys_addr, real_size, PROT_READ | PROT_WRITE, MAP_SHARED, mem->fd, pl_phys_addr);
++		map_ptr = (unsigned long *)mmap(0, real_size, PROT_READ | PROT_WRITE, MAP_SHARED, priv->fd_vpu_mem, alignedAddr);
++		//map_ptr = (unsigned long *)mmap((void *)pl_phys_addr, real_size, PROT_READ | PROT_WRITE, MAP_SHARED, priv->fd_mem, pl_phys_addr);
++		if(MAP_FAILED == map_ptr)
++		{
++			printf("%s %d mmap failed. fd(%d), addr(0x%lx), size(0x%lx) error %d %s\n",
++				__func__,__LINE__,
++				priv->fd_vpu_mem, mem->phys_addr, maxsize, errno, strerror(errno));
++			return NULL;
++		}
++		else
++		{
++			//printf("%s %d mem %p map_ptr %p \n",__func__,__LINE__,mem, map_ptr);
++			mem->map_ptr = map_ptr;
++			mem->size = real_size;
++			mem->offset = offset;
++			map_ptr = (unsigned long *)((unsigned char *)map_ptr + mem->offset);
++			//
++			GST_LOG("mem %p map_ptr(%p + 0x%lx = %p), size(0x%lx), maxsize 0x%lx, phys 0x%lx, aligned 0x%lx",
++				mem, mem->map_ptr,offset,map_ptr, mem->size,maxsize,
++				mem->phys_addr, alignedAddr);
++		}
++
++	}
++	#if 0
++	else
++	{
++		printf("\x1b[47m \x1b[31m %s %d ... mem %p ... allocator(%p) is not vpudmabuf allocator \x1b[0m\n",
++			__func__,__LINE__,mem, mem->mem.allocator);
++	}
++	#endif
++
++	return (gpointer)map_ptr;
++	#else
++
++	return mem->pBuffer + mem->offset;
++  	#endif
++	//return data;
++}
++
++static gboolean _vpudma_mem_unmap (GstVpuDmaMemory * mem)
++{
++	gboolean ret = TRUE;
++	#if 1
++    if(munmap(mem->map_ptr, (size_t )mem->size) < 0)
++	{
++        printf("%s %d munmap failed. addr(%p), size(0x%lx)\n",__func__,__LINE__, mem->map_ptr, mem->size);
++	}
++
++	#else
++	printf("%s %d mem %p\n",__func__,__LINE__,mem);
++	#endif
++	return ret;
++}
++
++static GstMemory * _vpudma_mem_copy(GstMemory *mem, gssize offset, gssize size)
++{
++	printf("%s %d mem %p\n",__func__,__LINE__,mem);
++	return NULL;
++}
++
++static GstMemory * _vpudma_mem_share(GstMemory *mem, gssize offset, gssize size)
++{
++	printf("%s %d mem %p\n",__func__,__LINE__,mem);
++	return NULL;
++}
++
++static gboolean _vpudma_mem_is_span(GstMemory *mem1, GstMemory *mem2, gsize *offset)
++{
++	printf("%s %d mem1 %p, mem2 %p\n",__func__,__LINE__,mem1,mem2);
++	return FALSE;
++}
++
++int vpudmabuf_open_vpu_mem(void)
++{
++	int fd = -1;
++	{
++		fd = open(VPU_MEM_DEVICE, O_RDWR);
++		GST_TRACE("fd %d",fd);
++	}
++	return fd;
++}
++
++void vpudmabuf_close_vpu_mem(int fd_vpu_mem)
++{
++	if(fd_vpu_mem >= 0)
++	{
++		GST_TRACE("fd_vpu_mem %d\n",fd_vpu_mem);
++		close(fd_vpu_mem);
++	}
++	else
++	{
++		GST_WARNING("priv is null");
++	}
++}
++#endif
++void vpudmabuf_open_vpu_mem_driver(GstVpuDmaAllocatorPrivate *priv)
++{
++	if(priv)
++	{
++		priv->fd_vpu_mem = open(VPU_MEM_DEVICE, O_RDWR);
++		GST_TRACE("fd %d\n",priv->fd_vpu_mem);
++	}
++}
++
++void vpudmabuf_close_vpu_mem_driver(GstVpuDmaAllocatorPrivate *priv)
++{
++	if(priv)
++	{
++		GST_TRACE("%s %d fd %d\n",__func__,__LINE__,priv->fd_vpu_mem);
++		if(priv->fd_vpu_mem >= 0)
++		{
++			close(priv->fd_vpu_mem);
++			priv->fd_vpu_mem = -1;
++		}
++		#if 0
++		if(priv->fd_mem >= 0)
++		{
++			close(priv->fd_mem);
++			priv->fd_mem = -1;
++		}
++		#endif
++	}
++	else
++	{
++		printf("%s %d priv is null\n",__func__,__LINE__);
++	}
++}
++
++int vpudmabuf_create_dma_buf(GstVpuDmaAllocatorPrivate *priv,unsigned long physical_addr, unsigned long size)
++{
++	int fd = -1;
++	GST_LOG("priv %p  phys 0x%lx size:0x%lx",priv,physical_addr,size);
++	if(priv)
++	{
++		if(priv->fd_vpu_mem >= 0)
++		{
++			int ret;
++			stVpuPhysInfo pmap_info;
++			pmap_info.phys = physical_addr;
++			pmap_info.size = size;
++			GST_LOG("fd_vpu_mem %d, call TCC_VIDEO_CREATE_DMA_BUF, stVpuPhysInfo size %d",
++					priv->fd_vpu_mem,(int)sizeof(stVpuPhysInfo));
++			ret = ioctl(priv->fd_vpu_mem,TCC_VIDEO_CREATE_DMA_BUF,&pmap_info);
++			//printf("%s %d ret %d , fd %d\n",__func__,__LINE__,ret,pmap_info.fd);
++			if(ret < 0)
++			{
++				printf("%s %d TCC_VIDEO_CREATE_DMA_BUF phys 0x%lx size:0x%lx, ret  %d\n",__func__,__LINE__,physical_addr,size,ret);
++			}
++			else
++			{
++				fd = pmap_info.fd;
++				vpumem_dbg("%s %d , phys 0x%lx size:0x%lx -> dma_buf fd %d\n",__func__,__LINE__,physical_addr,size,fd);
++			}
++		}
++		else
++		{
++			printf("%s %d , phys 0x%lx size:0x%lx... invalid fd_vpu_mem %d \n",__func__,__LINE__,
++				physical_addr,size,priv->fd_vpu_mem);
++		}
++	}
++	GST_LOG("fd %d",fd);
++	return fd;
++}
++
++void vpudmabuf_release_dma_buf(GstVpuDmaAllocatorPrivate *priv,int fd)
++{
++	GST_LOG("priv %p  fd %d",priv,fd);
++	if(priv)
++	{
++		if(priv->fd_vpu_mem >= 0)
++		{
++			int ret;
++			ret = ioctl(priv->fd_vpu_mem,TCC_VIDEO_RELEASE_DMA_BUF,&fd);
++			if(ret < 0)
++			{
++				printf("%s %d TCC_VIDEO_RELEASE_DMA_BUF ret %d\n",__func__,__LINE__,ret);
++			}
++			else
++			{
++				vpumem_dbg("%s %d , fd %d\n",__func__,__LINE__,fd);
++			}
++		}
++		else
++		{
++			printf("%s %d , fd %d... invalid fd_vpu_mem %d \n",__func__,__LINE__,fd,priv->fd_vpu_mem);
++		}
++	}
++}
++
++GstVpuDmaMemory *gst_vpudmabuf_get_memory (GstVpuDmaBufAllocator *vpudma_allocator)
++{
++  gint trash_count = vpudma_allocator->trash_count;
++  gint search_count = 0;
++  GstVpuDmaMemory *mem;
++  mem = g_slice_new0 (GstVpuDmaMemory);
++
++  while((trash_count < MAX_TRASH_COUNT) && (mem < 0x80000000))
++  {
++    GstVpuDmaMemory *before_mem = mem;
++    vpudma_allocator->trash_mem[trash_count] = mem;
++    mem = g_slice_new0 (GstVpuDmaMemory);
++    GST_INFO("[%d] keep(%p), re-search(%d)",trash_count, before_mem, search_count);
++    trash_count++;
++    search_count++;
++  }
++
++  if ((trash_count >= MAX_TRASH_COUNT) && (mem < 0x80000000))
++  {
++    GST_INFO("[%d] trash memory is full, final mem is %p",trash_count, mem);
++  }
++
++  vpudma_allocator->trash_count = trash_count;
++  return mem;
++}
++
++GstMemory *gst_vpudmabuf_fd_allocator_alloc (GstAllocator * allocator, gint fd, gsize size,
++							    unsigned long physical_addr,unsigned char *pBuffer,int disp_index)
++{
++  GstVpuDmaMemory *mem;
++  GstVpuDmaBufAllocator *vpudma_allocator = GST_VPUDMABUF_ALLOCATOR(allocator);
++  g_return_val_if_fail (GST_IS_FD_ALLOCATOR (allocator), NULL);
++
++  mem = gst_vpudmabuf_get_memory(vpudma_allocator);
++
++  gst_memory_init (GST_MEMORY_CAST (mem), 0, GST_ALLOCATOR_CAST (allocator),
++      NULL, size, 0, 0, size);
++
++  mem->flags = GST_FD_MEMORY_FLAG_NONE;
++  mem->fd = fd;
++  g_mutex_init (&mem->lock);
++
++  mem->pBuffer = pBuffer;
++  mem->offset = 0;
++  mem->phys_addr = physical_addr;
++  mem->disp_index = disp_index;
++
++  GST_DEBUG ("mem: %p fd: %d size %" G_GSIZE_FORMAT " allocator(%p), physical_addr(%p) disp_index(%d)",
++		  mem, mem->fd, mem->mem.maxsize, mem->mem.allocator,physical_addr,disp_index);
++  vpumem_dbg("\x1b[47m \x1b[31m %s %d  mem %p, allocator(%p) \x1b[0m\n",
++  	__func__,__LINE__, mem,mem->mem.allocator);
++
++  return (GstMemory *) mem;
++}
++
++gboolean gst_vpudmabuf_ref_omx_buffer(GstMemory *memory,void *omx_buf)
++{
++	gboolean ret = FALSE;
++	if(memory && omx_buf)
++	{
++		GstVpuDmaMemory *vpudma_mem = (GstVpuDmaMemory *) memory;
++		vpudma_mem->omx_buf = omx_buf;
++		ret = TRUE;
++	} else {GST_WARNING("memory [%p] or omx_buf[%p]",memory, omx_buf);}
++	return ret;
++}
++
++GstMemory *gst_vpudmabuf_allocator_alloc (GstAllocator * allocator,
++												unsigned long physical_addr,
++												unsigned long size,
++												unsigned char *pBuffer,
++												int dispIndex)
++{
++	GstVpuDmaBufAllocator *vpudmaallocator;
++	GstMemory *memory = NULL;
++	GstVpuDmaAllocatorPrivate * priv;
++	GST_LOG("allocator %p",allocator);
++	if(allocator)
++	{
++		g_return_val_if_fail (GST_IS_VPUDMABUF_ALLOCATOR (allocator), NULL);
++		vpudmaallocator = GST_VPUDMABUF_ALLOCATOR(allocator);
++		priv = vpudmaallocator->priv;
++		if(priv)
++		{
++			int fd_dma_buf = -1;
++			fd_dma_buf = vpudmabuf_create_dma_buf(priv, physical_addr, size);
++			if(fd_dma_buf >= 0)
++			{
++				memory = gst_vpudmabuf_fd_allocator_alloc(allocator, fd_dma_buf, size,physical_addr,pBuffer,dispIndex);
++				//memory = _vpudma_mem_new(allocator,fd_dma_buf , size);
++			} else {
++				GST_WARNING(" fd_dma_buf is %d",fd_dma_buf);
++			}
++		} else {
++			GST_WARNING("vpudmaallocator->priv is NULL");
++		}
++	} else {
++		GST_WARNING("allocator is NULL");
++	}
++	return memory;
++}
++
++static void gst_vpudma_buf_class_free(GstAllocator *allocator, GstMemory *memory)
++{
++	GstVpuDmaBufAllocatorClass *klass = GST_VPUDMABUF_GET_CLASS(allocator);
++	GstVpuDmaBufAllocator *vpudmaallocator;
++	vpudmaallocator = GST_VPUDMABUF_ALLOCATOR(allocator);
++	GST_DEBUG("allocator %p, memory %p",allocator,memory);
++	if(vpudmaallocator)
++	{
++		if(gst_is_fd_memory(memory))
++		{
++			int fd = gst_fd_memory_get_fd(memory);
++			GstVpuDmaMemory *vpudma_mem = (GstVpuDmaMemory *) memory;
++			if(fd >= 0)
++			{
++				if(vpudmaallocator->priv)
++				{
++					vpudmabuf_release_dma_buf(vpudmaallocator->priv,fd);
++				}
++				else
++				{
++					printf("%s %d priv is null \n",__func__,__LINE__);
++				}
++			}
++			else
++			{
++				printf("%s %d gst_fd_memory_get_fd() failed memory %p\n",__func__,__LINE__,memory);
++			}
++			if(vpudmaallocator->clear_cb)
++			{
++				vpudmaallocator->clear_cb(vpudmaallocator->user_data,vpudma_mem->disp_index,vpudma_mem->omx_buf);
++			}
++			else
++			{
++				if(vpudma_mem->omx_buf && GST_IS_BUFFER(vpudma_mem->omx_buf))
++				{
++					GstBuffer *omx_buf = GST_BUFFER_CAST(vpudma_mem->omx_buf);//(GstBuffer *)vOmxBuf;
++					printf("%s %d vOmxBuf unref \n",__func__,__LINE__);
++					gst_buffer_unref(omx_buf);
++				}
++			}
++		}
++		else
++		{
++			printf("%s %d gst_is_fd_memory() failed memory %p\n",__func__,__LINE__,memory);
++		}
++	} else {
++		GST_WARNING("vpudmaallocator is NULL");
++	}
++	klass->free(allocator,memory);
++}
++
++
++static void gst_vpudmabuf_mem_class_init (GstVpuDmaBufAllocatorClass * klass)
++{
++	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
++	GstAllocatorClass *allocator_class = GST_ALLOCATOR_CLASS(klass);
++
++	gobject_class->finalize = gst_vpudmabuf_finalize;
++
++	klass->free = allocator_class->free;
++	allocator_class->free = gst_vpudma_buf_class_free;
++
++	g_type_class_add_private (klass, sizeof (GstVpuDmaAllocatorPrivate));
++	GST_DEBUG("Done");
++}
++
++static void gst_vpudmabuf_mem_init (GstVpuDmaBufAllocator * allocator)
++{
++	GstAllocator *alloc = GST_ALLOCATOR_CAST (allocator);
++	GST_INFO("allocator %p",allocator);
++#if 0
++	alloc->mem_map = (GstMemoryMapFunction) _vpudma_mem_map;
++	alloc->mem_unmap = (GstMemoryUnmapFunction) _vpudma_mem_unmap;
++	alloc->mem_copy = (GstMemoryCopyFunction) _vpudma_mem_copy;
++	alloc->mem_share = (GstMemoryShareFunction) _vpudma_mem_share;
++	alloc->mem_is_span = (GstMemoryIsSpanFunction) _vpudma_mem_is_span;
++#endif
++	alloc->mem_type = GST_ALLOCATOR_DMABUF;
++
++	allocator->priv = G_TYPE_INSTANCE_GET_PRIVATE (allocator,
++					GST_TYPE_VPUDMABUF_ALLOCATOR, GstVpuDmaAllocatorPrivate);
++
++	if(allocator->priv)
++	{
++		allocator->priv->fd_vpu_mem = -1;
++		vpudmabuf_open_vpu_mem_driver(allocator->priv);
++	}
++
++	GST_DEBUG("Done");
++}
++
++static void gst_vpudmabuf_finalize(GObject *object)
++{
++	GstVpuDmaBufAllocator *self = GST_VPUDMABUF_ALLOCATOR(object);
++	GST_INFO("allocator %p, priv %p",self,self->priv);
++	if(self->priv)
++	{
++		vpudmabuf_close_vpu_mem_driver(self->priv);
++	}
++	G_OBJECT_CLASS(gst_vpudmabuf_mem_parent_class)->finalize(object);
++
++	while(self->trash_count > 0 ) {
++		GST_INFO("[%d] free(%p)",self->trash_count,self->trash_mem[self->trash_count-1]);
++		g_slice_free (GstVpuDmaMemory, self->trash_mem[self->trash_count-1]);
++		self->trash_mem[self->trash_count-1] = NULL;
++		self->trash_count--;
++	}
++
++	GST_DEBUG("Done");
++}
++
++GstAllocator *gst_vpudmabuf_allocator_new (vpudmabuf_clear_cb clear_cb,void *user_data)
++{
++	GstAllocator *allocator = NULL;
++	GstVpuDmaBufAllocator *self;
++	GST_DEBUG_CATEGORY_INIT (vpudmabuf_debug, "vpudmabuf", 0, "vpudmabuf memory");
++
++	allocator = g_object_new (GST_TYPE_VPUDMABUF_ALLOCATOR, NULL);
++	self = GST_VPUDMABUF_ALLOCATOR(allocator);
++	self->clear_cb = clear_cb;
++	self->user_data = user_data;
++	self->trash_count = 0;
++	gst_object_ref_sink (allocator);
++	return allocator;
++}
++
++void gst_vpudmabuf_allocator_clean_callback(GstAllocator *allocator)
++{
++	GstVpuDmaBufAllocator *self;
++	self = GST_VPUDMABUF_ALLOCATOR(allocator);
++	if(self)
++	{
++		self->clear_cb = NULL;
++		self->user_data = NULL;
++	}
++}
++
++void gst_vpudmabuf_update_video_meta(GstVideoMeta *meta,unsigned char *pData,unsigned long size)
++{
++	tcc_video_out_info *p_output = (tcc_video_out_info *)pData;
++	if(p_output && size >= sizeof(tcc_video_out_info))
++	{
++		if(meta)
++		{
++			int i;
++			meta->mDispIdx = p_output->mDispIdx;
++			meta->mType = 1; //0:Image, 1:Video
++			meta->mFlags = p_output->mFlags;
++			meta->pCurrOut[0] = p_output->pCurrOut[0][0];
++			meta->pCurrOut[1] = p_output->pCurrOut[0][1];
++			meta->pCurrOut[2] = p_output->pCurrOut[0][2];
++			//
++			meta->mTcWidth = p_output->mWidth;
++			meta->mTcHeight = p_output->mHeight;
++			// Crop
++			meta->mTcCropLeft = p_output->stCropInfo.iCropLeft;
++			meta->mTcCropTop = p_output->stCropInfo.iCropTop;
++			meta->mTcCropWidth = p_output->stCropInfo.iCropWidth;
++			meta->mTcCropHeight = p_output->stCropInfo.iCropHeight;
++			// stride
++			meta->iY = p_output->stStride.iY;
++			meta->iCbCr = p_output->stStride.iCbCr;
++
++			meta->mColorFormat = p_output->mColorFormat;
++			meta->mDolbyHDREnable = p_output->mDolbyHDREnable;
++
++			if (meta->mColorFormat == 5)	//I420
++			{
++				meta->stride[0] = p_output->stStride.iY;
++				meta->stride[1] = meta->stride[2] = p_output->stStride.iY/2;
++				//meta->stride[1] = meta->stride[2] = p_output->stStride.iCbCr;
++				meta->offset[0] = 0;
++				meta->offset[1] = meta->pCurrOut[1] - meta->pCurrOut[0];
++				meta->offset[2] = meta->pCurrOut[2] - meta->pCurrOut[0]; //meta->offset[0] + (meta->offset[1]/4);
++				GST_LOG("offset(%d - %d - %d) stride(%d - %d - %d) height(%d -> %d)",meta->offset[0],meta->offset[1],meta->offset[2],meta->stride[0],meta->stride[1],meta->stride[2],meta->height,meta->mTcCropHeight);
++				meta->width = meta->mTcCropWidth;
++				meta->height = meta->mTcCropHeight;
++			}
++			else //NV12
++			{
++				meta->offset[0] = 0;
++				meta->offset[1] = meta->pCurrOut[1] - meta->pCurrOut[0];
++				meta->stride[0] = meta->stride[1] = p_output->stStride.iY;
++				GST_LOG("offset(%d - %d) stride(%d - %d)",meta->offset[0],meta->offset[1],meta->stride[0],meta->stride[1]);
++			}
++			//printf("%s %d meta %p type %d\n",__func__,__LINE__,meta,meta->mType);
++
++			//meta->m_CompressedY[0];
++			//meta->m_CompressedY[1];
++
++			//meta->m_CompressedCb[0];
++			//meta->m_CompressedCb[1];
++
++			//meta->m_FbcYOffsetAddr[0];
++			//meta->m_FbcYOffsetAddr[1];
++
++			//meta->m_FbcCOffsetAddr[0];
++			//meta->m_FbcCOffsetAddr[1];
++			//
++			//meta->m_uiLumaStride;
++			//meta->m_uiChromaStride;
++			////meta->m_uiLumaBitDepth;
++			//meta->m_uiChromaBitDepth;
++			//meta->m_uiFrameEndian;
++			//
++
++		}
++		else
++		{
++			GST_WARNING("p_output %p size %d (%d).. meta is null",p_output,size,sizeof(tcc_video_out_info));
++		}
++	}
++	else
++	{
++		GST_WARNING("p_output %p size %d (%d)\n",p_output,size,sizeof(tcc_video_out_info));
++	}
++}
++
++unsigned char *gst_vpudmabuf_check_video_out_info(unsigned char *pData,
++									unsigned long size,
++									unsigned long *buf_size,
++									unsigned long *phys_addr,
++									int *dispIdx)
++{
++	unsigned char *pBuffer = NULL;
++	tcc_video_out_info *video_output = (tcc_video_out_info *)pData;
++	if(video_output)
++	{
++		unsigned long y_addr = video_output->pCurrOut[0][0];
++		unsigned long u_addr = video_output->pCurrOut[0][1];
++		unsigned long v_addr = video_output->pCurrOut[0][2];
++		unsigned long buffer_size = 0;
++		unsigned long buffer_size_align = 0;
++		unsigned long dst_width, dst_height;
++		pBuffer = (unsigned char *)video_output->pCurrOut[1][0];
++		if(phys_addr)
++		{
++			*phys_addr = (unsigned long )video_output->pCurrOut[0][0];
++		}
++		buffer_size = ((u_addr - y_addr)*3) >> 1;
++		buffer_size_align = ((buffer_size+((1<<ALIGN_MMAP_SHIFT) - 1)) >> ALIGN_MMAP_SHIFT ) << ALIGN_MMAP_SHIFT;
++
++		GST_LOG("%d x %d, CropInfo[%d %d %d %d] Stride[%d %d] buffer_size[%d align(%d)] pCurrOut[%p:%p:%p]",
++				video_output->mWidth,video_output->mHeight,
++				video_output->stCropInfo.iCropLeft,video_output->stCropInfo.iCropTop,video_output->stCropInfo.iCropWidth,video_output->stCropInfo.iCropHeight,
++				video_output->stStride.iY,video_output->stStride.iCbCr,buffer_size,buffer_size_align,y_addr,u_addr,v_addr);
++
++		if(buf_size)
++		{
++			*buf_size = buffer_size_align;
++		}
++		if(dispIdx)
++		{
++			*dispIdx = video_output->mUniqueId;//mDispIdx;
++			GST_LOG("mUniqueId %d",video_output->mUniqueId);
++		}
++
++	}
++	return pBuffer;
++}
++
+diff -Naur before/omx/gstvpudmabuf.h after/omx/gstvpudmabuf.h
+--- before/omx/gstvpudmabuf.h	1970-01-01 09:00:00.000000000 +0900
++++ after/omx/gstvpudmabuf.h	2020-09-28 11:44:58.128549500 +0900
+@@ -0,0 +1,63 @@
++// SPDX-License-Identifier: LGPL-2.1-or-later
++/*
++ * Copyright (C) Telechips Inc.
++ */
++
++#ifndef __GST_TCC_VPU_DMA_ALLOCATOR_H__
++#define __GST_TCC_VPU_DMA_ALLOCATOR_H__
++
++#include <gst/gst.h>
++
++G_BEGIN_DECLS
++
++
++typedef struct _GstVpuDmaBufAllocator GstVpuDmaBufAllocator;
++typedef struct _GstVpuDmaBufAllocatorClass GstVpuDmaBufAllocatorClass;
++typedef struct _GstVpuDmaMemory GstVpuDmaMemory;
++
++
++#define GST_TYPE_VPUDMABUF_ALLOCATOR   (gst_vpudmabuf_mem_get_type())
++#define GST_IS_VPUDMABUF_ALLOCATOR(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), GST_TYPE_VPUDMABUF_ALLOCATOR))
++#define GST_VPUDMABUF_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS ((obj), GST_TYPE_VPUDMABUF_ALLOCATOR, GstVpuDmaBufAllocatorClass))
++
++#define GST_VPUDMABUF_ALLOCATOR(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), GST_TYPE_VPUDMABUF_ALLOCATOR, GstVpuDmaBufAllocator))
++
++struct _GstVpuDmaBufAllocatorClass
++{
++	GstAllocatorClass parent_class;
++
++	void  (*free) (GstAllocator *allocator, GstMemory *memory);
++};
++
++typedef void (*vpudmabuf_clear_cb)(void *vData, int buf_index,void *vOmxBuf);
++
++GstAllocator * gst_vpudmabuf_allocator_new (vpudmabuf_clear_cb clear_cb,void *user_data);
++
++GstMemory *gst_vpudmabuf_allocator_alloc(GstAllocator * allocator,
++												unsigned long physical_addr,
++												unsigned long size,
++												unsigned char *pBuffer,
++												int dispIndex);
++unsigned char *gst_vpudmabuf_check_video_out_info(unsigned char *pData,
++												unsigned long size,
++												unsigned long *buf_size,
++												unsigned long *phys_addr,
++												int *dispIdx);
++void gst_vpudmabuf_update_video_meta(GstVideoMeta *meta,unsigned char *pData,unsigned long size);
++
++
++void gst_vpudmabuf_allocator_clean_callback(GstAllocator *allocator);
++
++int vpudmabuf_open_vpu_mem(void);
++void vpudmabuf_close_vpu_mem(int fd_vpu_mem);
++
++int vpudmabuf_create_dma_buf_test(int fd_vpu_mem,unsigned long physical_addr, unsigned long size);
++void vpudmabuf_release_dma_buf_test(int fd_vpu_mem,int fd);
++
++gboolean gst_vpudmabuf_ref_omx_buffer(GstMemory *memory,void *omx_buf);
++
++G_END_DECLS
++
++
++#endif /* __GST_TCC_VPU_DMA_ALLOCATOR_H__ */
++
+diff -Naur before/omx/Makefile.am after/omx/Makefile.am
+--- before/omx/Makefile.am	2019-12-03 05:08:20.000000000 +0900
++++ after/omx/Makefile.am	2020-10-05 13:57:04.081688359 +0900
+@@ -49,7 +49,8 @@
+ 	gstomxamrdec.c \
+ 	gstomxaudiosink.c \
+ 	gstomxanalogaudiosink.c \
+-	gstomxhdmiaudiosink.c	
++	gstomxhdmiaudiosink.c \
++	gstvpudmabuf.c	
+ 
+ noinst_HEADERS = \
+ 	gstomx.h \
+@@ -79,7 +80,8 @@
+ 	gstomxamrdec.h \
+ 	gstomxaudiosink.h \
+ 	gstomxanalogaudiosink.h \
+-	gstomxhdmiaudiosink.h 	
++	gstomxhdmiaudiosink.h \
++	gstvpudmabuf.h
+ 
+ if !HAVE_EXTERNAL_OMX
+ OMX_INCLUDEPATH = -I$(abs_srcdir)/openmax
+diff -Naur before/omx/meson.build after/omx/meson.build
+--- before/omx/meson.build	2020-09-10 18:12:47.943652490 +0900
++++ after/omx/meson.build	2020-10-05 13:56:45.801777822 +0900
+@@ -27,6 +27,7 @@
+   'gstomxanalogaudiosink.c',
+   'gstomxhdmiaudiosink.c',
+   'gstomxmp3enc.c',
++  'gstvpudmabuf.c',  
+ ]
+ 
+ extra_c_args = []
+diff -Naur before/omx/openmax/OMX_IndexExt.h after/omx/openmax/OMX_IndexExt.h
+--- before/omx/openmax/OMX_IndexExt.h	2020-09-10 18:12:47.178645665 +0900
++++ after/omx/openmax/OMX_IndexExt.h	2020-10-05 13:55:48.274246016 +0900
+@@ -129,6 +129,7 @@
+     OMX_IndexConfigUserDataHandling,
+     OMX_IndexConfigEventFlush,
+     OMX_IndexConfigTcProperty, // 170724.1.no-buffer-delay
++    OMX_IndexConfigTcDispBufIndex,
+ 
+     /* Time configurations */
+     OMX_IndexTcExtTimeStartUnused = OMX_IndexVendorStartUnused + 0x00900000,

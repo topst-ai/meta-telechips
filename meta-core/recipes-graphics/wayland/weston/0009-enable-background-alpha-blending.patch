@@ -1,0 +1,78 @@
+From 79ffd4d8085db2de2749da946ea0c1701487473e Mon Sep 17 00:00:00 2001
+From: YoungJun <youngjun@telechips.com>
+Date: Wed, 28 Oct 2020 10:40:13 +0000
+Subject: [PATCH] weston: enable background alpha blending for tcc
+
+- It supports alpha blending with weston's background view for telechips
+  specific scenario.
+- Telechips cam and some videos will be out h/w layer below the UI h/w
+  layer. So all weston-view's always be rendered with alpha channel.
+---
+ clients/desktop-shell.c             | 2 +-
+ libweston/backend-drm/drm-gbm.c     | 2 +-
+ libweston/backend-drm/drm.c         | 2 +-
+ libweston/renderer-gl/gl-renderer.c | 9 ++++++++-
+ 4 files changed, 11 insertions(+), 4 deletions(-)
+
+diff --git a/clients/desktop-shell.c b/clients/desktop-shell.c
+index bde5dc8..5c3cd97 100644
+--- a/clients/desktop-shell.c
++++ b/clients/desktop-shell.c
+@@ -1141,7 +1141,7 @@ background_create(struct desktop *desktop, struct output *output)
+ 	background->widget = window_add_widget(background->window, background);
+ 	window_set_user_data(background->window, background);
+ 	widget_set_redraw_handler(background->widget, background_draw);
+-	widget_set_transparent(background->widget, 0);
++	widget_set_transparent(background->widget, 1);
+ 
+ 	s = weston_config_get_section(desktop->config, "shell", NULL, NULL);
+ 	weston_config_section_get_string(s, "background-image",
+diff --git a/libweston/backend-drm/drm-gbm.c b/libweston/backend-drm/drm-gbm.c
+index 324c2a8..b127143 100644
+--- a/libweston/backend-drm/drm-gbm.c
++++ b/libweston/backend-drm/drm-gbm.c
+@@ -289,7 +289,7 @@ drm_output_render_gl(struct drm_output_state *state, pixman_region32_t *damage)
+ 	}
+ 
+ 	/* The renderer always produces an opaque image. */
+-	ret = drm_fb_get_from_bo(bo, b, true, BUFFER_GBM_SURFACE);
++	ret = drm_fb_get_from_bo(bo, b, false, BUFFER_GBM_SURFACE);
+ 	if (!ret) {
+ 		weston_log("failed to get drm_fb for bo\n");
+ 		gbm_surface_release_buffer(output->gbm_surface, bo);
+diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
+index e0b1cbd..02a3cee 100644
+--- a/libweston/backend-drm/drm.c
++++ b/libweston/backend-drm/drm.c
+@@ -2832,7 +2832,7 @@ drm_backend_create(struct weston_compositor *compositor,
+ 
+ 	compositor->backend = &b->base;
+ 
+-	if (parse_gbm_format(config->gbm_format, DRM_FORMAT_XRGB8888, &b->gbm_format) < 0)
++	if (parse_gbm_format(config->gbm_format, DRM_FORMAT_ARGB8888, &b->gbm_format) < 0)
+ 		goto err_compositor;
+ 
+ 	/* Check if we run drm-backend using weston-launch */
+diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
+index 72ecdec..ee31e4d 100644
+--- a/libweston/renderer-gl/gl-renderer.c
++++ b/libweston/renderer-gl/gl-renderer.c
+@@ -909,7 +909,14 @@ draw_view(struct weston_view *ev, struct weston_output *output,
+ 
+ 	replaced_shader = setup_censor_overrides(output, ev);
+ 
+-	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
++	if(ev->layer_link.layer != 0) {
++		if(ev->layer_link.layer->position == WESTON_LAYER_POSITION_BACKGROUND)
++			glBlendFunc(GL_ONE, GL_SRC_ALPHA);
++		else
++			glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
++	} else {
++		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
++	}
+ 
+ 	if (gr->fan_debug) {
+ 		use_shader(gr, &gr->solid_shader);
+-- 
+2.24.1
+

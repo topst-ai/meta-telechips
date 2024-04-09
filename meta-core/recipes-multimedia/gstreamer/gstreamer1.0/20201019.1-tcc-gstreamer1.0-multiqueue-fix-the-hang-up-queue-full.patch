@@ -1,0 +1,210 @@
+diff -Naur before/gst/gsterror.c 1.16.2-r0/gstreamer-1.16.2/gst/gsterror.c
+--- before/gst/gsterror.c	2020-10-15 12:17:02.858754274 +0900
++++ 1.16.2-r0/gstreamer-1.16.2/gst/gsterror.c	2020-10-19 16:23:16.243475350 +0900
+@@ -268,6 +268,8 @@
+           "suitable key has been supplied.");
+     case GST_STREAM_ERROR_DIVX_NOT_SUPPORT:
+       return _("Could not decode the DIVX stream because of license issue.");
++    case GST_STREAM_ERROR_PENDING:
++      return _("Some element falls into the infinite pending state.");
+ 	case GST_STREAM_ERROR_NUM_ERRORS:
+     default:
+       break;
+diff -Naur before/gst/gsterror.h 1.16.2-r0/gstreamer-1.16.2/gst/gsterror.h
+--- before/gst/gsterror.h	2020-10-15 12:17:02.858754274 +0900
++++ 1.16.2-r0/gstreamer-1.16.2/gst/gsterror.h	2020-10-19 16:22:34.150696477 +0900
+@@ -202,6 +202,7 @@
+   GST_STREAM_ERROR_DECRYPT,
+   GST_STREAM_ERROR_DECRYPT_NOKEY,
+   GST_STREAM_ERROR_DIVX_NOT_SUPPORT,
++  GST_STREAM_ERROR_PENDING,
+   GST_STREAM_ERROR_NUM_ERRORS
+ } GstStreamError;
+ 
+diff -Naur before/plugins/elements/gstmultiqueue.c 1.16.2-r0/gstreamer-1.16.2/plugins/elements/gstmultiqueue.c
+--- before/plugins/elements/gstmultiqueue.c	2019-08-24 21:23:49.000000000 +0900
++++ 1.16.2-r0/gstreamer-1.16.2/plugins/elements/gstmultiqueue.c	2020-10-19 16:21:17.241725845 +0900
+@@ -2762,8 +2762,8 @@
+ 
+   /* check if we reached the hard time/bytes limits;
+      time limit is only taken into account for non-sparse streams */
+-  if (sq->is_eos || IS_FILLED (sq, bytes, size.bytes) ||
+-      (!sq->is_sparse && IS_FILLED (sq, time, sq->cur_time))) {
++  if (sq->is_eos || IS_FILLED (sq, bytes, size.bytes) /*||
++      (!sq->is_sparse && IS_FILLED (sq, time, sq->cur_time))*/) {
+     goto done;
+   }
+ 
+@@ -2851,6 +2851,149 @@
+   }
+ }
+ 
++static gboolean singe_queue_check_full_error(GstSingleQueue * sq, guint visible, guint bytes, guint64 time)
++{
++	gboolean ret = FALSE;
++	GstMultiQueue *mq = NULL;
++	if(!sq || !sq->mqueue) return ret;
++
++	mq = sq->mqueue;
++	if(sq->flushing == FALSE)
++	{
++		GstState self_state;
++		GstState self_pending;
++		GstStateChangeReturn self_ret;
++		GstState state;
++		GstState pending;
++		GstStateChangeReturn ret;
++		GstElement *mqElement= GST_ELEMENT_CAST(mq);
++		GstElement *parent1; // if using "playbin" , parent is a decodebin.
++
++		self_ret = gst_element_get_state (mqElement, &self_state,&self_pending,0);
++
++		parent1 = gst_element_get_parent(mqElement);
++		if(parent1 != NULL)
++		{
++			GstElement *parent2; // if using "playbin" , parent is a uridecodebin.
++			ret = gst_element_get_state (parent1, &state,&pending,0);
++
++			parent2 = gst_element_get_parent(parent1);
++			if(parent2 != NULL)
++			{
++				GstElement *parent3; // if using "playbin" , parent is a playbin.
++				ret = gst_element_get_state (parent2, &state,&pending,0);
++
++				parent3 = gst_element_get_parent(parent2);
++				if(parent3 != NULL)
++				{
++					ret = gst_element_get_state (parent3, &state,&pending,0);
++
++					GST_WARNING_OBJECT(mq, " name [%s], ret %d, state %d, pending %d ", gst_element_get_name(parent3),ret,state,pending);
++
++					gst_object_unref(parent3);
++				}
++				else
++				{
++					GST_WARNING_OBJECT(mq, " name [%s], ret %d, state %d, pending %d ", gst_element_get_name(parent2),ret,state,pending);
++				}
++				gst_object_unref(parent2);
++			}
++			else
++			{
++				GST_WARNING_OBJECT(mq, " name [%s], ret %d, state %d, pending %d ", gst_element_get_name(parent1),ret,state,pending);
++			}
++
++			if(ret == GST_STATE_CHANGE_ASYNC &&
++				(
++				(pending == GST_STATE_PAUSED && (state == GST_STATE_READY || state == GST_STATE_PAUSED || state == GST_STATE_PLAYING))
++
++				|| (pending == GST_STATE_PLAYING && state == GST_STATE_PAUSED)
++				)
++			)
++			{
++				gboolean send_error_msg = TRUE;
++
++				// Only if it is an audio stream. Other cases have not been confirmed yet.
++				{
++					GstCaps *caps;
++					caps = gst_pad_get_current_caps(sq->srcpad);
++					if(caps)
++					{
++						GstStructure *src_structure;
++						gint width = 0;
++						gint height = 0;
++						src_structure = gst_caps_get_structure (caps, 0);
++						if(src_structure)
++						{
++							if(strstr (gst_structure_get_name (src_structure), "audio") == NULL)
++								send_error_msg = FALSE;
++						}
++						GST_ERROR_OBJECT(mq, "get current pad caps %" GST_PTR_FORMAT, caps);
++						gst_caps_unref(caps);
++					}
++				}
++
++				// Even in normal case,it can be detected before staring start-flush.
++				if(send_error_msg)
++				{
++					if(pending  == GST_STATE_PAUSED && state == GST_STATE_PAUSED  && // The state of PlayBin(Pipeline)
++						self_ret == GST_STATE_CHANGE_SUCCESS && self_state == GST_STATE_PLAYING && self_pending == GST_STATE_VOID_PENDING) // The state of MultiQueue
++					{
++						send_error_msg = FALSE;
++						//g_print("\x1b[35m %s before start-flush for seek \x1b[0m\n",__func__);
++						GST_WARNING_OBJECT(mq, " before start-flush for seek");
++					}
++				}
++
++				// Even in normal case , it can be detected when flushing.
++				if(send_error_msg)
++				{
++					GList *iter;
++					for (iter = mq->queues; iter; iter = g_list_next (iter)) {
++						GstSingleQueue *oq = (GstSingleQueue *) iter->data;
++
++						if(oq)
++						{
++							if(oq->flushing)
++							{
++								//g_print("\x1b[35m %s sq[%d] is flushing \x1b[0m\n",__func__,oq->id);
++								GST_WARNING_OBJECT(mq, " sq[%d] is flushing",oq->id);
++								send_error_msg = FALSE;
++								goto done;
++							}
++							else if(oq->active == FALSE)
++							{
++								//g_print("\x1b[35m %s sq[%d] is deactivated \x1b[0m\n",__func__,oq->id);
++								GST_WARNING_OBJECT(mq, " sq[%d] is deactivated",oq->id);
++								send_error_msg = FALSE;
++								goto done;
++							}
++						}
++					}
++				}
++
++				if(send_error_msg)
++				{
++					GST_WARNING_OBJECT(mq, " name [%s], ret %d, state %d, pending %d ", gst_element_get_name(mqElement),self_ret,self_state,self_pending);
++					GST_ERROR_OBJECT(mq, "\x1b[1;32m Infinite pending!!!! \x1b[1;0m queue %d: visible %u/%u, bytes %u/%u, time %" G_GUINT64_FORMAT "/%" G_GUINT64_FORMAT, 
++						 sq->id, visible, sq->max_size.visible, bytes, sq->max_size.bytes, sq->cur_time, sq->max_size.time);
++
++					GST_ELEMENT_ERROR (mq,STREAM , PENDING,
++						("MultiQueue falls into the infinite pending state."),
++						("queue %d: visible %u/%u, bytes %u/%u",sq->id, visible, sq->max_size.visible, bytes, sq->max_size.bytes));
++				}
++			}
++done:
++			gst_object_unref(parent1);
++		}
++		else
++		{
++			GST_ERROR_OBJECT(mq, " Unknown situation");
++		}
++	}
++	return ret;
++}
++
+ static gboolean
+ single_queue_check_full (GstDataQueue * dataq, guint visible, guint bytes,
+     guint64 time, GstSingleQueue * sq)
+@@ -2873,6 +3016,8 @@
+ 
+   /* check time or bytes */
+   res = IS_FILLED (sq, bytes, bytes);
++
++#if 0
+   /* We only care about limits in time if we're not a sparse stream or
+    * we're not syncing by running time */
+   if (!sq->is_sparse || !mq->sync_by_running_time) {
+@@ -2885,7 +3030,12 @@
+     } else
+       res |= IS_FILLED (sq, time, sq->cur_time);
+   }
+-
++#else
++  if(res)
++  {
++    singe_queue_check_full_error(sq,visible,bytes,time);
++  }
++#endif
+   return res;
+ }
+ 

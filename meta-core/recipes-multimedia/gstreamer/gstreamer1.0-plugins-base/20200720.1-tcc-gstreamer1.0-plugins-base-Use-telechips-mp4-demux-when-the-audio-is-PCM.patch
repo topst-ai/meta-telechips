@@ -1,0 +1,183 @@
+diff -Naur after/gst/typefind/gsttypefindfunctions.c before/gst/typefind/gsttypefindfunctions.c
+--- after/gst/typefind/gsttypefindfunctions.c	2016-03-25 19:00:50.000000000 +0900
++++ before/gst/typefind/gsttypefindfunctions.c	2020-06-04 11:56:01.238847116 +0900
+@@ -3305,22 +3305,157 @@
+
+ 
+ /*** video/quicktime ***/
+-
++static GstStaticCaps qt_pcm_caps = GST_STATIC_CAPS ("video/qt-pcm");
+ static GstStaticCaps qt_caps = GST_STATIC_CAPS ("video/quicktime");
+ 
++#define QT_PCM_CAPS gst_static_caps_get(&qt_pcm_caps)
+ #define QT_CAPS gst_static_caps_get(&qt_caps)
+ #define STRNCMP(x,y,z) (strncmp ((char*)(x), (char*)(y), z))
+ 
++guint64 box_size ( GstTypeFind * tf, guint64 size, guint64 offset )
++{
++  guint64 new_offset;
++
++  if (size == 1) {
++    const guint8 *sizedata;
++
++    sizedata = gst_type_find_peek (tf, offset + 8, 8);
++    if (sizedata == NULL)
++      return 0;
++
++    size = GST_READ_UINT64_BE (sizedata);
++  } else {
++    if (size < 8)
++      return 0;
++  }
++  new_offset = offset + size;
++  if (new_offset <= offset)
++    return 0;
++
++  return new_offset;
++}
++
++gboolean box_parse_tree(GstTypeFind * tf, guint64 offset, guint64 moov_size, const char * target, int depth, gboolean * ispcm)
++{
++  guint64 next_offset;
++  gboolean ret = FALSE;
++  const guint8 *data = gst_type_find_peek (tf, offset, 12);
++
++  if(data == NULL){
++    return FALSE;
++  }
++
++  if(offset > moov_size)
++    return FALSE;
++
++  if (STRNCMP (&data[4], target, 4) == 0)
++  {
++    guint32 chunk_type;
++    switch(depth)
++    {
++      case 2:
++        ret = box_parse_tree(tf, offset + 8, moov_size, "mdia", depth+1, ispcm);
++      break;
++      case 3:
++        return box_parse_tree(tf, offset + 8, moov_size, "hdlr", depth+1, ispcm);
++        break;
++      case 4:
++        if ( data[16] == 's') // is sound ?
++        {
++          next_offset = box_size(tf, GST_READ_UINT32_BE (data), offset);
++          return box_parse_tree(tf, next_offset, moov_size, "minf", depth+1, ispcm);
++        }
++        else
++          return FALSE;
++      break;
++      case 5:
++        return box_parse_tree(tf, offset + 8, moov_size, "stbl", depth+1, ispcm);
++      break;
++      case 6:
++        return box_parse_tree(tf, offset + 8, moov_size, "stsd", depth+1, ispcm);
++      break;
++      case 7:
++        chunk_type = GST_READ_UINT32_BE (data + 20);
++        switch (chunk_type){
++          case GST_MAKE_FOURCC ('N', 'O', 'N', 'E'):
++          case GST_MAKE_FOURCC ('r', 'a', 'w', ' '):
++          case GST_MAKE_FOURCC ('t', 'w', 'o', 's'):
++          case GST_MAKE_FOURCC ('s', 'o', 'w', 't'):
++          case GST_MAKE_FOURCC ('f', 'l', '6', '4'):
++          case GST_MAKE_FOURCC ('f', 'l', '3', '2'):
++          case GST_MAKE_FOURCC ('i', 'n', '2', '4'):
++          case GST_MAKE_FOURCC ('i', 'n', '3', '2'):
++          *ispcm = TRUE;
++          return TRUE; // check audio track done, no more check
++          default:
++          return TRUE; // check audio track done, no more check
++          break;
++        }
++      default:
++      break;
++    }
++  }
++  if ( ret )
++    return ret;
++
++  next_offset = box_size(tf, GST_READ_UINT32_BE (data), offset);
++
++  if(!next_offset)
++      return FALSE;
++
++  return box_parse_tree(tf, next_offset, moov_size, target, depth, ispcm);
++}
++
+ /* FIXME 0.11: go through http://www.ftyps.com/ */
+ static void
+ qt_type_find (GstTypeFind * tf, gpointer unused)
+ {
+   const guint8 *data;
+   guint tip = 0;
++  gboolean ispcm = FALSE;
+   guint64 offset = 0;
+   guint64 size;
+   const gchar *variant = NULL;
+ 
++  /* Find PCM >>>>> */
++  while ((data = gst_type_find_peek (tf, offset, 12)) != NULL) {
++
++    guint64 new_offset;
++    guint64 moov_size = offset + 8 + GST_READ_UINT32_BE (data); // current offset + box len + box size
++
++    if (STRNCMP (&data[4], "moov", 4) == 0 ){
++      box_parse_tree(tf, offset + 8, moov_size, "trak", 2, &ispcm);
++    }
++
++    size = GST_READ_UINT32_BE (data);
++
++    if (size == 1) {
++      const guint8 *sizedata;
++
++      sizedata = gst_type_find_peek (tf, offset + 8, 8);
++      if (sizedata == NULL)
++        break;
++
++      size = GST_READ_UINT64_BE (sizedata);
++    } else {
++      if (size < 8)
++        break;
++    }
++
++    new_offset = offset + size;
++    if (new_offset <= offset)
++      break;
++    offset = new_offset;
++  }
++  if(ispcm)
++  {
++    tip = GST_TYPE_FIND_MAXIMUM;
++    goto done;
++  }
++  /* <<<<< Find PCM */
++
++  offset = 0;
++
+   while ((data = gst_type_find_peek (tf, offset, 12)) != NULL) {
+     guint64 new_offset;
+ 
+@@ -3421,7 +3556,10 @@
+ 
+ done:
+   if (tip > 0) {
+-    if (variant) {
++    if (ispcm){
++      gst_type_find_suggest (tf, tip, QT_PCM_CAPS);
++    }
++    else if (variant) {
+       GstCaps *caps = gst_caps_copy (QT_CAPS);
+ 
+       gst_caps_set_simple (caps, "variant", G_TYPE_STRING, variant, NULL);
+@@ -5911,7 +6049,7 @@
+       "m4a", M4A_CAPS, NULL, NULL);
+   TYPE_FIND_REGISTER (plugin, "application/x-3gp", GST_RANK_PRIMARY,
+       q3gp_type_find, "3gp", Q3GP_CAPS, NULL, NULL);
+-  TYPE_FIND_REGISTER (plugin, "video/quicktime", GST_RANK_PRIMARY,
++  TYPE_FIND_REGISTER (plugin, "video/quicktime", GST_RANK_PRIMARY + 1,
+       qt_type_find, "mov,mp4", QT_CAPS, NULL, NULL);
+   TYPE_FIND_REGISTER (plugin, "image/x-quicktime", GST_RANK_SECONDARY,
+       qtif_type_find, "qif,qtif,qti", QTIF_CAPS, NULL, NULL);

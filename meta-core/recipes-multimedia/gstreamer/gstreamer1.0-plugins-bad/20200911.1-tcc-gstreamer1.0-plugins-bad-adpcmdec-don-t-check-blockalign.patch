@@ -1,0 +1,67 @@
+diff -Naur before/gst/adpcmdec/adpcmdec.c 1.16.2-r0/gst-plugins-bad-1.16.2/gst/adpcmdec/adpcmdec.c
+--- before/gst/adpcmdec/adpcmdec.c	2020-09-11 14:17:10.105617688 +0900
++++ 1.16.2-r0/gst-plugins-bad-1.16.2/gst/adpcmdec/adpcmdec.c	2020-09-11 14:21:30.537897803 +0900
+@@ -45,7 +45,6 @@
+     GST_PAD_ALWAYS,
+     GST_STATIC_CAPS ("audio/x-adpcm, "
+         " layout=(string){microsoft, dvi}, "
+-        " block_align = (int) [64, 8192], "
+         " rate = (int)[ 1, MAX ], " "channels = (int)[1,2];")
+     );
+ 
+@@ -277,7 +276,7 @@
+ 
+   if ((n_samples - dec->channels) % 8 != 0) {
+     GST_WARNING_OBJECT (dec, "Input not correct size");
+-    return FALSE;
++    goto error_memset;
+   }
+ 
+   for (channel = 0; channel < dec->channels; channel++) {
+@@ -286,7 +285,7 @@
+ 
+     if (data[channel * 4 + 3] != 0) {
+       GST_WARNING_OBJECT (dec, "Synchronisation error");
+-      return FALSE;
++      goto error_memset;
+     }
+   }
+ 
+@@ -323,6 +322,10 @@
+     i += 8 * dec->channels;
+   }
+   return TRUE;
++
++error_memset:
++  memset(samples,0,dec->channels*n_samples);
++  return TRUE;
+ }
+ 
+ static GstBuffer *
+@@ -384,7 +387,7 @@
+   size = gst_adapter_available (adapter);
+   g_return_val_if_fail (size > 0, GST_FLOW_ERROR);
+ 
+-  if (dec->blocksize < 0) {
++  if (dec->blocksize < 64) {
+     /* No explicit blocksize; we just process one input buffer at a time */
+     *offset = 0;
+     *length = size;
+@@ -412,11 +415,13 @@
+   if (G_UNLIKELY (!buffer))
+     return GST_FLOW_OK;
+ 
+-  if (!dec->blocksize)
+-    return GST_FLOW_NOT_NEGOTIATED;
+-
+   gst_buffer_map (buffer, &map, GST_MAP_READ);
+-  outbuf = adpcmdec_decode_block (dec, map.data, dec->blocksize);
++
++  if (dec->blocksize < 64)
++    outbuf = adpcmdec_decode_block (dec, map.data, map.size);
++  else
++    outbuf = adpcmdec_decode_block (dec, map.data, dec->blocksize);
++
+   gst_buffer_unmap (buffer, &map);
+ 
+   if (outbuf == NULL) {

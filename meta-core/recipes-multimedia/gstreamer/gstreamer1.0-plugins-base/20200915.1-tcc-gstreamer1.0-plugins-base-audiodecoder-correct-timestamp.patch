@@ -1,0 +1,25 @@
+diff -Naur before/gst-libs/gst/audio/gstaudiodecoder.c 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/audio/gstaudiodecoder.c
+--- before/gst-libs/gst/audio/gstaudiodecoder.c	2020-09-15 14:37:09.897298794 +0900
++++ 1.16.2-r0/gst-plugins-base-1.16.2/gst-libs/gst/audio/gstaudiodecoder.c	2020-09-15 14:41:58.083855415 +0900
+@@ -1387,6 +1387,21 @@
+   else
+     ts = GST_CLOCK_TIME_NONE;
+ 
++  if (G_LIKELY (buf)) {
++    GstClockTime buf_time = GST_BUFFER_TIMESTAMP (buf);
++    if (G_LIKELY (GST_CLOCK_TIME_IS_VALID (buf_time))) {
++      guint64 sample_dmx, sample_buf;
++      sample_dmx = gst_util_uint64_scale_int (((ts+50000)/GST_MSECOND)*GST_MSECOND, ctx->info.rate, GST_SECOND);
++      sample_buf = gst_util_uint64_scale_int (((buf_time+50000)/GST_MSECOND)*GST_MSECOND, ctx->info.rate, GST_SECOND);
++
++      if (sample_dmx != sample_buf) {
++        GST_LOG_OBJECT (dec, "correct timestamp diff.! from ts(dmx): %" GST_TIME_FORMAT " to ts(buf): %" GST_TIME_FORMAT ", samples diff: %" G_GUINT64_FORMAT,
++           GST_TIME_ARGS (ts), GST_TIME_ARGS (buf_time), ABS (sample_dmx - sample_buf));
++        ts = buf_time;
++      }
++    }
++  }
++
+   GST_DEBUG_OBJECT (dec, "leading frame ts %" GST_TIME_FORMAT,
+       GST_TIME_ARGS (ts));
+ 

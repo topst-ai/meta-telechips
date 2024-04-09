@@ -1,0 +1,500 @@
+diff -Naur before/sys/v4l2/gstv4l2bufferpool.c 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2bufferpool.c
+--- before/sys/v4l2/gstv4l2bufferpool.c	2020-09-14 18:43:04.700155198 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2bufferpool.c	2020-09-23 11:31:29.095768414 +0900
+@@ -196,6 +196,37 @@
+   g_slice_free (struct UserPtrData, data);
+ }
+ 
++#ifdef TCC_V4L2SINK_DRIVER_USE
++void gst_v4l2_buffer_copy_meta_for_tc(GstBuffer * dest, GstBuffer * src,GstMeta *meta)
++{
++  if(meta)
++  {
++    const GstMetaInfo *info = meta->info;
++
++    /* Don't copy memory metas if we only copied part of the buffer, didn't
++     * copy memories or merged memories. In all these cases the memory
++     * structure has changed and the memory meta becomes meaningless.
++     */
++    if (info->transform_func)
++    {
++      GstMetaTransformCopy copy_data;
++
++      copy_data.region = FALSE;
++      copy_data.offset = 0;
++      copy_data.size = -1;
++
++      if (!info->transform_func (dest, meta, src,
++         _gst_meta_transform_copy, &copy_data))
++      {
++       //GST_CAT_ERROR (GST_CAT_BUFFER,
++       //  "failed to copy meta %p of API type %s", meta,
++       //  g_type_name (info->api));
++      }
++    }
++  }
++}
++#endif
++
+ static GstFlowReturn
+ gst_v4l2_buffer_pool_import_userptr (GstV4l2BufferPool * pool,
+     GstBuffer * dest, GstBuffer * src)
+@@ -299,6 +330,14 @@
+   gst_buffer_copy_into (dest, src,
+       GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS, 0, -1);
+ 
++  #ifdef TCC_V4L2SINK_DRIVER_USE
++  if(gst_v4l2_object_is_connected_tcvdec(pool->obj))
++  {
++    GstVideoMeta *meta = gst_buffer_get_video_meta(src);
++    gst_v4l2_buffer_copy_meta_for_tc(dest, src, meta);
++  }
++  #endif
++
+   return ret;
+ 
+ not_our_buffer:
+@@ -1150,6 +1189,179 @@
+   return GST_FLOW_CUSTOM_SUCCESS;
+ }
+ 
++static GstFlowReturn gst_v4l2_buffer_pool_qbuf_tc_with_meta(GstV4l2BufferPool *pool, GstBuffer *buf, struct v4l2_buffer *vbuffer)
++{
++  GstV4l2Object *v4l2object = NULL;
++  GstMapInfo map = GST_MAP_INFO_INIT;
++  GstVideoMeta *meta = NULL;
++  GstClockTime timestamp;
++
++  if(buf && pool)
++  {
++    int idx = 0;
++    v4l2object = pool->obj;
++    {
++      gpointer state = NULL;
++
++      while ((meta = gst_buffer_iterate_meta (buf, &state)))
++      {
++        if (meta->mType == TYPE_VIDEO)
++        {
++          GST_DEBUG_OBJECT (pool, "found meta %p for video (meta index %d )",meta,idx);
++          break;
++        }
++        idx++;
++        meta = NULL;
++      }
++    }
++
++    if(meta)
++    {
++      if(G_LIKELY(meta->mType == TYPE_VIDEO))
++      {
++        //printf("%s %d buf %p meta %p,,, Bingo~~~~~~~~~~~~~~ ^^ \n",__func__,__LINE__,buf,meta);
++        vbuffer->sequence = meta->mDispIdx;
++
++        if(meta->mFlags & (DEC_FLAGS_USE_10BIT_2BYTE | DEC_FLAGS_USE_10BIT_REAL))
++        {
++          vbuffer->flags |= (meta->mFlags & DEC_FLAGS_USE_10BIT_2BYTE)
++                              ? DEC_FLAGS_USE_10BIT_2BYTE : DEC_FLAGS_USE_10BIT_REAL;
++        }
++
++        if(meta->mFlags & DEC_FLAGS_INTERLACED)
++        {
++          if(meta->mFlags & DEC_FLAGS_INTERLACED_ODD_FIRST)
++          {
++            vbuffer->field = V4L2_FIELD_INTERLACED_BT;
++          }
++          else
++          {
++            vbuffer->field = V4L2_FIELD_INTERLACED_TB;
++          }
++        }
++        else
++        {
++          vbuffer->field = V4L2_FIELD_ANY;
++        }
++
++#if defined(TCC_VSYNC_INCLUDE)
++        if(meta->mFlags & DEC_FLAGS_DISCONTINUITY)
++        {
++          vbuffer->reserved2 = 1;
++          GST_INFO_OBJECT(pool, "[%s][%d] ========> Get DEC_FLAGS_DISCONTINUITY, pts:%lld\n", __FUNCTION__, __LINE__, GST_BUFFER_PTS(buf));
++        }
++        else
++          vbuffer->reserved2 = 0;
++#endif //#if defined(TCC_VSYNC_INCLUDE)
++
++        vbuffer->m.planes[0].m.userptr = meta->pCurrOut[0];
++        vbuffer->m.planes[0].reserved[2] = meta->pCurrOut[1];
++        vbuffer->m.planes[0].reserved[3] = meta->pCurrOut[2];
++
++        vbuffer->m.planes[0].bytesused = meta->iY;
++
++        vbuffer->m.planes[0].reserved[4] = meta->mTcWidth;
++        vbuffer->m.planes[0].reserved[5] = meta->mTcHeight;
++
++        if ((v4l2object != NULL) &&
++            ( v4l2object->crop.c.top != 0   ||  v4l2object->crop.c.left != 0
++           || v4l2object->crop.c.width != 0 ||  v4l2object->crop.c.height != 0 ))
++        {
++          GST_DEBUG_OBJECT(pool, "v4l2bufferpool new crop top=%d, left=%d, width=%d, height=%d\n",
++          v4l2object->crop.c.top, v4l2object->crop.c.left, v4l2object->crop.c.width, v4l2object->crop.c.height);
++          vbuffer->m.planes[0].reserved[6] = v4l2object->crop.c.left;
++          vbuffer->m.planes[0].reserved[7] = v4l2object->crop.c.top;
++          vbuffer->m.planes[0].reserved[8] = v4l2object->crop.c.width;
++          vbuffer->m.planes[0].reserved[9] = v4l2object->crop.c.height;
++        }
++        else
++        {
++          vbuffer->m.planes[0].reserved[6] = meta->mTcCropLeft;
++          vbuffer->m.planes[0].reserved[7] = meta->mTcCropTop;
++          vbuffer->m.planes[0].reserved[8] = meta->mTcCropWidth;
++          vbuffer->m.planes[0].reserved[9] = meta->mTcCropHeight;
++        }
++
++#if defined(_MAP_COMP_SUPPORT_)
++        if(meta->mFlags & DEC_FLAGS_USE_MAP_CONV)
++        {
++          vbuffer->m.planes[0].reserved[10] = 1;
++          // CHECK
++        }
++        else
++#endif
++#if defined(_DTRC_COMP_SUPPORT_) // X
++        if(meta->mFlags & DEC_FLAGS_USE_DTRC)
++        {
++          // CHECK
++        }
++        else
++#endif
++        {
++          vbuffer->m.planes[0].reserved[10] = 0;
++        }
++
++#if defined(_HEVC_USER_DATA_SUPPORT_) //
++        // CHECK
++#endif
++
++        vbuffer->m.planes[0].reserved[46] = meta->mColorFormat;
++        vbuffer->m.planes[0].reserved[64] = meta->mDolbyHDREnable;
++
++#if defined(_DOLBY_VISION_SUPPORT_) // X
++        //Dolby-Vision
++        if (meta->mDolbyHDREnable != 0)
++        {
++        // CHECK
++        }
++#endif
++
++        // subtitle
++        // CHECK
++      }
++      else
++      {
++        GST_ERROR_OBJECT(pool, " meta %p Invalid type:%d\n", meta,meta->mType);
++        return GST_FLOW_ERROR;
++      }
++    }
++    else
++    {
++      GST_ERROR_OBJECT(pool, " can not find meta %p for video (meta count %d)\n",meta,idx);
++      GST_ERROR_OBJECT(pool, " buf %p meta %p",buf,meta);
++      return GST_FLOW_ERROR;
++    }
++
++#if defined(TCC_VSYNC_INCLUDE)
++    timestamp = GST_BUFFER_DTS(buf);
++
++    if(!GST_CLOCK_TIME_IS_VALID(timestamp))
++      timestamp = GST_BUFFER_PTS(buf);
++
++    GST_TIME_TO_TIMEVAL(timestamp, vbuffer->timestamp);
++    if( (v4l2object->change_overlay_size == TRUE) ||
++        ((meta->mFlags & DEC_FLAGS_DISCONTINUITY) && ((meta->mFlags & GST_V4L2_BUFFER_FLAG_DONT_FLUSH) == 0))
++    )
++    {
++      gst_v4l2_driver_buffer_flush(pool, &vbuffer);
++    }
++
++    GST_DEBUG_OBJECT(pool, "Q:%d, pts:%lld, ybuf:0x%x, gobj:0x%x\n",
++    pool->num_queued, GST_BUFFER_PTS(buf), vbuffer->m.planes[0].m.userptr, vbuffer->sequence);
++#endif //#if defined(TCC_VSYNC_INCLUDE)
++
++    return GST_FLOW_OK;
++
++  }
++
++  if(buf)
++  {
++
++  }
++  GST_INFO_OBJECT(pool, "[%s:%d] \n", __FUNCTION__, __LINE__);
++  return GST_FLOW_ERROR;
++}
++
+ static GstFlowReturn gst_v4l2_buffer_pool_qbuf_tc_process(GstV4l2BufferPool *pool, GstBuffer *buf, struct v4l2_buffer *vbuffer)
+ {
+   GstV4l2Object *v4l2object = pool->obj;
+@@ -1390,6 +1602,16 @@
+   }
+ 
+ #ifdef TCC_V4L2SINK_DRIVER_USE
++#if 0  //use this code after that modify tc v4l2 driver code
++  if(gst_v4l2_object_is_connected_tcvdec(obj))
++  {
++    if(gst_v4l2_buffer_pool_qbuf_tc_with_meta(pool, buf, &group->buffer) != GST_FLOW_OK)
++	{
++      GST_WARNING_OBJECT(pool,"gst_v4l2_buffer_pool_qbuf_tc_with_meta() is failed");
++	}
++  }
++  else
++#endif
+   if(obj->mode == GST_V4L2_IO_USERPTR)
+   {
+     gst_v4l2_buffer_pool_qbuf_tc_process(pool, buf, &group->buffer);
+diff -Naur before/sys/v4l2/gstv4l2object.c 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2object.c
+--- before/sys/v4l2/gstv4l2object.c	2020-09-14 18:43:04.652154794 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2object.c	2020-09-23 11:37:31.360376546 +0900
+@@ -1827,12 +1827,14 @@
+     goto invalid_format;
+ 
+ #ifdef TCC_V4L2SINK_DRIVER_USE
+-  if (g_str_equal (mimetype, "video/x-tc-raw")) {
++  if (g_str_equal (mimetype, "video/x-tc-raw") || gst_v4l2_object_is_connected_tcvdec(v4l2object)) {
+     switch (GST_VIDEO_INFO_FORMAT (info)) {
+       case GST_VIDEO_FORMAT_I420_TC:
++      case GST_VIDEO_FORMAT_I420:
+         fourcc = V4L2_PIX_FMT_YUV420;
+         break;
+       case GST_VIDEO_FORMAT_NV12_TC:
++      case GST_VIDEO_FORMAT_NV12:
+         fourcc = V4L2_PIX_FMT_NV12;
+         break;
+       case GST_VIDEO_FORMAT_RGB15:
+@@ -3107,7 +3109,7 @@
+         s = gst_caps_get_structure(caps, 0);
+         mimetype = gst_structure_get_name(s);
+ 
+-        if(g_str_equal(mimetype, "video/x-tc-raw"))
++        if(g_str_equal(mimetype, "video/x-tc-raw") || gst_v4l2_object_is_connected_tcvdec(v4l2object))
+           mode = GST_V4L2_IO_USERPTR;
+         else
+           mode = GST_V4L2_IO_MMAP;
+@@ -4489,6 +4491,28 @@
+   return ret;
+ }
+ 
++gboolean gst_v4l2_object_is_connected_tcvdec(GstV4l2Object * v4l2object)
++{
++  gboolean ret = FALSE;
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  if(v4l2object)
++  {
++    ret = v4l2object->isConnectedTcDec;
++  }
++#endif
++  return ret;
++}
++
++void gst_v4l2_object_set_connected_tcvdec(GstV4l2Object * v4l2object,gboolean flag)
++{
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  if(v4l2object)
++  {
++    v4l2object->isConnectedTcDec = flag;
++  }
++#endif
++}
++
+ GstCaps *
+ gst_v4l2_object_get_caps (GstV4l2Object * v4l2object, GstCaps * filter)
+ {
+@@ -4503,6 +4527,22 @@
+   } else {
+     ret = gst_caps_ref (v4l2object->probed_caps);
+   }
++  #ifdef TCC_V4L2SINK_DRIVER_USE
++  if((ret) && (gst_caps_get_size(ret) > 0))
++  {
++    GstStructure *structure;
++    structure = gst_caps_get_structure (ret, 0);
++    if(structure)
++    {
++      gboolean tc_vdec = FALSE;
++      if(gst_structure_get_boolean(structure, "tc-vdec",&tc_vdec) && tc_vdec)
++      {
++        v4l2object->isConnectedTcDec = TRUE;
++        GST_INFO_OBJECT (v4l2object->element,"\x1b[47m \x1b[31m connected tcvdec \x1b[0m");
++      }
++    }
++  }
++  #endif
+ 
+   return ret;
+ }
+diff -Naur before/sys/v4l2/gstv4l2object.h 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2object.h
+--- before/sys/v4l2/gstv4l2object.h	2020-09-14 18:43:04.652154794 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2object.h	2020-09-23 11:39:25.137765938 +0900
+@@ -214,6 +214,7 @@
+   /* to set format */
+   gboolean change_overlay_size;
+   int vout_mode;
++  gboolean isConnectedTcDec;
+ #endif
+   /* lists... */
+   GSList *formats;              /* list of available capture formats */
+@@ -286,6 +287,9 @@
+     PROP_PIXEL_ASPECT_RATIO,  \
+     PROP_FORCE_ASPECT_RATIO
+ 
++gboolean gst_v4l2_object_is_connected_tcvdec(GstV4l2Object * v4l2object);
++void gst_v4l2_object_set_connected_tcvdec(GstV4l2Object * v4l2object,gboolean flag);
++
+ /* create/destroy */
+ GstV4l2Object*  gst_v4l2_object_new       (GstElement * element,
+                                            GstObject * dbg_obj,
+diff -Naur before/sys/v4l2/gstv4l2sink.c 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2sink.c
+--- before/sys/v4l2/gstv4l2sink.c	2020-09-14 18:43:04.700155198 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2sink.c	2020-09-23 11:42:52.803377981 +0900
+@@ -346,6 +346,11 @@
+ static void
+ gst_v4l2sink_finalize (GstV4l2Sink * v4l2sink)
+ {
++  if(v4l2sink->lastbuffer)
++  {
++    gst_buffer_unref(v4l2sink->lastbuffer);
++    v4l2sink->lastbuffer = NULL;
++  }
+   gst_v4l2_object_destroy (v4l2sink->v4l2object);
+ 
+   G_OBJECT_CLASS (parent_class)->finalize ((GObject *) (v4l2sink));
+@@ -1007,6 +1012,11 @@
+     return FALSE;
+   }
+ 
++  if (!gst_v4l2sink_is_tcvdec(bsink)) {
++    GST_INFO_OBJECT (v4l2sink, "didn't connect telechips video decoder");
++  }
++  else GST_INFO_OBJECT (v4l2sink, "connect telechips video decoder");
++
+   /* make sure the caps changed before doing anything */
+   if (gst_v4l2_object_caps_equal (obj, caps))
+     return TRUE;
+@@ -1081,6 +1091,55 @@
+ }
+ 
+ #ifdef TCC_V4L2SINK_DRIVER_USE
++#define GST_V4L2SINK_QUERY_NAME "GstV4l2SinkQuery"
++
++GstQuery *gst_v4l2sink_query_check_is_tcvdec (void)
++{
++  GstQuery *query;
++  GstStructure *structure;
++
++  structure = gst_structure_new (GST_V4L2SINK_QUERY_NAME,
++      "is-tcvdec", G_TYPE_BOOLEAN, FALSE, NULL);
++  query = gst_query_new_custom (GST_QUERY_CUSTOM, structure);
++
++  return query;
++}
++
++gboolean gst_v4l2sink_is_tcvdec(GstBaseSink *bsink)
++{
++  GstV4l2Sink *v4l2sink = GST_V4L2SINK (bsink);
++  GstV4l2Object *obj = v4l2sink->v4l2object;
++
++  gboolean ret = gst_v4l2_object_is_connected_tcvdec(obj);
++
++  if(bsink && bsink->sinkpad)
++  {
++    GstQuery *query = gst_v4l2sink_query_check_is_tcvdec();
++    gboolean res;
++    if(query)
++    {
++      res = gst_pad_peer_query (bsink->sinkpad, query);
++      if(res)
++      {
++        const GstStructure *s;
++        s = gst_query_get_structure (query);
++        if(s)
++        {
++          gboolean is_tcvdec = FALSE;
++          if(gst_structure_get_boolean (s, "is-tcvdec", &is_tcvdec))
++          {
++            gst_v4l2_object_set_connected_tcvdec(obj,is_tcvdec);
++            ret = is_tcvdec;
++          }
++          GST_INFO_OBJECT(v4l2sink,"is_tcvdec %d",is_tcvdec);
++        }
++      }
++      gst_query_unref (query);
++    }
++  }
++  return ret;
++}
++
+ GstFlowReturn gst_v4l2sink_show_lastframe(GstBaseSink *bsink, GstBuffer *buf)
+ {
+     GstFlowReturn ret;
+@@ -1111,33 +1170,45 @@
+ 
+ void gst_v4l2sink_last_frame_update(GstV4l2Sink *v4l2sink, GstBuffer *buf)
+ {
+-  GstMapInfo map;
+-  gsize framesize, framesize_last;
+-
+-  framesize = gst_buffer_get_size(buf);
+-  //printf("%s %d %d %d\n",__func__,__LINE__, framesize, obj->sizeimage);
+-
+-  if(v4l2sink->lastbuffer == NULL)
++  if(gst_v4l2_object_is_connected_tcvdec(v4l2sink->v4l2object))
+   {
+-    v4l2sink->lastbuffer = gst_buffer_new_and_alloc(framesize);
++    if(v4l2sink->lastbuffer)
++    {
++      gst_buffer_unref(v4l2sink->lastbuffer);
++      v4l2sink->lastbuffer = NULL;
++    }
++    v4l2sink->lastbuffer = gst_buffer_ref(buf);
+   }
+   else
+   {
+-    framesize_last  = gst_buffer_get_size(v4l2sink->lastbuffer);
++    GstMapInfo map;
++    gsize framesize, framesize_last;
+ 
+-    if(framesize_last != framesize)
+-    {
+-      gst_buffer_unref(v4l2sink->lastbuffer);
++    framesize = gst_buffer_get_size(buf);
++    //printf("%s %d %d %d\n",__func__,__LINE__, framesize, obj->sizeimage);
+ 
++    if(v4l2sink->lastbuffer == NULL)
++    {
+       v4l2sink->lastbuffer = gst_buffer_new_and_alloc(framesize);
+     }
+-  }
++    else
++    {
++      framesize_last  = gst_buffer_get_size(v4l2sink->lastbuffer);
+ 
+-  gst_buffer_map(buf, &map, GST_MAP_READ);
+-  gst_buffer_fill(v4l2sink->lastbuffer, 0, map.data, framesize);
+-  gst_buffer_unmap(buf, &map);
++      if(framesize_last != framesize)
++      {
++        gst_buffer_unref(v4l2sink->lastbuffer);
+ 
+-  gst_buffer_resize(v4l2sink->lastbuffer, 0, framesize);
++        v4l2sink->lastbuffer = gst_buffer_new_and_alloc(framesize);
++      }
++    }
++
++    gst_buffer_map(buf, &map, GST_MAP_READ);
++    gst_buffer_fill(v4l2sink->lastbuffer, 0, map.data, framesize);
++    gst_buffer_unmap(buf, &map);
++
++    gst_buffer_resize(v4l2sink->lastbuffer, 0, framesize);
++  }
+ }
+ 
+ /* called after A/V sync to render frame */

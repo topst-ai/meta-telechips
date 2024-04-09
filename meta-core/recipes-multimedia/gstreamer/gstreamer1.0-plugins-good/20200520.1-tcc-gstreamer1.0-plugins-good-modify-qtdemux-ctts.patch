@@ -1,0 +1,148 @@
+diff -Naur before/gst/isomp4/qtdemux.c after/gst/isomp4/qtdemux.c
+--- before/gst/isomp4/qtdemux.c	2019-08-27 21:12:19.000000000 +0900
++++ after/gst/isomp4/qtdemux.c	2020-05-12 14:56:34.509457195 +0900
+@@ -426,7 +426,9 @@
+   guint32 n_composition_times;
+   guint32 ctts_index;
+   guint32 ctts_sample_index;
++  guint32 ctts_tot_count;     /* Total ctts count */
+   guint32 ctts_count;
++  guint32 ctts_max_soffset;   /* Maximum ctts sample offset value */
+   gint32 ctts_soffset;
+ 
+   /* cslg */
+@@ -5270,6 +5272,9 @@
+   *duration = QTSAMPLE_DUR_DTS (stream, sample, *dts);
+   *keyframe = QTSAMPLE_KEYFRAME (stream, sample);
+ 
++  if (stream->subtype == FOURCC_soun) //audio stream's timestamp don't need ordering
++    *pts = *dts;
++
+   return TRUE;
+ 
+   /* special cases */
+@@ -6605,6 +6610,38 @@
+       GST_ELEMENT_FLOW_ERROR (qtdemux, ret);
+       gst_qtdemux_push_event (qtdemux, gst_event_new_eos ());
+     }
++    else if(ret == GST_FLOW_FLUSHING)
++    {
++      GstState state;
++      GstState pending;
++      GstStateChangeReturn ret;
++      ret = gst_element_get_state (GST_ELEMENT_CAST (qtdemux), &state,&pending,0);
++      GST_INFO_OBJECT (qtdemux, "\x1b[1;32m ret = %d, state = %d, pending = %d \x1b[1;0m", ret, state,pending);
++    
++      if(ret == GST_STATE_CHANGE_SUCCESS &&
++        state == GST_STATE_PAUSED &&
++        pending == GST_STATE_VOID_PENDING)
++      {
++        // decodebin
++        GstElement *parentElement = gst_element_get_parent(GST_ELEMENT_CAST (qtdemux));
++        if(parentElement != NULL)
++        {
++          ret = gst_element_get_state (GST_ELEMENT_CAST (parentElement), &state,&pending,0);
++          GST_ERROR_OBJECT (parentElement, "\x1b[1;33m ret = %d, state = %d, pending = %d \x1b[1;0m", 
++                        ret, state,pending);
++
++          if(ret == GST_STATE_CHANGE_ASYNC &&
++            state == GST_STATE_READY &&
++            pending == GST_STATE_PAUSED)
++          {
++            GST_ELEMENT_ERROR (qtdemux, STREAM, FAILED,
++              (_("flushing.")),
++              ("streaming stopped, reason %s", gst_flow_get_name (ret)));
++          }
++        }
++        gst_object_unref (parentElement);
++      }
++    }
+     goto done;
+   }
+ }
+@@ -9162,7 +9199,7 @@
+     goto corrupt_file;
+ 
+   /* chunks_are_samples == TRUE means treat chunks as samples */
+-  stream->chunks_are_samples = stream->sample_size
++  stream->chunks_are_samples = (stream->sample_size == 1)
+       && !CUR_STREAM (stream)->sampled;
+   if (stream->chunks_are_samples) {
+     /* treat chunks as samples */
+@@ -9526,6 +9563,10 @@
+             i, stream->stts_samples, stream->stts_duration);
+ 
+         stream->stts_sample_index = 0;
++
++        /* To support error contents, set maximum ctts offset value using stts_duration.  */
++        if (stream->ctts_max_soffset == 0)
++          stream->ctts_max_soffset = stream->stts_duration * 10;
+       }
+ 
+       stts_samples = stream->stts_samples;
+@@ -9660,9 +9701,22 @@
+             gst_byte_reader_get_uint32_be_unchecked (&stream->ctts);
+         stream->ctts_soffset =
+             gst_byte_reader_get_int32_be_unchecked (&stream->ctts);
+-        stream->ctts_sample_index = 0;
+-      }
++          stream->ctts_sample_index = 0;
+ 
++        /* to support error contents that has wrong ctts data, get the sum of ctts count */
++        stream->ctts_tot_count += stream->ctts_count;
++      }
++      /* Check if ctts box's entry value is invaild. Skip setting a pts offset if not valid. */
++      gboolean ctts_abs_soffset = stream->ctts_soffset < 0 ? -stream->ctts_soffset : stream->ctts_soffset;
++      if (ctts_abs_soffset > stream->ctts_max_soffset) {
++        GST_ERROR_OBJECT(qtdemux, "Invalid ctts data! %dth ctts soffset value is [%d], it cannot be over than %d.",
++        stream->ctts_tot_count, ctts_abs_soffset, stream->ctts_max_soffset);
++        goto done;
++      }
++      if (stream->ctts_tot_count > stream->n_samples) {
++        GST_ERROR_OBJECT(qtdemux, "Invalid ctts data! ctts total count[%d] cannot be over than %d.", stream->ctts_tot_count, stream->n_samples);
++        goto done;
++      }
+       ctts_count = stream->ctts_count;
+       ctts_soffset = stream->ctts_soffset;
+ 
+@@ -9892,8 +9946,14 @@
+ 
+   /* no segments, create one to play the complete trak */
+   if (stream->n_segments == 0) {
++    /* compensate a stream duration by using stts's time. It's more correct than segment's time */
++    if (stream->n_samples &&
++        !qtdemux_parse_samples (qtdemux, stream, stream->n_samples - 1)) {
++      stream->stts_time = 0;
++    }
++
+     GstClockTime stream_duration =
+-        QTSTREAMTIME_TO_GSTTIME (stream, stream->duration);
++        gst_util_uint64_scale (MAX (stream->stts_time, stream->duration), GST_SECOND, stream->timescale);
+ 
+     if (stream->segments == NULL)
+       stream->segments = g_new (QtDemuxSegment, 1);
+@@ -10517,7 +10577,7 @@
+       }
+     }
+   }
+-
++#if 0
+   /* fragmented files may have bogus duration in moov */
+   if (!qtdemux->fragmented &&
+       qtdemux->duration != G_MAXINT64 && stream->duration != G_MAXINT32) {
+@@ -10542,6 +10602,7 @@
+       return TRUE;
+     }
+   }
++#endif
+ 
+   if (!(hdlr = qtdemux_tree_get_child_by_type (mdia, FOURCC_hdlr)))
+     goto corrupt_file;
+@@ -11115,6 +11176,7 @@
+ 
+               switch (QT_FOURCC (hevc_data + 0x4)) {
+                 case FOURCC_hvcC:
++                case FOURCC_glbl:
+                 {
+                   /* parse, if found */
+                   GstBuffer *buf;

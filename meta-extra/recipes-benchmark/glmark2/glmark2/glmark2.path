@@ -1,0 +1,8 @@
+[Unit]
+Description=This service do print thermal temperature for current measuring
+
+[Path]
+PathExists=/var/run/user/root/wayland-0
+
+[Install]
+WantedBy=multi-user.target

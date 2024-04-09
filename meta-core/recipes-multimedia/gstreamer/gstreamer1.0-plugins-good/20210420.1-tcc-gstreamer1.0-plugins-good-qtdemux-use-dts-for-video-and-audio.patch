@@ -1,0 +1,17 @@
+diff -Naur before/gst/isomp4/qtdemux.c after/gst/isomp4/qtdemux.c
+--- before/gst/isomp4/qtdemux.c	2021-04-20 15:47:51.058151068 +0900
++++ after/gst/isomp4/qtdemux.c	2021-04-20 16:10:35.926646438 +0900
+@@ -5272,9 +5272,11 @@
+   *duration = QTSAMPLE_DUR_DTS (stream, sample, *dts);
+   *keyframe = QTSAMPLE_KEYFRAME (stream, sample);
+ 
+-  if (stream->subtype == FOURCC_soun) //audio stream's timestamp don't need ordering
++  if (((stream->subtype == FOURCC_soun) //audio stream's timestamp don't need ordering
++      || (stream->subtype == FOURCC_vide)) && (*dts != -1)) //video stream's timestamp also don't need ordering (omxvideodec can sort timestamp)
++  {
+     *pts = *dts;
+-
++  }
+   return TRUE;
+ 
+   /* special cases */

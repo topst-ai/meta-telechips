@@ -1,0 +1,22 @@
+[ref] gstreamer1.0-omx: omxvideodec set output pts if frame pts is null
+
+Description: case of decoding video es data, there isn't timestamp information.
+
+TIMS: IM090B-43(IS004A-12372)
+diff -Naur before/omx/gstomxvideodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c
+--- before/omx/gstomxvideodec.c	2021-09-29 13:57:34.958879187 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxvideodec.c	2021-09-29 14:06:40.102694899 +0900
+@@ -2375,6 +2375,13 @@
+ 
+     flow_ret = gst_pad_push (GST_VIDEO_DECODER_SRC_PAD (self), outbuf);
+   } else if (buf->omx_buf->nFilledLen > 0 || buf->eglimage) {
++    if(frame) {
++      if (frame->pts == GST_CLOCK_TIME_NONE) {
++        GstClockTime output_pts = gst_util_uint64_scale(buf->omx_buf->nTimeStamp, GST_SECOND, OMX_TICKS_PER_SECOND);
++        GST_LOG_OBJECT(self, "frame->pts %" GST_TIME_FORMAT " output_pts %" GST_TIME_FORMAT , GST_TIME_ARGS(frame->pts), GST_TIME_ARGS(output_pts));
++        frame->pts = output_pts;
++      }
++    }
+     if (self->out_port_pool) {
+       gint i, n;
+       GstBuffer *outbuf;

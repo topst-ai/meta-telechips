@@ -1,0 +1,14 @@
+diff -Naur before/omx/gstomxaudiodec.c 1.16.2-r0/gst-omx-1.16.2/omx/gstomxaudiodec.c
+--- before/omx/gstomxaudiodec.c	2020-09-15 14:45:22.329210503 +0900
++++ 1.16.2-r0/gst-omx-1.16.2/omx/gstomxaudiodec.c	2020-09-15 14:45:41.954154172 +0900
+@@ -561,6 +561,10 @@
+     if (spf != -1) {
+       gst_adapter_push (self->output_adapter, outbuf);
+     } else {
++      GST_BUFFER_TIMESTAMP(outbuf) = gst_util_uint64_scale(buf->omx_buf->nTimeStamp, GST_SECOND, OMX_TICKS_PER_SECOND);
++      if(buf->omx_buf->nTickCount != 0)
++        GST_BUFFER_DURATION(outbuf) = gst_util_uint64_scale(buf->omx_buf->nTickCount, GST_SECOND, OMX_TICKS_PER_SECOND);
++      GST_LOG_OBJECT (self, "[output] nTimeStamp(%lld) Duration(%lld)",GST_BUFFER_TIMESTAMP(outbuf),GST_BUFFER_DURATION(outbuf));
+       flow_ret =
+           gst_audio_decoder_finish_frame (GST_AUDIO_DECODER (self), outbuf, 1);
+     }

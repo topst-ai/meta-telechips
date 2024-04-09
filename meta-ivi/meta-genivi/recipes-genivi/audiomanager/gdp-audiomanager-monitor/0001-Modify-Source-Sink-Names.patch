@@ -1,0 +1,214 @@
+From 63df7116b1f532c213efa96414ac3099261507e7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=EC=9E=84=EC=98=81=ED=98=84=28Lim=20Young=20Hyun=29?=
+ <limdh3@telechips.com>
+Date: Tue, 30 May 2017 10:26:41 +0900
+Subject: [PATCH] Modify Source Sink Names
+
+%% original patch: 0001-Modify-Source-Sink-Names.patch
+
+%% original patch: 0001-Modify-Source-Sink-Names.patch
+
+%% original patch: 0001-Modify-Source-Sink-Names.patch
+---
+ Diagram.qml                   | 31 ++++++++++++++++---------------
+ Graph.qml                     |  4 ++--
+ audiomanagerdbusinterface.cpp |  4 ++--
+ code.js                       |  8 ++++++--
+ main.qml                      |  6 ------
+ pulseaudiocontroller.cpp      |  2 +-
+ 6 files changed, 27 insertions(+), 28 deletions(-)
+
+diff --git a/Diagram.qml b/Diagram.qml
+index 21f0a53..0922e46 100644
+--- a/Diagram.qml
++++ b/Diagram.qml
+@@ -17,6 +17,7 @@ Item {
+                 console.log('onSinkInputChanged '+sinkinput.index+' Volume'+sinkinput.volume);
+                 Code.savePASinkInput(sinkinput);
+                 architectureDiagram.requestPaint();
++				if(sinkinput.mute) sinkinput.volume = 0;
+                 pulseaudioChart.updateData(sinkinput.role, sinkinput.index, sinkinput.volume);
+ 
+                 console.log('----');
+@@ -99,7 +100,7 @@ Item {
+ 
+         onSourceAdded: {
+ 	    // skip default AM Sources
+-	    if(source.name.substr(0, 2) == "my")
++	    if(source.name.substr(0, 2) == "my" || source.name.substr(0, 3) == "Mic")
+ 		return;
+ 	    if(!initialized) {
+ 		Code.amSources[Code.amSources.length] = source
+@@ -172,8 +173,8 @@ Item {
+ 
+                     amCommandIF: amClient
+                     amSource: "MediaPlayer"
+-                    amSink: "AlsaPrimary"
+-                    mediaRole: "MEDIA"
++                    amSink: "Primary"
++                    mediaRole: "media"
+                     audioFilePath: "audio/media.wav"
+                 }
+ 
+@@ -185,9 +186,9 @@ Item {
+                     title: "Navi"
+ 
+                     amCommandIF: amClient
+-                    amSource: "NaviPlayer"
+-                    amSink: "AlsaSecondary"
+-                    mediaRole: "NAVI"
++                    amSource: "Navigation"
++                    amSink: "Secondary"
++                    mediaRole: "navi"
+                     audioFilePath: "audio/navigation.wav"
+                 }
+ 
+@@ -199,9 +200,9 @@ Item {
+                     title: "Phone"
+ 
+                     amCommandIF: amClient
+-                    amSource: "Skype"
+-                    amSink: "AlsaSecondary"
+-                    mediaRole: "skype"
++                    amSource: "Call"
++                    amSink: "Secondary"
++                    mediaRole: "call"
+                     audioFilePath: "audio/telephone-ring.wav"
+                 }
+ 
+@@ -213,9 +214,9 @@ Item {
+                     title: "TTS"
+ 
+                     amCommandIF: amClient
+-                    amSource: "TTSPlayer"
+-                    amSink: "AlsaSecondary"
+-                    mediaRole: "TextToSpeach"
++                    amSource: "TextPlayer"
++                    amSink: "Secondary"
++                    mediaRole: "text"
+                     audioFilePath: "audio/tts.wav"
+                 }
+ 
+@@ -227,9 +228,9 @@ Item {
+                     title: "Reverse"
+ 
+                     amCommandIF: amClient
+-                    amSource: "ReverseBeep"
+-                    amSink: "AlsaSecondary"
+-                    mediaRole: "reverse"
++                    amSource: "Alert"
++                    amSink: "Secondary"
++                    mediaRole: "alert"
+                     audioFilePath: "audio/car_reverse.wav"
+                 }
+ 		Text {
+diff --git a/Graph.qml b/Graph.qml
+index 4223f06..2f0e078 100644
+--- a/Graph.qml
++++ b/Graph.qml
+@@ -67,7 +67,7 @@ Rectangle {
+         font.pixelSize: parent.height / 30
+         anchors.right: canvas.left
+         anchors.rightMargin: 5
+-        y: parent.height * 0.25
++        y: parent.height * 0.2
+     }
+     Text {
+         text: maxValue / 2
+@@ -83,7 +83,7 @@ Rectangle {
+         font.pixelSize: parent.height / 30
+         anchors.right: canvas.left
+         anchors.rightMargin: 5
+-        y: parent.height * 0.70
++        y: parent.height * 0.78
+     }
+ 
+     Text {
+diff --git a/audiomanagerdbusinterface.cpp b/audiomanagerdbusinterface.cpp
+index 96ae120..c87be24 100644
+--- a/audiomanagerdbusinterface.cpp
++++ b/audiomanagerdbusinterface.cpp
+@@ -3,7 +3,7 @@
+ 
+ AudioManagerDBusInterface::AudioManagerDBusInterface(QObject* parent, QString serviceName, QString objectPath, QString interfaceName) :
+     QObject(parent),
+-    mDBusConnection(QDBusConnection::sessionBus())
++    mDBusConnection(QDBusConnection::systemBus())
+ {
+     initDBusInterface(serviceName, objectPath, interfaceName);
+     log("AudioManagerDBusInterface created");
+@@ -15,7 +15,7 @@ AudioManagerDBusInterface::AudioManagerDBusInterface(QObject* parent, QString se
+ 
+ AudioManagerDBusInterface::AudioManagerDBusInterface(QObject* parent) :
+     QObject(parent),
+-    mDBusConnection(QDBusConnection::sessionBus())
++    mDBusConnection(QDBusConnection::systemBus())
+ {
+     initDBusInterface("org.genivi.audiomanager", "/org/genivi/audiomanager/commandinterface", "org.genivi.audiomanager.commandinterface");
+     log("AudioManagerDBusInterface created");
+diff --git a/code.js b/code.js
+index 38d9e1c..ea0e61d 100644
+--- a/code.js
++++ b/code.js
+@@ -270,7 +270,7 @@ var Graph = function(type) {
+ 
+     this.drawGraphNode = function(context) {
+         var graphWidth = this.width - 2;
+-        var graphHeight = this.height * (0.6);
++        var graphHeight = this.height * (0.8);
+         var graphLineWidth = this.lineWidth;
+         var nodeList = this.nodeList;
+         var lineColor = "black";
+@@ -482,7 +482,11 @@ var Graph = function(type) {
+         if (pos < 0)
+             pos = graphHeight;
+ 
+-        pos = pos + ((graph.height - graphHeight) / 2);
++		if(value > 50)
++			pos = pos + ( 4 * ((value - 50) / 10) );
++		else if(value < 50)
++			pos = pos - ( 4 * ((50 - value) / 10) );
++
+         pos = pos + offsetY;
+ 
+         return pos
+diff --git a/main.qml b/main.qml
+index 677cd03..c0b790e 100644
+--- a/main.qml
++++ b/main.qml
+@@ -32,12 +32,6 @@ Rectangle {
+         //color: "lightGray"
+         width: parent.width
+         height: parent.height/12
+-        Image {
+-            height: parent.height*2/3
+-            fillMode: Image.PreserveAspectFit
+-            source: "images/windriver-logo.png"
+-            anchors.verticalCenter: parent.verticalCenter
+-        }
+         Text {
+             text: "GENIVI® Audio Manager Monitor"
+             anchors.right: parent.right
+diff --git a/pulseaudiocontroller.cpp b/pulseaudiocontroller.cpp
+index fae01d3..c0d556a 100644
+--- a/pulseaudiocontroller.cpp
++++ b/pulseaudiocontroller.cpp
+@@ -30,7 +30,6 @@ void PulseAudioController::setupController()
+ 
+         connect(mController, SIGNAL(sinkInputChanged(QVariantMap)), this, SIGNAL(sinkInputChanged(QVariantMap)));
+         connect(mController, SIGNAL(sinkInputRemoved(int)), this, SIGNAL(sinkInputRemoved(int)));
+-
+         connect(mController, SIGNAL(sinkInfoChanged(QVariantMap)), this, SIGNAL(sinkInfoChanged(QVariantMap)));
+         connect(mController, SIGNAL(sinkInfoRemoved(int)), this, SIGNAL(sinkInfoRemoved(int)));
+         connect(mController, SIGNAL(clientChanged(QVariantMap)), this, SIGNAL(clientChanged(QVariantMap)));
+@@ -161,6 +160,7 @@ void InternalController::sinkInputCallback(pa_context *context, const pa_sink_in
+     sinkinput["clientIndex"] = info->client;
+     sinkinput["sinkIndex"] = info->sink;
+     sinkinput["corked"] = info->corked;
++    sinkinput["mute"] = info->mute;
+     sinkinput["appName"] = QString(pa_proplist_gets(info->proplist,"application.name"));
+     sinkinput["role"] = QString(pa_proplist_gets(info->proplist,"media.role"));
+     //sinkinput["propList"] = info->proplist;
+-- 
+2.9.3
+

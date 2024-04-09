@@ -1,0 +1,11 @@
+[Unit]
+Description=PowerVR Dump application
+Before=systemd-journald.service systemd-udev-trigger.service systemd-udevd.service sysinit.target
+DefaultDependencies=no
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/pvr_util
+
+[Install]
+WantedBy=sysinit.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Check the mount failure and format the devices as a file system type.
+After=home-root.mount
+Before=tc-launcher.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/format-filesystem.sh
+
+[Install]
+WantedBy=sysinit.target

@@ -1,0 +1,52 @@
+From 9e98ed4c1df66c0bb8cebcc807194c8e18084b03 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tim-Philipp=20M=C3=BCller?= <tim@centricular.com>
+Date: Sun, 23 May 2021 13:29:07 +0100
+Subject: wavparse: clean up adtl/note/labl chunk parsing
+
+We were passing the size of the adtl chunk to the note/labl
+sub-chunk parsing function, which means we may memdup lots of
+data after the chunk string's NUL terminator that doesn't
+really belong to it.
+
+Part-of: <https://gitlab.freedesktop.org/gstreamer/gst-plugins-good/-/merge_requests/1000>
+---
+ gst/wavparse/gstwavparse.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+(limited to 'gst/wavparse/gstwavparse.c')
+
+diff --git a/gst/wavparse/gstwavparse.c b/gst/wavparse/gstwavparse.c
+index 336bdb779..360715f28 100644
+--- a/gst/wavparse/gstwavparse.c
++++ b/gst/wavparse/gstwavparse.c
+@@ -832,7 +832,6 @@ gst_wavparse_labl_chunk (GstWavParse * wav, const guint8 * data, guint32 size)
+   labl = g_new0 (GstWavParseLabl, 1);
+ 
+   /* parse data */
+-  data += 8;
+   labl->cue_point_id = GST_READ_UINT32_LE (data);
+   labl->text = g_memdup (data + 4, size - 4);
+ 
+@@ -862,7 +861,6 @@ gst_wavparse_note_chunk (GstWavParse * wav, const guint8 * data, guint32 size)
+   note = g_new0 (GstWavParseNote, 1);
+ 
+   /* parse data */
+-  data += 8;
+   note->cue_point_id = GST_READ_UINT32_LE (data);
+   note->text = g_memdup (data + 4, size - 4);
+ 
+@@ -933,10 +931,10 @@ gst_wavparse_adtl_chunk (GstWavParse * wav, const guint8 * data, guint32 size)
+ 
+     switch (ltag) {
+       case GST_RIFF_TAG_labl:
+-        gst_wavparse_labl_chunk (wav, data + offset, size);
++        gst_wavparse_labl_chunk (wav, data + offset + 8, lsize);
+         break;
+       case GST_RIFF_TAG_note:
+-        gst_wavparse_note_chunk (wav, data + offset, size);
++        gst_wavparse_note_chunk (wav, data + offset + 8, lsize);
+         break;
+       default:
+         GST_WARNING_OBJECT (wav, "Unknowm adtl %" GST_FOURCC_FORMAT,
+-- 
+cgit v1.2.1

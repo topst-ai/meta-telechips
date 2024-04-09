@@ -1,0 +1,79 @@
+From e9ac543f88fe9de88f08f1ada2064a89a65d844c Mon Sep 17 00:00:00 2001
+From: Wily Taekhyun Shin <thshin@telechips.com>
+Date: Wed, 3 Apr 2019 00:48:11 +0000
+Subject: [PATCH] change native window type for mali bifrost
+
+---
+ .../eglfs_mali/qeglfsmaliintegration.cpp           | 27 +++++++++++++---------
+ .../eglfs_mali/qeglfsmaliintegration.h             |  3 +++
+ 2 files changed, 19 insertions(+), 11 deletions(-)
+
+diff --git a/src/plugins/platforms/eglfs/deviceintegration/eglfs_mali/qeglfsmaliintegration.cpp b/src/plugins/platforms/eglfs/deviceintegration/eglfs_mali/qeglfsmaliintegration.cpp
+index aeba83f9bf..0144c09976 100644
+--- a/src/plugins/platforms/eglfs/deviceintegration/eglfs_mali/qeglfsmaliintegration.cpp
++++ b/src/plugins/platforms/eglfs/deviceintegration/eglfs_mali/qeglfsmaliintegration.cpp
+@@ -42,11 +42,6 @@
+ 
+ QT_BEGIN_NAMESPACE
+ 
+-struct shadow_fbdev_window {
+-    unsigned short width;
+-    unsigned short height;
+-};
+-
+ void QEglFSMaliIntegration::platformInit()
+ {
+     // Keep the non-overridden base class functions based on fb0 working.
+@@ -85,13 +80,14 @@ EGLNativeWindowType QEglFSMaliIntegration::createNativeWindow(QPlatformWindow *w
+     Q_UNUSED(window);
+     Q_UNUSED(format);
+ 
+-    shadow_fbdev_window *fbwin = reinterpret_cast<shadow_fbdev_window *>(malloc(sizeof(shadow_fbdev_window)));
+-    if (NULL == fbwin)
+-        return 0;
++    return (EGLNativeWindowType)GetFBDevNumber();
++}
++
++EGLNativeWindowType QEglFSMaliIntegration::createNativeOffscreenWindow(const QSurfaceFormat &format)
++{
++	Q_UNUSED(format);
+ 
+-    fbwin->width = size.width();
+-    fbwin->height = size.height();
+-    return (EGLNativeWindowType)fbwin;
++    return (EGLNativeWindowType)GetFBDevNumber();
+ }
+ 
+ void QEglFSMaliIntegration::destroyNativeWindow(EGLNativeWindowType window)
+@@ -99,4 +95,13 @@ void QEglFSMaliIntegration::destroyNativeWindow(EGLNativeWindowType window)
+     free((void*)window);
+ }
+ 
++EGLNativeWindowType QEglFSMaliIntegration::GetFBDevNumber(void)
++{
++	int fbNum = 0;
++	QString fbName = fbDeviceName();
++	fbNum = fbName.right(1).toInt();
++
++    return (EGLNativeWindowType)fbNum;
++}
++
+ QT_END_NAMESPACE
+diff --git a/src/plugins/platforms/eglfs/deviceintegration/eglfs_mali/qeglfsmaliintegration.h b/src/plugins/platforms/eglfs/deviceintegration/eglfs_mali/qeglfsmaliintegration.h
+index ebe468d70b..c94452dc9d 100644
+--- a/src/plugins/platforms/eglfs/deviceintegration/eglfs_mali/qeglfsmaliintegration.h
++++ b/src/plugins/platforms/eglfs/deviceintegration/eglfs_mali/qeglfsmaliintegration.h
+@@ -43,7 +43,10 @@ class QEglFSMaliIntegration : public QEGLDeviceIntegration
+ public:
+     void platformInit() Q_DECL_OVERRIDE;
+     EGLNativeWindowType createNativeWindow(QPlatformWindow *window, const QSize &size, const QSurfaceFormat &format) Q_DECL_OVERRIDE;
++	EGLNativeWindowType createNativeOffscreenWindow(const QSurfaceFormat &format);
+     void destroyNativeWindow(EGLNativeWindowType window) Q_DECL_OVERRIDE;
++private:
++	EGLNativeWindowType GetFBDevNumber(void);
+ };
+ 
+ QT_END_NAMESPACE
+-- 
+2.13.3
+

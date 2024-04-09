@@ -1,0 +1,26 @@
+From 7dd5f241ec30956f99f33f275a1fd0c434b31994 Mon Sep 17 00:00:00 2001
+From: Wily Taekhyun Shin <thshin@telechips.com>
+Date: Fri, 27 Jul 2018 09:04:15 +0000
+Subject: [PATCH] add armv8 architecture define
+
+---
+ Source/WTF/wtf/Platform.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/Source/WTF/wtf/Platform.h b/Source/WTF/wtf/Platform.h
+index 562840cf7..6119ad251 100644
+--- a/Source/WTF/wtf/Platform.h
++++ b/Source/WTF/wtf/Platform.h
+@@ -242,6 +242,9 @@
+     || defined(__ARM_ARCH_7R__) \
+     || defined(__ARM_ARCH_7S__)
+ #define WTF_ARM_ARCH_VERSION 7
++#elif defined(__ARM_ARCH_8A__) \
++	|| defined(__ARM_ARCH_8R__)
++#define WTF_ARM_ARCH_VERSION 8
+ 
+ /* MSVC sets _M_ARM */
+ #elif defined(_M_ARM)
+-- 
+2.13.3
+

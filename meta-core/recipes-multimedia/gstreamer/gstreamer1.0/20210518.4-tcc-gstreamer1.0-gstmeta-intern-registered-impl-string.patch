@@ -1,0 +1,24 @@
+gstmeta: intern registered impl string
+Subsequent lookups in the hashtable are probably better done
+on memory we're confident is allocated to us :)
+
+It was easy to trigger invalid reads by calling gst_meta_register
+with dynamically allocated memory, freeing that memory, then
+calling gst_meta_get_info()
+
+Part-of: <https://gitlab.freedesktop.org/gstreamer/gstreamer/-/merge_requests/647>
+
+diff --git a/gst/gstmeta.c b/gst/gstmeta.c
+index 4bcaa7aa5..55e76bb19 100644
+--- a/gst/gstmeta.c
++++ b/gst/gstmeta.c
+@@ -198,7 +198,8 @@ gst_meta_register (GType api, const gchar * impl, gsize size,
+       g_type_name (api), size);
+ 
+   g_rw_lock_writer_lock (&lock);
+-  g_hash_table_insert (metainfo, (gpointer) impl, (gpointer) info);
++  g_hash_table_insert (metainfo, (gpointer) g_intern_string (impl),
++      (gpointer) info);
+   g_rw_lock_writer_unlock (&lock);
+ 
+   return info;

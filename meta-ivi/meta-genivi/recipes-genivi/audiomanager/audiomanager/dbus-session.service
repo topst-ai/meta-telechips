@@ -1,0 +1,13 @@
+[Unit]
+Description=DBus Session Message Bus
+Requires=pulseaudio.service
+After=pulseaudio.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/lib/systemd/scripts/setup_amgr.sh
+
+[Install]
+WantedBy=multi-user.target
+

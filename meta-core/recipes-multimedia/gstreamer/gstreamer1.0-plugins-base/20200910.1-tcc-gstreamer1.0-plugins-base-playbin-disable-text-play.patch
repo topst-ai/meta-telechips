@@ -1,0 +1,12 @@
+diff -Naur before/gst/playback/gstplaybin2.c 1.16.2-r0/gst-plugins-base-1.16.2/gst/playback/gstplaybin2.c
+--- before/gst/playback/gstplaybin2.c	2019-04-19 18:16:20.000000000 +0900
++++ 1.16.2-r0/gst-plugins-base-1.16.2/gst/playback/gstplaybin2.c	2020-09-10 15:47:13.282909389 +0900
+@@ -499,7 +499,7 @@
+ #define DEFAULT_URI               NULL
+ #define DEFAULT_SUBURI            NULL
+ #define DEFAULT_SOURCE            NULL
+-#define DEFAULT_FLAGS             GST_PLAY_FLAG_AUDIO | GST_PLAY_FLAG_VIDEO | GST_PLAY_FLAG_TEXT | \
++#define DEFAULT_FLAGS             GST_PLAY_FLAG_AUDIO | GST_PLAY_FLAG_VIDEO /*| GST_PLAY_FLAG_TEXT */| \
+                                   GST_PLAY_FLAG_SOFT_VOLUME | GST_PLAY_FLAG_DEINTERLACE | \
+                                   GST_PLAY_FLAG_SOFT_COLORBALANCE
+ #define DEFAULT_N_VIDEO           0

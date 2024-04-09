@@ -1,0 +1,29 @@
+#!/bin/sh
+
+XDG_RUNTIME_DIR=/run/user/root
+
+pre_initial_drm() {
+    FBSET=`fbset -fb /dev/fb1 | grep geometry`
+    FBSET=${FBSET#* }
+    WIDTH=`expr match "$FBSET" '\([0-9]*\)'`
+    FBSET=${FBSET#* }
+    HEIGHT=`expr match "$FBSET" '\([0-9]*\)'`
+    FBSET=${FBSET#* }
+    VWIDTH=`expr match "$FBSET" '\([0-9]*\)'`
+    FBSET=${FBSET#* }
+    VHEIGHT=`expr match "$FBSET" '\([0-9]*\)'`
+    FBSET=${FBSET#* }
+    BPP=`expr match "$FBSET" '\([0-9]*\)'`
+
+    HEIGHT_VAR=`expr $HEIGHT - 1`
+
+    fbset -fb /dev/fb1 -g $WIDTH $HEIGHT_VAR $VWIDTH $VHEIGHT $BPP
+    fbset -fb /dev/fb1 -g $WIDTH $HEIGHT $VWIDTH $VHEIGHT $BPP
+}
+
+if ! test -d "${XDG_RUNTIME_DIR}"; then
+	mkdir -p "${XDG_RUNTIME_DIR}"
+	chmod 0700 "${XDG_RUNTIME_DIR}"
+fi
+
+pre_initial_drm

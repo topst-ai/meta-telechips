@@ -1,0 +1,27 @@
+From 8dd0ffd09c4f11039df338f72b2a018a4a074ff0 Mon Sep 17 00:00:00 2001
+From: Wily Taekhyun Shin <thshin@telechips.com>
+Date: Fri, 27 Jul 2018 08:35:25 +0000
+Subject: [PATCH] Add armv8 define
+
+---
+ src/3rdparty/javascriptcore/JavaScriptCore/wtf/Platform.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/3rdparty/javascriptcore/JavaScriptCore/wtf/Platform.h b/src/3rdparty/javascriptcore/JavaScriptCore/wtf/Platform.h
+index 00caa6d..195981b 100644
+--- a/src/3rdparty/javascriptcore/JavaScriptCore/wtf/Platform.h
++++ b/src/3rdparty/javascriptcore/JavaScriptCore/wtf/Platform.h
+@@ -306,6 +306,10 @@
+     || defined(__ARM_ARCH_7R__)
+ #define WTF_ARM_ARCH_VERSION 7
+ 
++#elif defined(__ARM_ARCH_8A__) \
++    || defined(__ARM_ARCH_8R__)
++#define WTF_ARM_ARCH_VERSION 8
++
+ /* RVCT sets _TARGET_ARCH_ARM */
+ #elif defined(__TARGET_ARCH_ARM)
+ #define WTF_ARM_ARCH_VERSION __TARGET_ARCH_ARM
+-- 
+2.13.3
+

@@ -1,0 +1,56 @@
+diff -Naur before/gst/audioparsers/gstac3parse.c after/gst/audioparsers/gstac3parse.c
+--- before/gst/audioparsers/gstac3parse.c	2016-03-24 20:36:37.000000000 +0900
++++ after/gst/audioparsers/gstac3parse.c	2020-03-24 11:25:09.578174395 +0900
+@@ -528,14 +528,8 @@
+     goto cleanup;
+   }
+ 
+-  /* possible frame header, but not at offset 0? skip bytes before sync */
+-  if (off > 0) {
+-    *skipsize = off;
+-    goto cleanup;
+-  }
+-
+   /* make sure the values in the frame header look sane */
+-  if (!gst_ac3_parse_frame_header (ac3parse, buf, 0, &frmsiz, &rate, &chans,
++  if (!gst_ac3_parse_frame_header (ac3parse, buf, off, &frmsiz, &rate, &chans,
+           &blocks, &sid, &eac)) {
+     *skipsize = off + 2;
+     goto cleanup;
+@@ -546,6 +540,18 @@
+ 
+   framesize = frmsiz;
+ 
++  /* possible frame header, but not at offset 0? skip bytes before sync */
++  if (off > 0) {
++ 	if ((framesize + off) > map.size)
++	{
++	    *skipsize = off;
++    	goto cleanup;
++	}
++	else
++	{
++	    gst_base_parse_skip_offset(parse,off);
++	}	      
++  }
+   if (G_UNLIKELY (g_atomic_int_get (&ac3parse->align) ==
+           GST_AC3_PARSE_ALIGN_NONE))
+     gst_ac3_parse_set_alignment (ac3parse, eac);
+@@ -583,7 +589,7 @@
+           break;
+         }
+ 
+-        if (!gst_ac3_parse_frame_header (ac3parse, buf, framesize, &frmsiz,
++        if (!gst_ac3_parse_frame_header (ac3parse, buf, framesize+off, &frmsiz,
+                 NULL, NULL, NULL, &sid, &eac)) {
+           *skipsize = off + 2;
+           goto cleanup;
+@@ -600,7 +606,7 @@
+ 
+     GST_DEBUG_OBJECT (ac3parse, "resyncing; checking next frame syncword");
+ 
+-    if (more || !gst_byte_reader_skip (&reader, frmsiz) ||
++    if (more || !gst_byte_reader_skip (&reader, frmsiz+off) ||
+         !gst_byte_reader_get_uint16_be (&reader, &word)) {
+       GST_DEBUG_OBJECT (ac3parse, "... but not sufficient data");
+       gst_base_parse_set_min_frame_size (parse, framesize + 8);

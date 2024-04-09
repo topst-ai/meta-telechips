@@ -1,0 +1,32 @@
+From 20e0e1939a89880ad55312f9e64cad6321ca6281 Mon Sep 17 00:00:00 2001
+From: Jay Jeon <inbest@telechips.com>
+Date: Mon, 11 May 2020 10:13:53 +0900
+Subject: [PATCH 2/4] gl-renderer: update logic for dmabuf
+
+Change-Id: Ia35126b7e1c4ae0f9658a377b5253fbc5dcc1e24
+---
+ libweston/renderer-gl/gl-renderer.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/libweston/renderer-gl/gl-renderer.c b/libweston/renderer-gl/gl-renderer.c
+index 6c43550..72ecdec 100644
+--- a/libweston/renderer-gl/gl-renderer.c
++++ b/libweston/renderer-gl/gl-renderer.c
+@@ -2544,12 +2544,12 @@ gl_renderer_attach(struct weston_surface *es, struct weston_buffer *buffer)
+ 
+ 	if (shm_buffer)
+ 		gl_renderer_attach_shm(es, buffer, shm_buffer);
++	else if ((dmabuf = linux_dmabuf_buffer_get(buffer->resource)))
++		gl_renderer_attach_dmabuf(es, buffer, dmabuf);
+ 	else if (gr->has_bind_display &&
+ 		 gr->query_buffer(gr->egl_display, (void *)buffer->resource,
+ 				  EGL_TEXTURE_FORMAT, &format))
+ 		gl_renderer_attach_egl(es, buffer, format);
+-	else if ((dmabuf = linux_dmabuf_buffer_get(buffer->resource)))
+-		gl_renderer_attach_dmabuf(es, buffer, dmabuf);
+ 	else {
+ 		weston_log("unhandled buffer type!\n");
+ 		if (gr->has_bind_display) {
+-- 
+1.9.3
+

@@ -1,0 +1,1403 @@
+From e7da3975d88dbfa1a4f507b8fc0a54290d8cb877 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=EC=9E=84=EC=98=81=ED=98=84=28Lim=20Young=20Hyun=29?=
+ <limdh3@telechips.com>
+Date: Mon, 20 Jul 2020 13:03:31 +0000
+Subject: [PATCH] Modify-TC-AM-Plugins-TCC805x
+
+---
+ .../include/CAmCommandSenderDbus.h            |   2 +
+ .../include/CommandInterface.xml              | 453 ++++++++++--------
+ .../include/IAmCommandReceiverShadow.h        |   3 +
+ .../src/CAmCommandSenderDbus.cpp              |  25 +
+ .../src/IAmCommandReceiverShadow.cpp          |  58 ++-
+ .../data/libPluginControlInterface.conf       |  26 +-
+ .../include/ControlSender.h                   |   4 +
+ .../src/ControlSender.cpp                     |  94 +++-
+ .../data/libPluginRoutingInterfacePULSE.conf  |  15 +-
+ .../include/RoutingSenderMainloopPULSE.h      |  14 +
+ .../include/RoutingSenderPULSE.h              |   8 +
+ .../src/RoutingSenderMainloopPULSE.cpp        |  68 ++-
+ .../src/RoutingSenderPULSE.cpp                | 171 +++++--
+ 13 files changed, 655 insertions(+), 286 deletions(-)
+
+diff --git a/PluginCommandInterfaceDbus/include/CAmCommandSenderDbus.h b/PluginCommandInterfaceDbus/include/CAmCommandSenderDbus.h
+index 5102cfb..702aed5 100644
+--- a/PluginCommandInterfaceDbus/include/CAmCommandSenderDbus.h
++++ b/PluginCommandInterfaceDbus/include/CAmCommandSenderDbus.h
+@@ -56,11 +56,13 @@ public:
+     void cbNumberOfSinkClassesChanged();
+     void cbNumberOfSourceClassesChanged();
+     void cbMainConnectionStateChanged(const am_mainConnectionID_t connectionID, const am_ConnectionState_e connectionState);
++    void cbMainSourceChanged(const am_sourceID_t sourceID);
+     void cbMainSinkSoundPropertyChanged(const am_sinkID_t sinkID, const am_MainSoundProperty_s& soundProperty);
+     void cbMainSourceSoundPropertyChanged(const am_sourceID_t sourceID, const am_MainSoundProperty_s& soundProperty);
+     void cbSinkAvailabilityChanged(const am_sinkID_t sinkID, const am_Availability_s& availability);
+     void cbSourceAvailabilityChanged(const am_sourceID_t sourceID, const am_Availability_s& availability);
+     void cbVolumeChanged(const am_sinkID_t sinkID, const am_mainVolume_t volume);
++    void cbSourceVolumeChanged(const am_sourceID_t sourceID, const am_mainVolume_t volume);
+     void cbSinkMuteStateChanged(const am_sinkID_t sinkID, const am_MuteState_e muteState);
+     void cbSystemPropertyChanged(const am_SystemProperty_s& systemProperty);
+     void cbTimingInformationChanged(const am_mainConnectionID_t mainConnectionID, const am_timeSync_t time);
+diff --git a/PluginCommandInterfaceDbus/include/CommandInterface.xml b/PluginCommandInterfaceDbus/include/CommandInterface.xml
+index bab2604..7e943c8 100644
+--- a/PluginCommandInterfaceDbus/include/CommandInterface.xml
++++ b/PluginCommandInterfaceDbus/include/CommandInterface.xml
+@@ -1,226 +1,253 @@
+-<?xml version="1.0" encoding="UTF-8" ?>
+-<!DOCTYPE node PUBLIC
+-  "-//freedesktop//DTD D-Bus Object Introspection 1.0//EN"
+-  "http://standards.freedesktop.org/dbus/1.0/introspect.dtd">
+-<node>
+-     <interface name="org.genivi.audiomanager.commandinterface">
+-        <method name="Connect">
++<?xml version="1.0" encoding="UTF-8" ?>
++<!DOCTYPE node PUBLIC
++  "-//freedesktop//DTD D-Bus Object Introspection 1.0//EN"
++  "http://standards.freedesktop.org/dbus/1.0/introspect.dtd">
++<node>
++     <interface name="org.genivi.audiomanager.commandinterface">
++        <method name="Connect">
++            <arg type="q" name="sourceID" direction="in"/>
++            <arg type="q" name="sinkID" direction="in"/>
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++            <arg type="q" name="mainConnectionID" direction="out"/>
++        </method>
++
++        <method name="Disconnect">
++            <arg type="q" name="mainConnectionID" direction="in"/>
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++        </method>
++
++        <method name="SetVolume">
++            <arg type="q" name="sinkID" direction="in"/>
++            <arg type="n" name="volume" direction="in"/>
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++        </method>
++
++        <method name="SetSourceVolume">
+             <arg type="q" name="sourceID" direction="in"/>
+-            <arg type="q" name="sinkID" direction="in"/>
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-            <arg type="q" name="mainConnectionID" direction="out"/>
+-        </method>
+-
+-        <method name="Disconnect">
+-            <arg type="q" name="mainConnectionID" direction="in"/>
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-        </method>
+-
+-        <method name="SetVolume">
+-            <arg type="q" name="sinkID" direction="in"/>
+             <arg type="n" name="volume" direction="in"/>
+             <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+         </method>
+ 
+-        <method name="VolumeStep">
+-            <arg type="q" name="sinkID" direction="in"/>
+-            <arg type="n" name="volumeStep" direction="in"/>
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-        </method>
+-
+-        <method name="SetSinkMuteState">
+-            <arg type="q" name="sinkID" direction="in"/>
+-            <arg type="n" name="muteState" direction="in"/>
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-        </method>
+-
+-        <method name="SetMainSinkSoundProperty">
+-            <arg type="q" name="sinkID" direction="in"/>
+-            <arg type="(nn)" name="soundProperty" direction="in"/>
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-        </method>
+-
+-        <method name="SetMainSourceSoundProperty">
+-            <arg type="q" name="sourceID" direction="in"/>
+-            <arg type="(nn)" name="soundProperty" direction="in"/>
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-        </method>
+-
+-        <method name="SetSystemProperty">
+-            <arg type="(nn)" name="property" direction="in"/>
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-        </method>
+-
+-        <method name="GetListMainConnections">
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-            <arg type="a(qqqnn)" name="listConnections" direction="out"/> <!-- am_mainConnectionID_t mainConnectionID; am_sourceID_t sourceID; am_sinkID_t sinkID; am_timeSync_t delay; am_ConnectionState_e connectionState; -->
+-        </method>
+-
+-        <method name="GetListMainSinks">
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-            <arg type="a(qs(nn)nnq)" name="listMainSinks" direction="out"/> <!-- am_sinkID_t sinkID; std::string name; am_Availability_s availability; am_mainVolume_t volume; am_MuteState_e muteState; am_sinkClass_t sinkClassID; -->
+-        </method>
+-
+-        <method name="GetListMainSources">
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-            <arg type="a(qs(nn)q)" name="listMainSources" direction="out"/> <!-- am_sourceID_t sourceID; std::string name; am_Availability_s availability; am_sourceClass_t sourceClassID; -->
+-        </method>
+-
+-        <method name="GetListMainSinkSoundProperties">
+-            <arg type="q" name="sinkID" direction="in"/> 
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++        <method name="VolumeStep">
++            <arg type="q" name="sinkID" direction="in"/>
++            <arg type="n" name="volumeStep" direction="in"/>
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++        </method>
++
++        <method name="SetSinkMuteState">
++            <arg type="q" name="sinkID" direction="in"/>
++            <arg type="n" name="muteState" direction="in"/>
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++        </method>
++
++        <method name="SetMainSinkSoundProperty">
++            <arg type="q" name="sinkID" direction="in"/>
++            <arg type="(nn)" name="soundProperty" direction="in"/>
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++        </method>
++
++        <method name="SetMainSourceSoundProperty">
++            <arg type="q" name="sourceID" direction="in"/>
++            <arg type="(nn)" name="soundProperty" direction="in"/>
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++        </method>
++
++        <method name="SetSystemProperty">
++            <arg type="(nn)" name="property" direction="in"/>
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++        </method>
++
++        <method name="GetVolume">^M
++            <arg type="q" name="sinkID" direction="in"/>^M
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->^M
++            <arg type="n" name="volume" direction="out"/>^M
++        </method>^M
++
++        <method name="GetSourceVolume">^M
++            <arg type="q" name="sourceID" direction="in"/>^M
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->^M
++            <arg type="n" name="volume" direction="out"/>^M
++        </method>^M
++
++        <method name="GetListMainConnections">
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++            <arg type="a(qqqnn)" name="listConnections" direction="out"/> <!-- am_mainConnectionID_t mainConnectionID; am_sourceID_t sourceID; am_sinkID_t sinkID; am_timeSync_t delay; am_ConnectionState_e connectionState; -->
++        </method>
++
++        <method name="GetListMainSinks">
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++            <arg type="a(qs(nn)nnq)" name="listMainSinks" direction="out"/> <!-- am_sinkID_t sinkID; std::string name; am_Availability_s availability; am_mainVolume_t volume; am_MuteState_e muteState; am_sinkClass_t sinkClassID; -->
++        </method>
++
++        <method name="GetListMainSources">
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++            <arg type="a(qs(nn)q)" name="listMainSources" direction="out"/> <!-- am_sourceID_t sourceID; std::string name; am_Availability_s availability; am_sourceClass_t sourceClassID; -->
++        </method>
++
++        <method name="GetListMainSinkSoundProperties">
++            <arg type="q" name="sinkID" direction="in"/> 
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+             <arg type="a(nn)" name="listSoundProperties" direction="out"/> <!-- am_CustomMainSoundPropertyType_t type; int16_t value; -->
+-        </method>
+-
+-        <method name="GetListMainSourceSoundProperties">
+-            <arg type="q" name="sourceID" direction="in"/>
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++        </method>
++
++        <method name="GetListMainSourceSoundProperties">
++            <arg type="q" name="sourceID" direction="in"/>
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+             <arg type="a(nn)" name="listSourceProperties" direction="out"/> <!-- am_CustomMainSoundPropertyType_t type; int16_t value; -->
+-        </method>
+-
+-        <method name="GetListSourceClasses">
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-            <arg type="a(qsa(nn))" name="listSourceClasses" direction="out"/> <!-- am_sourceClass_t SourceClassID; std::string name; std::vector<am_ClassProperty_s> listClassProperties; -->
+-        </method>
+-
+-        <method name="GetListSinkClasses">
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-            <arg type="a(qsa(nn))" name="listSinkClasses" direction="out"/> <!-- am_sourceClass_t SinkClassID; std::string name; std::vector<am_ClassProperty_s> listClassProperties; -->
+-        </method>
+-
+-        <method name="GetListSystemProperties">
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-            <arg type="a(nn)" name="listSystemProperties" direction="out"/> <!-- am_SystemProperty_e type; int16_t value; -->
+-        </method>
+-
+-        <method name="GetTimingInformation">
+-            <arg type="q" name="mainConnectionID" direction="in"/>
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-            <arg type="n" name="delay" direction="out"/>
+-        </method>
+-        
+-        <method name="GetListSinkMainNotificationConfigurations">
+-            <arg type="q" name="sinkID" direction="in"/>
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-            <arg type="a(nnn)" name="listMainNotificationConfigurations" direction="out"/> <!-- am_am_notification_e type; am_status_e status; int16t parameter; -->
+-        </method>
+-        
+-        <method name="GetListSourceMainNotificationConfigurations">
+-            <arg type="q" name="sourceID" direction="in"/>
+-            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
+-            <arg type="a(nnn)" name="listMainNotificationConfigurations" direction="out"/> <!-- am_am_notification_e type; am_status_e status; int16t parameter; -->
+-        </method>
+-        
+-        <method name="setMainSinkNotificationConfiguration">
+-			<arg type="q" name="sinkID" direction="in"/>
+-			<arg type="(nnn)" name="mainNotificationConfiguration" direction="in"/> <!-- am_am_notification_e type; am_status_e status; int16t parameter; -->
+-			<arg type="n" name="error" direction="out"/>
+-        </method>
+-        
+-        <method name="setMainSourceNotificationConfiguration">
+-			<arg type="q" name="sourceID" direction="in"/>
+-			<arg type="(nnn)" name="mainNotificationConfiguration" direction="in"/> <!-- am_am_notification_e type; am_status_e status; int16t parameter; -->
+-			<arg type="n" name="error" direction="out"/>
+-        </method>
+-
+-        <signal name="NumberOfMainConnectionsChanged"></signal>
+-
+-		<signal name="SinkAdded">
+-            	<arg type="(qs(nn)nnq)" name="newSink" direction="out"/> <!-- am_sinkID_t sinkID; std::string name; am_Availability_s availability; am_mainVolume_t volume; am_MuteState_e muteState; am_sinkClass_t sinkClassID; -->
+-        </signal>
+-		
+-		<signal name="SinkRemoved">
+-		<arg type="q" name="removedSinkID" direction="out"/>
+-        </signal>
+-
+-		<signal name="SourceAdded">
+-            	<arg type="(qs(nn)q)" name="newSource" direction="out"/> <!-- am_sourceID_t sourceID; std::string name; 	am_Availability_s availability; am_sourceClass_t sourceClassID; -->
+-        </signal>
+-		
+-		<signal name="SourceRemoved">
+-			<arg type="q" name="removedSourceID" direction="out"/>
+-        </signal>
+-
+-        <signal name="NumberOfSinkClassesChanged">
+-        </signal>
+-
+-        <signal name="NumberOfSourceClassesChanged">
+-        </signal>
+-
+-        <signal name="MainConnectionStateChanged">
+-            <arg type="q" name="connectionID" direction="out"/>
+-            <arg type="n" name="connectionState" direction="out"/>
+-        </signal>
+-
+-        <signal name="MainSinkSoundPropertyChanged">
+-            <arg type="q" name="sinkID" direction="out"/>
+-            <arg type="(nn)" name="SoundProperty" direction="out"/>
+-        </signal>
+-
+-        <signal name="MainSourceSoundPropertyChanged">
++        </method>
++
++        <method name="GetListSourceClasses">
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++            <arg type="a(qsa(nn))" name="listSourceClasses" direction="out"/> <!-- am_sourceClass_t SourceClassID; std::string name; std::vector<am_ClassProperty_s> listClassProperties; -->
++        </method>
++
++        <method name="GetListSinkClasses">
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++            <arg type="a(qsa(nn))" name="listSinkClasses" direction="out"/> <!-- am_sourceClass_t SinkClassID; std::string name; std::vector<am_ClassProperty_s> listClassProperties; -->
++        </method>
++
++        <method name="GetListSystemProperties">
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++            <arg type="a(nn)" name="listSystemProperties" direction="out"/> <!-- am_SystemProperty_e type; int16_t value; -->
++        </method>
++
++        <method name="GetTimingInformation">
++            <arg type="q" name="mainConnectionID" direction="in"/>
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++            <arg type="n" name="delay" direction="out"/>
++        </method>
++        
++        <method name="GetListSinkMainNotificationConfigurations">
++            <arg type="q" name="sinkID" direction="in"/>
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++            <arg type="a(nnn)" name="listMainNotificationConfigurations" direction="out"/> <!-- am_am_notification_e type; am_status_e status; int16t parameter; -->
++        </method>
++        
++        <method name="GetListSourceMainNotificationConfigurations">
++            <arg type="q" name="sourceID" direction="in"/>
++            <arg type="n" name="result" direction="out"/> <!-- method return code (am_Error_e) -->
++            <arg type="a(nnn)" name="listMainNotificationConfigurations" direction="out"/> <!-- am_am_notification_e type; am_status_e status; int16t parameter; -->
++        </method>
++        
++        <method name="setMainSinkNotificationConfiguration">
++			<arg type="q" name="sinkID" direction="in"/>
++			<arg type="(nnn)" name="mainNotificationConfiguration" direction="in"/> <!-- am_am_notification_e type; am_status_e status; int16t parameter; -->
++			<arg type="n" name="error" direction="out"/>
++        </method>
++        
++        <method name="setMainSourceNotificationConfiguration">
++			<arg type="q" name="sourceID" direction="in"/>
++			<arg type="(nnn)" name="mainNotificationConfiguration" direction="in"/> <!-- am_am_notification_e type; am_status_e status; int16t parameter; -->
++			<arg type="n" name="error" direction="out"/>
++        </method>
++
++        <signal name="NumberOfMainConnectionsChanged"></signal>
++
++		<signal name="SinkAdded">
++            	<arg type="(qs(nn)nnq)" name="newSink" direction="out"/> <!-- am_sinkID_t sinkID; std::string name; am_Availability_s availability; am_mainVolume_t volume; am_MuteState_e muteState; am_sinkClass_t sinkClassID; -->
++        </signal>
++		
++		<signal name="SinkRemoved">
++		<arg type="q" name="removedSinkID" direction="out"/>
++        </signal>
++
++		<signal name="SourceAdded">
++            	<arg type="(qs(nn)q)" name="newSource" direction="out"/> <!-- am_sourceID_t sourceID; std::string name; 	am_Availability_s availability; am_sourceClass_t sourceClassID; -->
++        </signal>
++		
++		<signal name="SourceRemoved">
++			<arg type="q" name="removedSourceID" direction="out"/>
++        </signal>
++
++        <signal name="NumberOfSinkClassesChanged">
++        </signal>
++
++        <signal name="NumberOfSourceClassesChanged">
++        </signal>
++
++        <signal name="MainConnectionStateChanged">
++            <arg type="q" name="connectionID" direction="out"/>
++            <arg type="n" name="connectionState" direction="out"/>
++        </signal>
++
++        <signal name="MainSourceChanged">
++            <arg type="q" name="sourceID" direction="out"/>
++        </signal>
++
++        <signal name="MainSinkSoundPropertyChanged">
++            <arg type="q" name="sinkID" direction="out"/>
++            <arg type="(nn)" name="SoundProperty" direction="out"/>
++        </signal>
++
++        <signal name="MainSourceSoundPropertyChanged">
++            <arg type="q" name="sourceID" direction="out"/>
++            <arg type="(nn)" name="SoundProperty" direction="out"/>
++        </signal>
++
++        <signal name="SinkAvailabilityChanged">
++            <arg type="q" name="sinkID" direction="out"/>
++            <arg type="(nn)" name="availability" direction="out"/>
++        </signal>
++
++        <signal name="SourceAvailabilityChanged">
++            <arg type="q" name="sourceID" direction="out"/>
++            <arg type="(nn)" name="availability" direction="out"/>
++        </signal>
++
++        <signal name="VolumeChanged">
++            <arg type="q" name="sinkID" direction="out"/>
++            <arg type="n" name="volume" direction="out"/>
++        </signal>
++
++        <signal name="SourceVolumeChanged">
+             <arg type="q" name="sourceID" direction="out"/>
+-            <arg type="(nn)" name="SoundProperty" direction="out"/>
+-        </signal>
+-
+-        <signal name="SinkAvailabilityChanged">
+-            <arg type="q" name="sinkID" direction="out"/>
+-            <arg type="(nn)" name="availability" direction="out"/>
+-        </signal>
+-
+-        <signal name="SourceAvailabilityChanged">
+-            <arg type="q" name="sourceID" direction="out"/>
+-            <arg type="(nn)" name="availability" direction="out"/>
+-        </signal>
+-
+-        <signal name="VolumeChanged">
+-            <arg type="q" name="sinkID" direction="out"/>
+             <arg type="n" name="volume" direction="out"/>
+         </signal>
+ 
+-        <signal name="SinkMuteStateChanged">
+-            <arg type="q" name="sinkID" direction="out"/>
+-            <arg type="n" name="muteState" direction="out"/>
+-        </signal>
+-
+-            <signal name="SystemPropertyChanged">
+-            <arg type="(nn)" name="SystemProperty" direction="out"/>
+-        </signal>
+-
+-        <signal name="TimingInformationChanged">
+-            <arg type="q" name="mainConnection" direction="out"/>
+-            <arg type="n" name="time" direction="out"/>
+-        </signal>
+-        
+-        <signal name="SinkUpdated">
+-			<arg type="q" name="sinkID" direction="out"/>
+-			<arg type="q" name="sinkClassID" direction="out"/>
++        <signal name="SinkMuteStateChanged">
++            <arg type="q" name="sinkID" direction="out"/>
++            <arg type="n" name="muteState" direction="out"/>
++        </signal>
++
++            <signal name="SystemPropertyChanged">
++            <arg type="(nn)" name="SystemProperty" direction="out"/>
++        </signal>
++
++        <signal name="TimingInformationChanged">
++            <arg type="q" name="mainConnection" direction="out"/>
++            <arg type="n" name="time" direction="out"/>
++        </signal>
++        
++        <signal name="SinkUpdated">
++			<arg type="q" name="sinkID" direction="out"/>
++			<arg type="q" name="sinkClassID" direction="out"/>
+ 			<arg type="a(nn)" name="listMainSinkProperties" direction="out"/> <!-- am_CustomMainSoundPropertyType_t type; int16_t value; -->
+-        </signal>
+-        
+-        <signal name="SourceUpdated">
+-			<arg type="q" name="sourceID" direction="out"/>
+-			<arg type="q" name="sourceClassID" direction="out"/>
++        </signal>
++        
++        <signal name="SourceUpdated">
++			<arg type="q" name="sourceID" direction="out"/>
++			<arg type="q" name="sourceClassID" direction="out"/>
+ 			<arg type="a(nn)" name="listMainSinkProperties" direction="out"/> <!-- am_CustomMainSoundPropertyType_t type; int16_t value; -->
+-        </signal>
+-        
+-        <signal name="SourceNotification">
+-			<arg type="q" name="sourceID" direction="out"/>
+-			<arg type="(nn)" name="notificationPayload" direction="out"/> <!-- am_notification_e type; int16_t value; -->
+-        </signal>
+-        
+-        <signal name="SinkNotification">
+-			<arg type="q" name="sinkID" direction="out"/>
+-			<arg type="(nn)" name="notificationPayload" direction="out"/> <!-- am_notification_e type; int16_t value; -->
+-        </signal>
+-        
+-        <signal name="SinkMainNotificationConfigurationChanged">
+-			<arg type="q" name="sinkID" direction="out"/>
+-			<arg type="(nnn)" name="mainNotificationConfiguration" direction="out"/> <!-- am_am_notification_e type; am_status_e status; int16t parameter; -->
+-        </signal>
+-        
+-        <signal name="SourceMainNotificationConfigurationChanged">
+-			<arg type="q" name="sourceID" direction="out"/>
+-			<arg type="(nnn)" name="mainNotificationConfiguration" direction="out"/> <!-- am_am_notification_e type; am_status_e status; int16t parameter; -->
+-        </signal>         
+-    </interface>
+-</node>
++        </signal>
++        
++        <signal name="SourceNotification">
++			<arg type="q" name="sourceID" direction="out"/>
++			<arg type="(nn)" name="notificationPayload" direction="out"/> <!-- am_notification_e type; int16_t value; -->
++        </signal>
++        
++        <signal name="SinkNotification">
++			<arg type="q" name="sinkID" direction="out"/>
++			<arg type="(nn)" name="notificationPayload" direction="out"/> <!-- am_notification_e type; int16_t value; -->
++        </signal>
++        
++        <signal name="SinkMainNotificationConfigurationChanged">
++			<arg type="q" name="sinkID" direction="out"/>
++			<arg type="(nnn)" name="mainNotificationConfiguration" direction="out"/> <!-- am_am_notification_e type; am_status_e status; int16t parameter; -->
++        </signal>
++        
++        <signal name="SourceMainNotificationConfigurationChanged">
++			<arg type="q" name="sourceID" direction="out"/>
++			<arg type="(nnn)" name="mainNotificationConfiguration" direction="out"/> <!-- am_am_notification_e type; am_status_e status; int16t parameter; -->
++        </signal>         
++    </interface>
++</node>
+diff --git a/PluginCommandInterfaceDbus/include/IAmCommandReceiverShadow.h b/PluginCommandInterfaceDbus/include/IAmCommandReceiverShadow.h
+index 9db4e9b..906a949 100644
+--- a/PluginCommandInterfaceDbus/include/IAmCommandReceiverShadow.h
++++ b/PluginCommandInterfaceDbus/include/IAmCommandReceiverShadow.h
+@@ -45,11 +45,14 @@ public:
+     void connect(DBusConnection *conn, DBusMessage *msg);
+     void disconnect(DBusConnection *conn, DBusMessage *msg);
+     void setVolume(DBusConnection *conn, DBusMessage *msg);
++    void setSourceVolume(DBusConnection *conn, DBusMessage *msg);
+     void volumeStep(DBusConnection *conn, DBusMessage *msg);
+     void setSinkMuteState(DBusConnection *conn, DBusMessage *msg);
+     void setMainSinkSoundProperty(DBusConnection *conn, DBusMessage *msg);
+     void setMainSourceSoundProperty(DBusConnection *conn, DBusMessage *msg);
+     void setSystemProperty(DBusConnection *conn, DBusMessage *msg);
++    void getVolume(DBusConnection *conn, DBusMessage *msg);
++    void getSourceVolume(DBusConnection *conn, DBusMessage *msg);
+     void getListMainConnections(DBusConnection *conn, DBusMessage *msg);
+     void getListMainSinks(DBusConnection *conn, DBusMessage *msg);
+     void getListMainSources(DBusConnection *conn, DBusMessage *msg);
+diff --git a/PluginCommandInterfaceDbus/src/CAmCommandSenderDbus.cpp b/PluginCommandInterfaceDbus/src/CAmCommandSenderDbus.cpp
+index e5d3382..83a0f6e 100644
+--- a/PluginCommandInterfaceDbus/src/CAmCommandSenderDbus.cpp
++++ b/PluginCommandInterfaceDbus/src/CAmCommandSenderDbus.cpp
+@@ -212,6 +212,18 @@ void CAmCommandSenderDbus::cbMainConnectionStateChanged(const am_mainConnectionI
+     }
+ }
+ 
++void CAmCommandSenderDbus::cbMainSourceChanged(const am_sourceID_t sourceID)
++{
++    log(&commandDbus, DLT_LOG_INFO, "cbMainSourceChanged called, sourceID", sourceID);
++
++    if (mReady)
++    {
++        mCAmDbusMessageHandler.initSignal(std::string(MY_NODE), std::string("MainSourceChanged"));
++        mCAmDbusMessageHandler.append((dbus_uint16_t) sourceID);
++        mCAmDbusMessageHandler.sendMessage();
++    }
++}
++
+ void CAmCommandSenderDbus::cbMainSinkSoundPropertyChanged(const am_sinkID_t sinkID, const am_MainSoundProperty_s & soundProperty)
+ {
+     log(&commandDbus, DLT_LOG_INFO, "cbMainSinkSoundPropertyChanged called, sinkID", sinkID, "SoundProperty.type", soundProperty.type, "SoundProperty.value", soundProperty.value);
+@@ -277,6 +289,19 @@ void CAmCommandSenderDbus::cbVolumeChanged(const am_sinkID_t sinkID, const am_ma
+     }
+ }
+ 
++void CAmCommandSenderDbus::cbSourceVolumeChanged(const am_sourceID_t sourceID, const am_mainVolume_t volume)
++{
++    log(&commandDbus, DLT_LOG_INFO, "cbSourceVolumeChanged called, sourceID", sourceID, "volume", volume);
++
++    if (mReady)
++    {
++        mCAmDbusMessageHandler.initSignal(std::string(MY_NODE), std::string("SourceVolumeChanged"));
++        mCAmDbusMessageHandler.append((dbus_uint16_t) sourceID);
++        mCAmDbusMessageHandler.append((dbus_int16_t) volume);
++        mCAmDbusMessageHandler.sendMessage();
++    }
++}
++
+ void CAmCommandSenderDbus::cbSinkMuteStateChanged(const am_sinkID_t sinkID, const am_MuteState_e muteState)
+ {
+     log(&commandDbus, DLT_LOG_INFO, "cbSinkMuteStateChanged called, sinkID", sinkID, "muteState", muteState);
+diff --git a/PluginCommandInterfaceDbus/src/IAmCommandReceiverShadow.cpp b/PluginCommandInterfaceDbus/src/IAmCommandReceiverShadow.cpp
+index a21cee8..7e00698 100644
+--- a/PluginCommandInterfaceDbus/src/IAmCommandReceiverShadow.cpp
++++ b/PluginCommandInterfaceDbus/src/IAmCommandReceiverShadow.cpp
+@@ -58,8 +58,9 @@ void IAmCommandReceiverShadow::connect(DBusConnection *conn, DBusMessage *msg)
+     mDBUSMessageHandler.initReceive(msg);
+     am_sourceID_t sourceID = (am_sourceID_t) mDBUSMessageHandler.getUInt();
+     am_sinkID_t sinkID = (am_sinkID_t) mDBUSMessageHandler.getUInt();
+-    am_mainConnectionID_t mainConnectionID = 0;
+-    am_Error_e returnCode = mpIAmCommandReceive->connect(sourceID, sinkID, mainConnectionID);
++    am_mainConnectionID_t mainConnectionID = 1;
++    //am_Error_e returnCode = mpIAmCommandReceive->connect(sourceID, sinkID, mainConnectionID);
++	am_Error_e returnCode = (am_Error_e)0;
+     mDBUSMessageHandler.initReply(msg);
+     mDBUSMessageHandler.append((dbus_int16_t) returnCode);
+     mDBUSMessageHandler.append((dbus_uint16_t) mainConnectionID);
+@@ -97,6 +98,22 @@ void IAmCommandReceiverShadow::setVolume(DBusConnection *conn, DBusMessage *msg)
+     mDBUSMessageHandler.sendMessage();
+ }
+ 
++void IAmCommandReceiverShadow::setSourceVolume(DBusConnection *conn, DBusMessage *msg)
++{
++    log(&commandDbus, DLT_LOG_INFO, "CommandReceiverShadow::setVolume called");
++
++    (void) conn;
++    assert(mpIAmCommandReceive!=NULL);
++
++    mDBUSMessageHandler.initReceive(msg);
++    am_sourceID_t sourceID = (am_sourceID_t) mDBUSMessageHandler.getUInt();
++    am_volume_t volume = (am_volume_t) mDBUSMessageHandler.getInt();
++    am_Error_e returnCode = mpIAmCommandReceive->setSourceVolume(sourceID, volume);
++    mDBUSMessageHandler.initReply(msg);
++    mDBUSMessageHandler.append((dbus_int16_t) returnCode);
++    mDBUSMessageHandler.sendMessage();
++}
++
+ void IAmCommandReceiverShadow::volumeStep(DBusConnection *conn, DBusMessage *msg)
+ {
+     log(&commandDbus, DLT_LOG_INFO, "CommandReceiverShadow::volumeStep called");
+@@ -191,6 +208,40 @@ void IAmCommandReceiverShadow::setSystemProperty(DBusConnection *conn, DBusMessa
+     mDBUSMessageHandler.sendMessage();
+ }
+ 
++void IAmCommandReceiverShadow::getVolume(DBusConnection *conn, DBusMessage *msg)
++{
++    log(&commandDbus, DLT_LOG_INFO, "CommandReceiverShadow::getVolume called");
++
++    (void) conn;
++    assert(mpIAmCommandReceive!=NULL);
++
++    mDBUSMessageHandler.initReceive(msg);
++    am_sinkID_t sinkID = (am_sinkID_t) mDBUSMessageHandler.getUInt();
++    am_mainVolume_t volume = 0;
++    am_Error_e returnCode = mpIAmCommandReceive->getVolume(sinkID, volume);
++    mDBUSMessageHandler.initReply(msg);
++    mDBUSMessageHandler.append((dbus_int16_t) returnCode);
++    mDBUSMessageHandler.append((dbus_int16_t) volume);
++    mDBUSMessageHandler.sendMessage();
++}
++
++void IAmCommandReceiverShadow::getSourceVolume(DBusConnection *conn, DBusMessage *msg)
++{
++    log(&commandDbus, DLT_LOG_INFO, "CommandReceiverShadow::getVolume called");
++
++    (void) conn;
++    assert(mpIAmCommandReceive!=NULL);
++
++    mDBUSMessageHandler.initReceive(msg);
++    am_sourceID_t sourceID = (am_sourceID_t) mDBUSMessageHandler.getUInt();
++    am_mainVolume_t volume = 0;
++    am_Error_e returnCode = mpIAmCommandReceive->getSourceVolume(sourceID, volume);
++    mDBUSMessageHandler.initReply(msg);
++    mDBUSMessageHandler.append((dbus_int16_t) returnCode);
++    mDBUSMessageHandler.append((dbus_int16_t) volume);
++    mDBUSMessageHandler.sendMessage();
++}
++
+ void IAmCommandReceiverShadow::getListMainConnections(DBusConnection *conn, DBusMessage *msg)
+ {
+     log(&commandDbus, DLT_LOG_INFO, "CommandReceiverShadow::getListMainConnections called");
+@@ -503,9 +554,12 @@ IAmCommandReceiverShadow::functionMap_t IAmCommandReceiverShadow::createMap()
+     m["Connect"] = &IAmCommandReceiverShadow::connect;
+     m["Disconnect"] = &IAmCommandReceiverShadow::disconnect;
+     m["SetVolume"] = &IAmCommandReceiverShadow::setVolume;
++    m["SetSourceVolume"] = &IAmCommandReceiverShadow::setSourceVolume;
+     m["VolumeStep"] = &IAmCommandReceiverShadow::volumeStep;
+     m["SetSinkMuteState"] = &IAmCommandReceiverShadow::setSinkMuteState;
+     m["SetMainSinkSoundProperty"] = &IAmCommandReceiverShadow::setMainSinkSoundProperty;
++    m["GetVolume"] = &IAmCommandReceiverShadow::getVolume;
++    m["GetSourceVolume"] = &IAmCommandReceiverShadow::getSourceVolume;
+     m["SetMainSourceSoundProperty"] = &IAmCommandReceiverShadow::setMainSourceSoundProperty;
+     m["GetListMainConnections"] = &IAmCommandReceiverShadow::getListMainConnections;
+     m["GetListMainSinks"] = &IAmCommandReceiverShadow::getListMainSinks;
+diff --git a/PluginControlInterfacePulse/data/libPluginControlInterface.conf b/PluginControlInterfacePulse/data/libPluginControlInterface.conf
+index d2547c8..6698184 100644
+--- a/PluginControlInterfacePulse/data/libPluginControlInterface.conf
++++ b/PluginControlInterfacePulse/data/libPluginControlInterface.conf
+@@ -27,13 +27,13 @@
+ Entertainment|Main
+ Navigation|Interrupt
+ Telephony|Interrupt
+-TTS|Main
++TTS|Interrupt
+ Analogic|Interrupt
+-Digital|Main
++MIC|Interrupt
+ ############################################################################
+ # SinkClass has the following format: SinkClassName|SinkClassType
+ [SinkClass]
+-AlsaPrimary|Main
++Primary|Main
+ ############################################################################
+ # Sinks and sources are clustered into independent parts which are capable of
+ # exchanging audio with each other (AudioDomains).
+@@ -62,11 +62,11 @@ AlsaPrimary|Main
+ #   Route2: SourceClass1 > Gateway1 > Sink 2
+ # If and only if Gateway1 = Sink1 > Source2
+ [Route]
+-Entertainment>AlsaPrimary
+-Analogic>AlsaSecondary
+-Navigation>AlsaSecondary
+-Telephony>AlsaSecondary
+-TTS>AlsaSecondary
++Entertainment>Primary
++Analogic>Secondary
++Navigation>Secondary
++Telephony>Secondary
++TTS>Secondary
+ ############################################################################
+ # Mixing rule should be something like:
+ # - if a new source is in the class XXX
+@@ -77,10 +77,10 @@ TTS>AlsaSecondary
+ # Where ACTION_TYPE = Mute, Unmute, Pause, Resume, DecreaseVolume, IncreaseVolume, Disconnect
+ # ActionTarget = Domain/Sink or Domain/Source
+ [Mixing]
+-Entertainment:Entertainment>AlsaPrimary:Disconnect:PulseAudio:Source
+-Analogic:Analogic>AlsaSecondary:Disconnect:PulseAudio:Source|Entertainment>AlsaPrimary:Disconnect:PulseAudio:Source|Navigation>AlsaSecondary:Disconnect:PulseAudio:Source|TTS>AlsaSecondary:Disconnect:PulseAudio:Source
+-Navigation:Entertainment>AlsaPrimary:DecreaseVolume:PulseAudio:Sink|TTS>AlsaSecondary:Mute:PulseAudio:Source|Analogic>AlsaSecondary:Disconnect:PulseAudio:Source
+-TTS:Entertainment>AlsaPrimary:DecreaseVolume:PulseAudio:Sink
+-Telephony:Entertainment>AlsaPrimary:Disconnect:PulseAudio:Source|Analogic>AlsaSecondary:Disconnect:PulseAudio:Source|Navigation>AlsaSecondary:Mute:PulseAudio:Source|TTS>AlsaSecondary:Disconnect:PulseAudio:Source
++Entertainment:Entertainment>Primary:Disconnect:PulseAudio:Source
++Navigation:Entertainment>Primary:DecreaseVolume:PulseAudio:Source|TTS>Secondary:DecreaseVolume:PulseAudio:Source
++TTS:Entertainment>Primary:DecreaseVolume:PulseAudio:Source
++Telephony:Entertainment>Primary:Mute:PulseAudio:Source|Navigation>Secondary:Mute:PulseAudio:Source|TTS>Secondary:Mute:PulseAudio:Source
++Analogic:Entertainment>Primary:Mute:PulseAudio:Source|Navigation>Secondary:Mute:PulseAudio:Source|TTS>Secondary:Mute:PulseAudio:Source
+ # !END
+ 
+diff --git a/PluginControlInterfacePulse/include/ControlSender.h b/PluginControlInterfacePulse/include/ControlSender.h
+index 478d1d9..856da84 100644
+--- a/PluginControlInterfacePulse/include/ControlSender.h
++++ b/PluginControlInterfacePulse/include/ControlSender.h
+@@ -61,6 +61,10 @@ public:
+         const am_sinkID_t SinkID,
+         const am_mainVolume_t newVolume);
+ 
++    am_Error_e hookUserSourceVolumeChange(
++        const am_sinkID_t SinkID,
++        const am_mainVolume_t newVolume);
++
+     am_Error_e hookUserVolumeStep(
+         const am_sinkID_t SinkID,
+         const int16_t increment);
+diff --git a/PluginControlInterfacePulse/src/ControlSender.cpp b/PluginControlInterfacePulse/src/ControlSender.cpp
+index 50973d5..952568d 100644
+--- a/PluginControlInterfacePulse/src/ControlSender.cpp
++++ b/PluginControlInterfacePulse/src/ControlSender.cpp
+@@ -371,7 +371,6 @@ am_Error_e ControlSenderPlugin::hookUserConnectionRequest(const am_sourceID_t so
+             }
+         }
+     }
+-
+     logInfo("END Connection request - SUCCESS}");
+     return E_OK;
+ }
+@@ -561,7 +560,7 @@ am_Error_e ControlSenderPlugin::applyActionOnConnection(
+                         }
+                         else
+                         {
+-                            if (actionsIter->actionType < am_ConnectAction_s::inverseAction(action.actionType))
++							if (am_ConnectAction_s::inverseAction(actionsIter->actionType) == am_ConnectAction_s::inverseAction(action.actionType))
+                             {
+                                 logInfo("Abort action", ACTION_TYPE_STR(am_ConnectAction_s::inverseAction(action.actionType)),
+                                         "on connection:", connectionID,
+@@ -726,32 +725,66 @@ am_Error_e ControlSenderPlugin::applyActionOnSubConnection(
+         {
+             if (action.targetElement == ATG_SOURCE)
+             {
+-                logInfo("Apply decrease volume: sourceID:", subConnection.sourceID);
+-                mControlReceiveInterface->setSourceVolume(
+-                        h, subConnection.sourceID, 50, am::RAMP_GENIVI_NO_PLOP, 0);
++				am_Source_s source;
++                mControlReceiveInterface->getSourceInfoDB(subConnection.sourceID, source);
++				if(source.volume > 30)
++				{
++					this->mNames2Sources[source.name].volume = source.volume;
++			logInfo("source name : ", source.name, "source Volume :", this->mNames2Sources[source.name].volume);
++					am_volume_t vol = source.volume < 30 ? source.volume : 30;
++                    logInfo("Apply decrease volume: sourceID:", subConnection.sourceID);
++					this->mControlReceiveInterface->changeSourceMainVolumeDB(vol, subConnection.sourceID);
++                    mControlReceiveInterface->setSourceVolume(
++                            h, subConnection.sourceID, vol, am::RAMP_GENIVI_NO_PLOP, 0);
++				}
++				else
++				{
++                    logInfo("Abort decrease because already source volume less than 30%");
++				}
+             }
+             if (action.targetElement == ATG_SINK)
+             {
+-                logInfo("Apply decrease volume: sinkID:", subConnection.sinkID);
+-                mControlReceiveInterface->setSinkVolume(
+-                        h, subConnection.sinkID, 50, am::RAMP_GENIVI_NO_PLOP, 0);
++				am_Sink_s sink;
++                mControlReceiveInterface->getSinkInfoDB(subConnection.sinkID, sink);
++				if(sink.volume > 30)
++				{
++					this->mNames2Sinks[sink.name].volume = sink.volume;
++			logInfo("sink name : ", sink.name, "sink Volume :", this->mNames2Sinks[sink.name].volume);
++					am_volume_t vol = sink.volume < 30 ? sink.volume : 30;
++                    logInfo("Apply decrease volume: sinkID:", subConnection.sinkID);
++					this->mControlReceiveInterface->changeSinkMainVolumeDB(vol, subConnection.sinkID);
++                    mControlReceiveInterface->setSinkVolume(
++                            h, subConnection.sinkID, vol, am::RAMP_GENIVI_NO_PLOP, 0);
++				}
++				else
++				{
++                    logInfo("Abort decrease because already sink volume less than 30%");
++				}
++
+             }
+         }
+         break;
+ 
+         case AT_VOLUME_INCREASE:
+         {
++
+             if (action.targetElement == ATG_SOURCE)
+             {
+-                logInfo("Apply increase volume: sourceID:", subConnection.sourceID);
++				am_Source_s source;
++                mControlReceiveInterface->getSourceInfoDB(subConnection.sourceID, source);
++		logInfo("Apply increase volume: sourceID:", subConnection.sourceID, "source :", source.name, "volume : ", this->mNames2Sources[source.name].volume);
++				this->mControlReceiveInterface->changeSourceMainVolumeDB(this->mNames2Sources[source.name].volume, subConnection.sourceID);
+                 mControlReceiveInterface->setSourceVolume(
+-                        h, subConnection.sourceID, 100, am::RAMP_GENIVI_NO_PLOP, 0);
++                        h, subConnection.sourceID, this->mNames2Sources[source.name].volume, am::RAMP_GENIVI_NO_PLOP, 0);
+             }
+             if (action.targetElement == ATG_SINK)
+             {
+-                logInfo("Apply increase volume: sinkID:", subConnection.sinkID);
++				am_Sink_s sink;
++                mControlReceiveInterface->getSinkInfoDB(subConnection.sinkID, sink);
++		logInfo("Apply increase volume: sinkID:", subConnection.sinkID, " sink :", sink.name, "volume : ", this->mNames2Sinks[sink.name].volume);
++				this->mControlReceiveInterface->changeSinkMainVolumeDB(this->mNames2Sinks[sink.name].volume, subConnection.sinkID);
+                 mControlReceiveInterface->setSinkVolume(
+-                        h, subConnection.sinkID, 100, am::RAMP_GENIVI_NO_PLOP, 0);
++                        h, subConnection.sinkID, this->mNames2Sinks[sink.name].volume, am::RAMP_GENIVI_NO_PLOP, 0);
+             }
+             break;
+         }
+@@ -760,15 +793,14 @@ am_Error_e ControlSenderPlugin::applyActionOnSubConnection(
+             if (action.targetElement == ATG_SOURCE)
+             {
+                 logInfo("Apply mute: sourceID:", subConnection.sourceID);
+-                mControlReceiveInterface->setSourceVolume(
+-                        h, subConnection.sourceID, 0, am::RAMP_GENIVI_NO_PLOP, 0);
++                mControlReceiveInterface->setSourceState(h, subConnection.sourceID, am::SS_OFF);
+             }
+             if (action.targetElement == ATG_SINK)
+             {
+                 //TODO: replace setVolume(0) with a real setMute function
+                 logInfo("Apply mute: sinkID:", subConnection.sinkID);
+                 mControlReceiveInterface->setSinkVolume(
+-                        h, subConnection.sinkID, 0, am::RAMP_GENIVI_NO_PLOP, 0);
++                        h, subConnection.sinkID, am::AM_MUTE, am::RAMP_GENIVI_NO_PLOP, 0);
+             }
+ 
+             this->mControlReceiveInterface->
+@@ -782,15 +814,14 @@ am_Error_e ControlSenderPlugin::applyActionOnSubConnection(
+             if (action.targetElement == ATG_SOURCE)
+             {
+                 logInfo("Apply unmute: sourceID:", subConnection.sourceID);
+-                mControlReceiveInterface->setSourceVolume(
+-                        h, subConnection.sourceID, 100, am::RAMP_GENIVI_NO_PLOP, 0);
++                mControlReceiveInterface->setSourceState(h, subConnection.sourceID, am::SS_ON);
+             }
+             if (action.targetElement == ATG_SINK)
+             {
+                 //TODO: replace setVolume(100) with a real setMute function
+                 logInfo("Apply unmute: sinkID:", subConnection.sinkID);
+                 mControlReceiveInterface->setSinkVolume(
+-                        h, subConnection.sinkID, 100, am::RAMP_GENIVI_NO_PLOP, 0);
++                        h, subConnection.sinkID, am::AM_UNMUTE , am::RAMP_GENIVI_NO_PLOP, 0);
+             }
+ 
+             this->mControlReceiveInterface->
+@@ -829,10 +860,37 @@ am_Error_e ControlSenderPlugin::hookUserSetSystemProperty(const am_SystemPropert
+ am_Error_e ControlSenderPlugin::hookUserVolumeChange(const am_sinkID_t SinkID, const am_mainVolume_t newVolume)
+ {
+     am_Handle_s h;
++
++	this->mControlReceiveInterface->changeSinkMainVolumeDB(newVolume, SinkID);
++
++	//TODO: remove Set Sink Volume function
++    std::vector<am_MainConnection_s> existingConnections;
++    this->mControlReceiveInterface->getListMainConnections(existingConnections);
++
++    std::vector<am_MainConnection_s>::iterator iter     = existingConnections.begin();
++    std::vector<am_MainConnection_s>::iterator iterEnd  = existingConnections.end();
++
++    for (; iter < iterEnd; ++iter)
++    {
++        if (iter->sinkID == SinkID)
++        {//check other existing connection , maybe volume should be restored
++		this->mControlReceiveInterface->setSourceVolume(
++			 h, iter->sourceID, newVolume, am::RAMP_GENIVI_NO_PLOP, 0);
++        }
++    }
++
+     return this->mControlReceiveInterface->setSinkVolume(
+             h, SinkID, newVolume, am::RAMP_GENIVI_NO_PLOP, 0);
+ }
+ 
++am_Error_e ControlSenderPlugin::hookUserSourceVolumeChange(const am_sourceID_t SourceID, const am_mainVolume_t newVolume)
++{
++    am_Handle_s h;
++	this->mControlReceiveInterface->changeSourceMainVolumeDB(newVolume, SourceID);
++    return this->mControlReceiveInterface->setSourceVolume(
++            h, SourceID, newVolume, am::RAMP_GENIVI_NO_PLOP, 0);
++}
++
+ am_Error_e ControlSenderPlugin::hookUserVolumeStep(const am_sinkID_t SinkID, const int16_t increment)
+ {
+     (void) SinkID;
+diff --git a/PluginRoutingInterfacePulse/data/libPluginRoutingInterfacePULSE.conf b/PluginRoutingInterfacePulse/data/libPluginRoutingInterfacePULSE.conf
+index d8b9868..53fb620 100755
+--- a/PluginRoutingInterfacePulse/data/libPluginRoutingInterfacePULSE.conf
++++ b/PluginRoutingInterfacePulse/data/libPluginRoutingInterfacePULSE.conf
+@@ -41,15 +41,16 @@
+ ####################
+ # Sources
+ ####################
+-Source|Sink Input|Entertainment|MediaPlayer|media.role|MEDIA
+-Source|Sink Input|Navigation|NaviPlayer|media.role|NAVI
+-Source|Sink Input|TTS|TTSPlayer|media.role|TextToSpeach
+-Source|Sink Input|Telephony|Skype|media.role|skype
+-Source|Sink Input|Analogic|ReverseBeep|media.role|reverse
++Source|Sink Input|Entertainment|MediaPlayer|media.role|media
++Source|Sink Input|Navigation|Navigation|media.role|navi
++Source|Sink Input|TTS|TextPlayer|media.role|text
++Source|Sink Input|Telephony|Call|media.role|call
++Source|Sink Input|Analogic|Alert|media.role|alert
++Source|Source|MIC|Microphone|media.role|capture
+ ####################
+ # Sinks
+ ####################
+-Sink|Sink|HifiAudio|AlsaPrimary|na|na
+-Sink|Sink|HifiAudio|AlsaSecondary|na|na
++Sink|Sink|HifiAudio|Primary|na|na
++Sink|Sink|HifiAudio|Secondary|na|na
+ # !END
+ 
+diff --git a/PluginRoutingInterfacePulse/include/RoutingSenderMainloopPULSE.h b/PluginRoutingInterfacePulse/include/RoutingSenderMainloopPULSE.h
+index ff0c1d8..4ef7887 100644
+--- a/PluginRoutingInterfacePulse/include/RoutingSenderMainloopPULSE.h
++++ b/PluginRoutingInterfacePulse/include/RoutingSenderMainloopPULSE.h
+@@ -39,6 +39,8 @@ void routing_sender_context_state_callback(pa_context *c, void *thiz);
+ 
+ bool routing_sender_get_source_info(pa_context *c, void *thiz);
+ 
++bool routing_sender_get_sink_input_info(pa_context *c, void *thiz);
++
+ void routing_sender_pa_event_callback(
+         pa_context *c,
+         pa_subscription_event_type_t t,
+@@ -50,6 +52,12 @@ void routing_sender_get_sink_input_info_callback(
+         int eol,
+         void *thiz);
+ 
++void routing_sender_remove_sink_input_info_callback(
++        pa_context *c,
++        const pa_sink_input_info *i,
++        int is_last,
++        void *thiz);
++
+ void routing_sender_get_source_output_info_callback(
+         pa_context *c,
+         const pa_source_output_info *i,
+@@ -94,4 +102,10 @@ bool routing_sender_sink_volume(
+         uint32_t volume,
+         void *thiz);
+ 
++bool routing_sender_sink_mute(
++        pa_context *c,
++        uint32_t sink_index,
++        bool mute,
++        void *thiz);
++
+ #endif
+diff --git a/PluginRoutingInterfacePulse/include/RoutingSenderPULSE.h b/PluginRoutingInterfacePulse/include/RoutingSenderPULSE.h
+index 335adc5..93a30bf 100644
+--- a/PluginRoutingInterfacePulse/include/RoutingSenderPULSE.h
++++ b/PluginRoutingInterfacePulse/include/RoutingSenderPULSE.h
+@@ -97,6 +97,8 @@ public:
+     void getSourceInfoCallback(pa_context *c, const pa_source_info *i, int is_last, void *userdata);
+     void getSinkInputInfoCallback(pa_context *c, const pa_sink_input_info *i, void *userdata);
+     void getSourceOutputInfoCallback(pa_context *c, const pa_source_output_info *i, void *userdata);
++ //Code modified by Andrew in Telechips
++	void removeSinkInputInfoCallback(pa_context *c, const pa_sink_input_info *i, int is_last, void *userdata);
+ 
+ private:
+     void loadConfig();
+@@ -126,6 +128,12 @@ private:
+     std::vector<RoutingSenderPULSEConnection>       m_activeConnections;
+     std::map<uint16_t, uint16_t>                    m_sinkToVolume;
+     std::map<uint16_t, uint16_t>                    m_sourceToVolume;
++
++/* As create stream or delete stream in Pulseaudio, Pulseaudio Automately connect/disconnect to AM.
++ * Application no longer need to call Connect or Disconnect that is DBus API
++ * Code modified by Andrew in Telechips */
++//    std::map<uint16_t, uint16_t>                    m_PASinkInputtomainConnectionID;
++	std::vector<am_mainConnectionID_t>              m_remainConnectionID;
+ };
+ 
+ #endif
+diff --git a/PluginRoutingInterfacePulse/src/RoutingSenderMainloopPULSE.cpp b/PluginRoutingInterfacePulse/src/RoutingSenderMainloopPULSE.cpp
+index 9e8d7fd..7e23a55 100644
+--- a/PluginRoutingInterfacePulse/src/RoutingSenderMainloopPULSE.cpp
++++ b/PluginRoutingInterfacePulse/src/RoutingSenderMainloopPULSE.cpp
+@@ -164,6 +164,12 @@ void routing_sender_pa_event_callback(pa_context *c, pa_subscription_event_type_
+                     c, idx, routing_sender_get_sink_input_info_callback, thiz);
+             break;
+         }
++        case PA_SUBSCRIPTION_EVENT_SINK_INPUT | PA_SUBSCRIPTION_EVENT_REMOVE:
++        {
++            pa_context_get_sink_input_info_list(
++                    c, routing_sender_remove_sink_input_info_callback, thiz);
++            break;
++        }
+         default:
+         {
+             logInfo("Pulse Audio event", t, "was ignored");
+@@ -195,6 +201,17 @@ void routing_sender_get_sink_input_info_callback(pa_context *c, const pa_sink_in
+     thiz->getSinkInputInfoCallback(c, i, userdata);
+ }
+ 
++void routing_sender_remove_sink_input_info_callback(pa_context *c, const pa_sink_input_info *i, int is_last, void *userdata)
++{
++    RoutingSenderPULSE* thiz = (RoutingSenderPULSE*) userdata;
++    if (!thiz)
++    {
++        logError("pa_context_get_sink_input_info was called with wrong params\n");
++        return;
++    }
++
++    thiz->removeSinkInputInfoCallback(c, i, is_last, userdata);
++}
+ 
+ void routing_sender_get_source_output_info_callback(pa_context *c, const pa_source_output_info *i, int eol, void *userdata)
+ {
+@@ -209,8 +226,6 @@ void routing_sender_get_source_output_info_callback(pa_context *c, const pa_sour
+     thiz->getSourceOutputInfoCallback(c, i, userdata);
+ }
+ 
+-
+-
+ void routing_sender_get_sink_info_callback(pa_context *c, const pa_sink_info *i, int is_last, void *userdata)
+ {
+     RoutingSenderPULSE* thiz = (RoutingSenderPULSE*) userdata;
+@@ -281,6 +296,29 @@ void routing_sender_context_state_callback(pa_context *c, void *thiz)
+     //other states are not relevant
+ }
+ 
++bool routing_sender_get_sink_input_info(pa_context *c, void *thiz) {
++    if (pa_context_get_state(c) == PA_CONTEXT_READY)
++    {
++        pa_operation *o = pa_context_get_sink_input_info_list(c, routing_sender_get_sink_input_info_callback, thiz);
++        if (o)
++        {
++            pa_operation_unref(o);
++        }
++        else
++        {
++            logError("Unable to create Pulse Audio operation:",
++                    "pa_context_get_sink_info_list");
++            return false;
++        }
++    }
++    else
++    {
++        logError("Can not get Pulse Audio sources info - context not ready\n");
++        return false;
++    }
++
++    return true;
++}
+ 
+ bool routing_sender_get_source_info(pa_context *c, void *thiz) {
+     if (pa_context_get_state(c) == PA_CONTEXT_READY)
+@@ -415,7 +453,6 @@ static void routing_sender_sink_input_volume_cb(pa_context *c, int success, void
+                     "pa_context_set_sink_input_volume");
+             return ;
+         }
+-        usleep(10000);
+ 
+         volumeCh->channels = 2;//TODO: check is stream is mono / stereo
+         volumeCh->values[0] = new_volume;
+@@ -555,6 +592,7 @@ bool routing_sender_sink_input_mute(pa_context *c, uint32_t sink_input_index, bo
+ {
+     if (pa_context_get_state(c) == PA_CONTEXT_READY)
+     {
++        logInfo("PULSE - sink_input_index:", sink_input_index);
+         pa_operation *o = pa_context_set_sink_input_mute(
+             c, sink_input_index, mute ? 1 : 0, NULL, thiz);
+         if (o)
+@@ -606,5 +644,29 @@ bool routing_sender_sink_volume(pa_context *c, uint32_t sink_index, uint32_t vol
+     return true;
+ }
+ 
++bool routing_sender_sink_mute(pa_context *c, uint32_t sink_index, bool mute, void *thiz)
++{
++    if (pa_context_get_state(c) == PA_CONTEXT_READY)
++    {
++        pa_operation *o = pa_context_set_sink_mute_by_index(
++            c, sink_index, mute ? 1 : 0, NULL, thiz);
++        if (o)
++        {
++            pa_operation_unref(o);
++        }
++        else
++        {
++            logError("Unable to create Pulse Audio operation:",
++                    "pa_context_set_sink_mute_by_index");
++            return false;
++        }
++    }
++    else
++    {
++        logError("Can not set sink mute - context not ready\n");
++        return false;
++    }
++    return true;
++}
+ //TODO - implements mute/un-mute and sink suspend(pause)
+ //TODO - IMPORTANT !! implement volume change for sink input even multiple sink inputs are created during one connection
+diff --git a/PluginRoutingInterfacePulse/src/RoutingSenderPULSE.cpp b/PluginRoutingInterfacePulse/src/RoutingSenderPULSE.cpp
+index db9fb21..d8726f5 100644
+--- a/PluginRoutingInterfacePulse/src/RoutingSenderPULSE.cpp
++++ b/PluginRoutingInterfacePulse/src/RoutingSenderPULSE.cpp
+@@ -41,6 +41,7 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <iostream>
++#include <algorithm>
+ 
+ #include "CAmDltWrapper.h"
+ 
+@@ -59,6 +60,7 @@
+ DLT_DECLARE_CONTEXT(routingPulse)
+ /* Maximum source volume measured in percentage. Minimum value is 0% */
+ #define MAX_SOURCE_VOLUME   (100)
++#define DEFAULT_SINK_VOLUME   (50)
+ 
+ 
+ /**
+@@ -292,7 +294,7 @@ void RoutingSenderPULSE::setRoutingReady(uint16_t handle)
+         this->m_sinks[i].sink.muteState = am::MS_MUTED;
+         this->m_sinks[i].sink.domainID = this->m_domain.domainID;
+         this->m_sinks[i].sink.visible = true;
+-
++	    this->m_sinks[i].sink.volume = MAX_SOURCE_VOLUME; /* initialize source volume to 100% */
+         this->m_sinks[i].sink.listSoundProperties.push_back(l_spTreble);
+         this->m_sinks[i].sink.listSoundProperties.push_back(l_spMid);
+         this->m_sinks[i].sink.listSoundProperties.push_back(l_spBass);
+@@ -308,7 +310,7 @@ void RoutingSenderPULSE::setRoutingReady(uint16_t handle)
+ 
+         logInfo("PULSE - register sink:"
+             ,m_sinks[i].name
+-            , "(", m_sinks[i].propertyName , ", ", m_sinks[i].propertyValue, ")");
++            , "(", m_sinks[i].propertyName , ", ", m_sinks[i].propertyValue, ")", "idx :", i);
+     }
+ 
+     logInfo("PULSE - routingInterfacesReady");
+@@ -349,7 +351,7 @@ am_Error_e RoutingSenderPULSE::asyncConnect(
+ 
+     //by default - sources ar connected at 100% -> controller is responsible to setSourcevolume if needed
+ 
+-    m_sourceToVolume[sourceID] = MAX_SOURCE_VOLUME;
++    //m_sourceToVolume[sourceID] = MAX_SOURCE_VOLUME;
+ 
+ 
+     if (m_sinkToPASink[sinkID] != -1)
+@@ -491,11 +493,31 @@ am_Error_e RoutingSenderPULSE::asyncSetSinkVolume(
+ 
+     logInfo("PULSE - asyncSetSinkVolume() - volume:", volume, "sink index:", this->m_sinkToPASink[sinkID]);
+ 
+-    routing_sender_sink_volume(
+-            this->m_paContext,
+-            this->m_sinkToPASink[sinkID],
+-            volume,
+-            this);
++	if(volume == AM_MUTE)
++	{
++		routing_sender_sink_mute(
++                this->m_paContext,
++                this->m_sinkToPASink[sinkID],
++                true,
++                this);
++	}
++	else if(volume == AM_UNMUTE)
++	{
++		routing_sender_sink_mute(
++                this->m_paContext,
++                this->m_sinkToPASink[sinkID],
++                false,
++                this);
++	}
++	else
++	{
++        routing_sender_sink_volume(
++                this->m_paContext,
++                this->m_sinkToPASink[sinkID],
++                volume,
++                this);
++		this->m_sinks[sinkID].sink.volume = volume;
++	}
+     this->m_routingReceiver->ackSetSinkVolumeChange(handle, volume, E_OK);
+     return E_OK;
+ }
+@@ -509,11 +531,16 @@ am_Error_e RoutingSenderPULSE::asyncSetSourceVolume(
+ {
+     (void) ramp;
+     (void) time;
++	am_sourceID_t source_idx = sourceID - 100;
+ 
+     am_volume_t crt_volume = this->m_sourceToVolume[sourceID];
+     this->m_sourceToVolume[sourceID] = volume;
+ 
+     logInfo("PULSE - asyncSetSourceVolume() - volume:", volume, "sink input index:", this->m_sourceToPASinkInput[sourceID]);
++    if (m_sourceToPASinkInput[sourceID] == -1)
++	{
++		routing_sender_get_sink_input_info(this->m_paContext, this);
++	}
+     if (m_sourceToPASinkInput[sourceID] != -1)
+     {
+         if (time == 0)
+@@ -523,6 +550,7 @@ am_Error_e RoutingSenderPULSE::asyncSetSourceVolume(
+                     this->m_sourceToPASinkInput[sourceID],
+                     volume,
+                     this);
++			this->m_sources[source_idx].source.volume = volume;
+         }
+         else
+         {/* with ramp time */
+@@ -533,6 +561,7 @@ am_Error_e RoutingSenderPULSE::asyncSetSourceVolume(
+                     volume,
+                     (uint16_t)time,
+                     this);
++			this->m_sources[source_idx].source.volume = volume;
+         }
+     }
+     else
+@@ -540,7 +569,7 @@ am_Error_e RoutingSenderPULSE::asyncSetSourceVolume(
+         logInfo("PULSE - sink input not registered yet - should wait for registration before update the volume");
+     }
+     this->m_routingReceiver->ackSetSourceVolumeChange(handle, volume, E_OK);
+-
++    return E_OK;
+ }
+ 
+ am_Error_e RoutingSenderPULSE::asyncSetSourceState(
+@@ -699,6 +728,8 @@ void RoutingSenderPULSE::getSinkInputInfoCallback(pa_context *c, const pa_sink_i
+         return;
+     }
+ 
++	bool newStream = (bool) userdata;
++
+     //search for corresponding Source
+     std::vector<RoutingSenderPULSESourceSinkConfig>::iterator iter    = m_sources.begin();
+     std::vector<RoutingSenderPULSESourceSinkConfig>::iterator iterEnd = m_sources.end();
+@@ -717,41 +748,74 @@ void RoutingSenderPULSE::getSinkInputInfoCallback(pa_context *c, const pa_sink_i
+             logInfo("PULSE - sink input details:"
+                     , " prop_val: ", property_value, " iter->prop_val: ", iter->propertyValue);
+ 
++			std::map<uint16_t, uint32_t>::iterator itersink		= m_sinkToPASink.begin();
++			std::map<uint16_t, uint32_t>::iterator itersinkEnd	= m_sinkToPASink.end();
++
++		    for (; itersink != itersinkEnd; ++itersink)
++			{
++				if(itersink->second == i->sink)
++					break;
++			}
++
++            logInfo("PULSE - sink details:"
++                    , " sinkIndex: ", i->sink, "sinkID: ", itersink->first);
++
+             m_sourceToPASinkInput[iter->source.sourceID] = i->index;
+ 
+             //iterate pending connection request
+             // -> if there is a connection pending such that sink input "i" matches source from Connect() - create the connection in pulse
+             std::vector<RoutingSenderPULSEConnection>::iterator iterConn    = m_activeConnections.begin();
+             std::vector<RoutingSenderPULSEConnection>::iterator iterConnEnd = m_activeConnections.end();
+-            for (; iterConn < iterConnEnd; ++iterConn)
+-            {
+-                if (iterConn->sourceID == iter->source.sourceID)
++			if(iterConn != iterConnEnd)
++			{
++		for (; iterConn < iterConnEnd; ++iterConn)
+                 {
+-                    logInfo("PULSE - asyncConnect() - connectionID:", iterConn->connectionID,
+-                            "move sinkInputIndex:", m_sourceToPASinkInput[iterConn->sourceID], "to sinkIndex:", m_sinkToPASink[iterConn->sinkID]);
+-
+-                    routing_sender_move_sink_input(
+-                            this->m_paContext,
+-                            m_sourceToPASinkInput[iterConn->sourceID],
+-                            m_sinkToPASink[iterConn->sinkID],
+-                            this);
+-
+-                    //TODO: add callback for pulse move sink input -> to send confirmation; for the moment directly send confirmation
+-                    this->m_routingReceiver->ackConnect(iterConn->handle, iterConn->connectionID, am::E_OK);
++                    if (iterConn->sourceID == iter->source.sourceID)
++                    {
++                        logInfo("PULSE - asyncConnect() - connectionID:", iterConn->connectionID,
++                                "move sinkInputIndex:", m_sourceToPASinkInput[iterConn->sourceID], "to sinkIndex:", m_sinkToPASink[iterConn->sinkID]);
++
++						if(m_sinkToPASink[iterConn->sinkID] != 0)
++						{
++                            routing_sender_move_sink_input(
++                                    this->m_paContext,
++                                    m_sourceToPASinkInput[iterConn->sourceID],
++                                    m_sinkToPASink[iterConn->sinkID],
++                                    this);
++
++                            //TODO: add callback for pulse move sink input -> to send confirmation; for the moment directly send confirmation
++                        this->m_routingReceiver->ackConnect(iterConn->handle, iterConn->connectionID, am::E_OK);
++						}
++                    }
++					else
++					{
++			logInfo("PULSE - try connect");
++					am_mainConnectionID_t mainConnectionID = 0;
++					this->m_routingReceiver->hookPulseConnectionRequest(iter->source.sourceID, itersink->first, mainConnectionID);
++					}
+                 }
+-            }
++			}
++			else
++			{
++                logInfo("PULSE - try connect");
++			    am_mainConnectionID_t mainConnectionID = 0;
++			    this->m_routingReceiver->hookPulseConnectionRequest(iter->source.sourceID, itersink->first, mainConnectionID);
++				//m_PASinkInputtomainConnectionID[i->index] = mainConnectionID;
++			}
+             //check of controller already requested vol adjustment  for this source
+             bool requiresVolUpdate = false;
+             for (int j = 0; j < i->volume.channels; j++)
+             {
+                 if ((i->volume.values[j]*MAX_SOURCE_VOLUME / MAX_PULSE_VOLUME) != m_sourceToVolume[iter->source.sourceID])
+                 {
+-                    requiresVolUpdate = true;
+-                    logInfo("PULSE - sink registerd with vol:", (i->volume.values[j]*MAX_SOURCE_VOLUME / MAX_PULSE_VOLUME),
+-                            "; should be changed to:",
+-                            m_sourceToVolume[iter->source.sourceID]);
+-                    break;
+-                }
++					{
++						requiresVolUpdate = true;
++                        logInfo("PULSE - sink registerd with vol:", (i->volume.values[j]*MAX_SOURCE_VOLUME / MAX_PULSE_VOLUME),
++                                "; should be changed to:",
++                                m_sourceToVolume[iter->source.sourceID]);
++                        break;
++					}
++                 }
+             }
+             if (requiresVolUpdate)
+             {
+@@ -912,3 +976,50 @@ void RoutingSenderPULSE::getSourceInfoCallback(pa_context *c, const pa_source_in
+         //TODO: - search for existing sink inputs & sources outputs
+     }
+ }
++
++void RoutingSenderPULSE::removeSinkInputInfoCallback(pa_context *c, const pa_sink_input_info *i, int is_last, void *userdata)
++{
++    if (i != NULL)
++    {
++        if (strcmp("null", i->name) == 0)
++        {
++            this->m_paSourceNullIndex = i->index;
++        }
++
++        //search for corresponding (already registered) Source
++	std::vector<RoutingSenderPULSEConnection>::iterator iter    = m_activeConnections.begin();
++	std::vector<RoutingSenderPULSEConnection>::iterator iterEnd = m_activeConnections.end();
++        for (; iter < iterEnd; ++iter)
++        {
++            if (m_sourceToPASinkInput[iter->sourceID] == i->index)
++            {
++                logInfo("PULSE - PA sink input:", i->index,
++                        "AM mainConnectionID:", iter->connectionID, " - connecting");
++				 m_remainConnectionID.push_back(iter->connectionID);
++            }
++        }
++    }
++    else if (is_last)
++    {
++	am_connectionID_t   disconnectionID;
++	std::vector<RoutingSenderPULSEConnection>::iterator iter    = m_activeConnections.begin();
++	std::vector<RoutingSenderPULSEConnection>::iterator iterEnd = m_activeConnections.end();
++        for (; iter < iterEnd; ++iter)
++		{
++			std::vector<am_mainConnectionID_t>::iterator active;
++			active = std::find(m_remainConnectionID.begin(), m_remainConnectionID.end(), iter->connectionID);
++			if (active != m_remainConnectionID.end())
++			{
++				m_remainConnectionID.erase(active);
++			}
++			else
++			{
++				disconnectionID = iter->connectionID;
++			}
++
++		}
++	this->m_routingReceiver->hookPulseDisconnectionRequest(disconnectionID);
++		logInfo("PULSE - PDisconneciton ID : ",disconnectionID,"A sinks and source remove completed");
++        //TODO: - search for existing sink inputs & sources outputs
++    }
++}
+-- 
+2.24.1
+

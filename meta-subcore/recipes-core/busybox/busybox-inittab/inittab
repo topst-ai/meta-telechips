@@ -1,0 +1,21 @@
+# This is run first except when booting in single-user mode.
+
+# The default runlevel.
+id:5:initdefault:
+
+# Startup the system
+::sysinit:/bin/mount -t proc proc /proc
+::sysinit:/bin/mount -t sysfs sysfs /sys
+::sysinit:/bin/mount -t devtmpfs devtmpfs /dev
+
+::sysinit:/etc/init.d/rcS
+
+# Stuff to do before rebooting
+::ctrlaltdel:/sbin/reboot
+::shutdown:/etc/init.d/rcK
+
+# Stuff to do when restarting the init process
+::restart:/sbin/init
+
+# set hostname
+::sysinit:/bin/busybox hostname -F /etc/hostname

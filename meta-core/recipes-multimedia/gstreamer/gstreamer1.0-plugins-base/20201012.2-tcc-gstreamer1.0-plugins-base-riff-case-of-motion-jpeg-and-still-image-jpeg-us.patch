@@ -1,0 +1,38 @@
+From 968107cf2a78cde074618de36d8dd6cba53f4164 Mon Sep 17 00:00:00 2001
+From: Helena Kim <kyh@telechips.com>
+Date: Wed, 24 Jun 2020 09:21:34 +0000
+Subject: [PATCH] [mod] riff: case of 'motion-jpeg' and 'still image-jpeg', use
+ JPU
+
+TCS : ID103A1-401
+
+Change-Id: I2332e2a42926aa1f1ce06b14513d65feec08112f
+---
+ gst-libs/gst/riff/riff-media.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/gst-libs/gst/riff/riff-media.c b/gst-libs/gst/riff/riff-media.c
+index e3cf1ec..9f4ce8b 100644
+--- a/gst-libs/gst/riff/riff-media.c
++++ b/gst-libs/gst/riff/riff-media.c
+@@ -172,7 +172,7 @@ gst_riff_create_video_caps (guint32 codec_fcc,
+     case GST_RIFF_dmb1:
+     case GST_MAKE_FOURCC ('A', 'C', 'D', 'V'):
+     case GST_MAKE_FOURCC ('Q', 'I', 'V', 'G'):
+-      caps = gst_caps_new_empty_simple ("image/jpeg");
++      caps = gst_caps_new_empty_simple ("video/x-jpeg");
+       if (codec_name)
+         *codec_name = g_strdup ("Motion JPEG");
+       break;
+@@ -180,7 +180,7 @@ gst_riff_create_video_caps (guint32 codec_fcc,
+     case GST_RIFF_JPEG:        /* generic (mostly RGB) MJPEG */
+     case GST_RIFF_jpeg:
+     case GST_MAKE_FOURCC ('j', 'p', 'e', 'g'): /* generic (mostly RGB) MJPEG */
+-      caps = gst_caps_new_empty_simple ("image/jpeg");
++      caps = gst_caps_new_empty_simple ("video/x-jpeg");
+       if (codec_name)
+         *codec_name = g_strdup ("JPEG Still Image");
+       break;
+-- 
+2.13.3
+

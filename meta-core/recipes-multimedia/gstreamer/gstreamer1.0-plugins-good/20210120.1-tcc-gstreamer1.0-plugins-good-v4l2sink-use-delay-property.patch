@@ -1,0 +1,29 @@
+diff -Naur before/sys/v4l2/gstv4l2sink.c 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2sink.c
+--- before/sys/v4l2/gstv4l2sink.c	2021-01-04 19:12:52.951771323 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2sink.c	2021-01-20 14:43:42.264063010 +0900
+@@ -1168,6 +1168,12 @@
+     if (!gst_buffer_pool_set_active (bpool, TRUE))
+       goto activate_failed;
+   }
++
++  if(!GST_BUFFER_PTS_IS_VALID(buf))
++  {
++    ret = GST_FLOW_OK;
++    goto done;
++  }
+ 
+ #ifdef TCC_V4L2SINK_DRIVER_USE
+   gst_v4l2sink_last_frame_update(v4l2sink, buf);
+@@ -1184,6 +1190,12 @@
+   }
+   gst_buffer_unref (buf);
+ 
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  if(v4l2sink->delay)
++    usleep(v4l2sink->delay);
++#endif
++
++done:
+   return ret;
+ 
+   /* ERRORS */

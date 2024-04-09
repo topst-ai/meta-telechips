@@ -1,0 +1,27 @@
+From 0175e6836c06588a5e9ef145baf21172d40b4a49 Mon Sep 17 00:00:00 2001
+From: Helena Kim <kyh@telechips.com>
+Date: Fri, 3 Apr 2020 02:55:33 +0000
+Subject: [PATCH] [mod] don't push meta data to input framedata : flacparser
+
+---
+ gst/audioparsers/gstflacparse.c | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/gst/audioparsers/gstflacparse.c b/gst/audioparsers/gstflacparse.c
+index b619278..f1ce72e 100644
+--- a/gst/audioparsers/gstflacparse.c
++++ b/gst/audioparsers/gstflacparse.c
+@@ -1356,10 +1356,7 @@ push_headers:
+     gst_base_parse_frame_init (&frame);
+     frame.buffer = buf;
+     frame.overhead = -1;
+-    res = gst_base_parse_push_frame (GST_BASE_PARSE (flacparse), &frame);
+     gst_base_parse_frame_free (&frame);
+-    if (res != GST_FLOW_OK)
+-      break;
+   }
+   g_list_foreach (flacparse->headers, (GFunc) gst_mini_object_unref, NULL);
+   g_list_free (flacparse->headers);
+-- 
+2.13.3
+

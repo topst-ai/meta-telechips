@@ -1,0 +1,20 @@
+[mod] decodebin2: Adjusted buffering amount for pooly interleaved files.
+
+Description : Since there're lots of files have poor interleaving, make decodebin set multiqueue buffering size bigger and longer
+
+diff -Naur before/gst/playback/gstdecodebin2.c 1.16.2-r0/gst-plugins-base-1.16.2/gst/playback/gstdecodebin2.c
+--- before/gst/playback/gstdecodebin2.c	2019-04-19 18:16:20.000000000 +0900
++++ 1.16.2-r0/gst-plugins-base-1.16.2/gst/playback/gstdecodebin2.c	2020-10-19 17:44:37.170097095 +0900
+@@ -247,9 +247,9 @@
+ 
+ /* when playing, keep a max of 2MB of data but try to keep the number of buffers
+  * as low as possible (try to aim for 5 buffers) */
+-#define AUTO_PLAY_SIZE_BYTES        2 * 1024 * 1024
+-#define AUTO_PLAY_SIZE_BUFFERS      5
+-#define AUTO_PLAY_SIZE_TIME         0
++#define AUTO_PLAY_SIZE_BYTES		10 * 1024 * 1024
++#define AUTO_PLAY_SIZE_BUFFERS		5
++#define AUTO_PLAY_SIZE_TIME		5 * GST_SECOND
+ 
+ #define DEFAULT_SUBTITLE_ENCODING NULL
+ #define DEFAULT_USE_BUFFERING     FALSE

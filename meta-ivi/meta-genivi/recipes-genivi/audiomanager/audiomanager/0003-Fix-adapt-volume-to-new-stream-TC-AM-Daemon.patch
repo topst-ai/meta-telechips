@@ -1,0 +1,85 @@
+From e0ac67f8403eb84b33ffdd88785e8faaca94cc53 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=EC=9E=84=EC=98=81=ED=98=84=28Lim=20Young=20Hyun=29?=
+ <limdh3@telechips.com>
+Date: Thu, 16 Dec 2021 13:39:34 +0900
+Subject: [PATCH] Fix function to adapt volume to new stream
+
+---
+ .../src/CAmDatabaseHandlerMap.cpp             | 21 ++++++++++++++++---
+ AudioManagerDaemon/src/CAmRoutingReceiver.cpp |  1 -
+ 2 files changed, 18 insertions(+), 4 deletions(-)
+
+diff --git a/AudioManagerDaemon/src/CAmDatabaseHandlerMap.cpp b/AudioManagerDaemon/src/CAmDatabaseHandlerMap.cpp
+index 0294e46..8b00a8c 100644
+--- a/AudioManagerDaemon/src/CAmDatabaseHandlerMap.cpp
++++ b/AudioManagerDaemon/src/CAmDatabaseHandlerMap.cpp
+@@ -1324,6 +1324,7 @@ am_Error_e CAmDatabaseHandlerMap::changeSystemPropertyDB(const am_SystemProperty
+ 
+ am_Error_e CAmDatabaseHandlerMap::removeMainConnectionDB(const am_mainConnectionID_t mainConnectionID)
+ {
++	am_sourceID_t sourceID = 0;
+     assert(mainConnectionID!=0);
+ 
+     if (!existMainConnection(mainConnectionID))
+@@ -1332,15 +1333,25 @@ am_Error_e CAmDatabaseHandlerMap::removeMainConnectionDB(const am_mainConnection
+     }
+ 
+     mMappedData.mMainConnectionMap.erase(mainConnectionID);
++    CAmMapMainConnection::const_iterator elementIterator = mMappedData.mMainConnectionMap.begin();
++    for (;elementIterator != mMappedData.mMainConnectionMap.end(); ++elementIterator)
++    {
++		am_sourceID_t temp_ID;
++		temp_ID = mMappedData.mMainConnectionMap[elementIterator->first].sourceID;
++		if (temp_ID > sourceID)
++		{
++			sourceID = temp_ID;
++		}
++    }
+     logInfo("DatabaseHandler::removeMainConnectionDB removed:", mainConnectionID);
+-	logInfo("DatabaseHandler::CurrentMainConnectionDB :", mMappedData.mCurrentMainConnectionID.mCurrentValue);
++	logInfo("DatabaseHandler::CurrentSource :", sourceID);
+     if (mpDatabaseObserver)
+     {
+         mpDatabaseObserver->mainConnectionStateChanged(mainConnectionID, CS_DISCONNECTED);
+         mpDatabaseObserver->removedMainConnection(mainConnectionID);
+-		if (mMappedData.mCurrentMainConnectionID.mCurrentValue == mainConnectionID)
++		if (sourceID != 0)
+ 		{
+-			mpDatabaseObserver->mainSourceChanged(am_sourceID_t(100));
++			mpDatabaseObserver->mainSourceChanged(sourceID);
+ 		}
+     }
+     return (E_OK);
+@@ -1562,6 +1573,8 @@ am_Error_e am::CAmDatabaseHandlerMap::getMainConnectionInfoDB(const am_mainConne
+     am_MainConnection_s temp = mMappedData.mMainConnectionMap.at(mainConnectionID);
+     mainConnectionData = temp;
+ 
++    logInfo("DatabaseHandler::%s", __FUNCTION__);
++
+     return (E_OK);
+ }
+ 
+@@ -1766,6 +1779,8 @@ am_Error_e CAmDatabaseHandlerMap::getListMainConnections(std::vector<am_MainConn
+     	listMainConnections.push_back(elementIterator->second);
+     }
+ 
++    logInfo("DatabaseHandler::%s", __FUNCTION__);
++
+     return (E_OK);
+ }
+ 
+diff --git a/AudioManagerDaemon/src/CAmRoutingReceiver.cpp b/AudioManagerDaemon/src/CAmRoutingReceiver.cpp
+index 82c794b..fabc4d3 100644
+--- a/AudioManagerDaemon/src/CAmRoutingReceiver.cpp
++++ b/AudioManagerDaemon/src/CAmRoutingReceiver.cpp
+@@ -329,7 +329,6 @@ void CAmRoutingReceiver::hookTimingInformationChanged(const am_connectionID_t co
+ void CAmRoutingReceiver::hookPulseConnectionRequest(const am_sourceID_t sourceID, const am_sinkID_t sinkID, am_mainConnectionID_t & mainConnectionID, const am_volume_t volume)
+ {
+ 	mpControlSender->hookUserConnectionRequest(sourceID, sinkID, mainConnectionID);
+-	mpControlSender->hookUserSourceVolumeChange(sourceID, volume);
+ }
+ 
+ void CAmRoutingReceiver::hookPulseDisconnectionRequest(const am_mainConnectionID_t mainConnectionID)
+-- 
+2.25.1
+

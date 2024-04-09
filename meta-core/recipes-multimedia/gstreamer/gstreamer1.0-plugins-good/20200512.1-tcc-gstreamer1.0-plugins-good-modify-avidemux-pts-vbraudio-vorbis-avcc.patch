@@ -1,0 +1,395 @@
+diff -Naur before/gst/avi/gstavidemux.c after/gst/avi/gstavidemux.c
+--- before/gst/avi/gstavidemux.c	2019-04-19 18:16:25.000000000 +0900
++++ after/gst/avi/gstavidemux.c	2020-05-12 14:41:10.964605033 +0900
+@@ -304,6 +304,7 @@
+   avi->got_tags = TRUE;         /* we always want to push global tags */
+   avi->have_eos = FALSE;
+   avi->seekable = TRUE;
++  avi->bNeed_to_attach_codec_data = FALSE;
+ 
+   gst_adapter_clear (avi->adapter);
+ 
+@@ -491,11 +492,18 @@
+           guint64 xlen = avi->avih->us_frame *
+               avi->avih->tot_frames * GST_USECOND;
+ 
+-          pos = gst_util_uint64_scale (xlen, stream->current_total,
+-              stream->total_bytes);
+-          GST_DEBUG_OBJECT (avi,
+-              "CBR perc convert bytes %u, time %" GST_TIME_FORMAT,
+-              stream->current_total, GST_TIME_ARGS (pos));
++          if (stream->is_vbr) {
++            pos = gst_util_uint64_scale (xlen, stream->current_entry,
++                stream->idx_n);
++            GST_DEBUG_OBJECT (avi, "VBR perc convert frame %u, time %"
++                GST_TIME_FORMAT, stream->current_entry, GST_TIME_ARGS (pos));
++          } else {
++            pos = gst_util_uint64_scale (xlen, stream->current_total,
++                stream->total_bytes);
++            GST_DEBUG_OBJECT (avi,
++                "CBR perc convert bytes %u, time %" GST_TIME_FORMAT,
++                stream->current_total, GST_TIME_ARGS (pos));
++          }
+         } else {
+           /* we don't know */
+           res = FALSE;
+@@ -1348,25 +1356,10 @@
+ 
+   /* update entry total and stream stats. The entry total can be converted to
+    * the timestamp of the entry easily. */
+-  if (stream->strh->type == GST_RIFF_FCC_auds) {
+-    gint blockalign;
+-
+-    if (stream->is_vbr) {
+-      entry->total = stream->total_blocks;
+-    } else {
+-      entry->total = stream->total_bytes;
+-    }
+-    blockalign = stream->strf.auds->blockalign;
+-    if (blockalign > 0)
+-      stream->total_blocks += DIV_ROUND_UP (entry->size, blockalign);
+-    else
+-      stream->total_blocks++;
++  if (stream->is_vbr) {
++    entry->total = stream->idx_n;
+   } else {
+-    if (stream->is_vbr) {
+-      entry->total = stream->idx_n;
+-    } else {
+-      entry->total = stream->total_bytes;
+-    }
++    entry->total = stream->total_bytes;
+   }
+   stream->total_bytes += entry->size;
+   if (ENTRY_IS_KEYFRAME (entry))
+@@ -1952,6 +1945,8 @@
+ 
+   caps = gst_caps_make_writable (caps);
+ 
++  GST_DEBUG_OBJECT (avi, "checking caps %" GST_PTR_FORMAT, caps);
++
+   s = gst_caps_get_structure (caps, 0);
+   if (gst_structure_has_name (s, "video/x-raw")) {
+     stream->is_raw = TRUE;
+@@ -1965,41 +1960,137 @@
+       gst_structure_remove_field (s, "palette_data");
+       return caps;
+     }
+-  } else if (!gst_structure_has_name (s, "video/x-h264")) {
++  } else if (gst_structure_has_name (s, "video/x-h264")) {
++    /* some muxers put invalid bytestream stuff in h264 extra data */
++    val = gst_structure_get_value (s, "codec_data");
++    if (val && (buf = gst_value_get_buffer (val))) {
++      guint8 *data;
++      gint size;
++      GstMapInfo map;
++
++      gst_buffer_map (buf, &map, GST_MAP_READ);
++      data = map.data;
++      size = map.size;
++      if (size >= 4) {
++        guint32 h = GST_READ_UINT32_BE (data);
++        gst_buffer_unmap (buf, &map);
++        if ((h == 0x01) || (stream->is_avc == FALSE)) {
++          /* can hardly be valid AVC codec data */
++          GST_DEBUG_OBJECT (avi,
++              "discarding invalid codec_data containing byte-stream");
++          /* so do not pretend to downstream that it is packetized avc */
++          gst_structure_remove_field (s, "codec_data");
++          /* ... but rather properly parsed bytestream */
++          gst_structure_set (s, "stream-format", G_TYPE_STRING, "byte-stream",
++              "alignment", G_TYPE_STRING, "au", NULL);
++          avi->bNeed_to_attach_codec_data = TRUE;
++        }
++      } else {
++        gst_buffer_unmap (buf, &map);
++      }
++    }
+     return caps;
+-  }
++  } else if (gst_structure_has_name (s, "audio/x-vorbis")) {
++    /* vorbis audio, need to send the codec_priv data as first three packets */
++    val = gst_structure_get_value (s, "codec_data");
++    if (val && (buf = gst_value_get_buffer (val))) {
++      guint8 *data_ptr;
++      gint data_len;
++      GstMapInfo map;
++
++      gst_buffer_map (buf, &map, GST_MAP_READ);
++      data_ptr = map.data;
++      data_len = map.size;
++
++      if (data_ptr && data_len > 0) {
++        GstBufferList *list = NULL;
++        guint8 *p = data_ptr;
++        gint i, num, exlen, run;
++        guint length[3];
++        guint8 *pData[3];
++        GstStructure *s;
++        GValue arr_val = G_VALUE_INIT;
++        GValue buf_val = G_VALUE_INIT;
++
++        g_assert (gst_caps_is_writable (caps));
++        GST_DEBUG_OBJECT (avi,"data_len %d codec_data %s", data_len, data_ptr);
++
++        /* start of the stream and vorbis audio, need to
++         * send the codec_priv data as first three packets */
++        exlen = data_len;
++        run = 0;
++        while (run < exlen) {
++          if (((p[0]==1) || (p[0]==3) || (p[0]==5)) &&
++               (p[1] == 'v') && (p[2] == 'o') && (p[3] == 'r') && (p[4] == 'b') &&	(p[5] == 'i') && (p[6] == 's')) {
++            break;
++          }
++          run++;	p++;
++        }
++        pData[0] = p;
+ 
+-  GST_DEBUG_OBJECT (avi, "checking caps %" GST_PTR_FORMAT, caps);
++        run = 7;
++        p += run;
++        exlen -= run;
++        while (run < exlen) {
++          if (((p[0]==1) || (p[0]==3) || (p[0]==5)) &&
++               (p[1] == 'v') && (p[2] == 'o') && (p[3] == 'r') && (p[4] == 'b') &&	(p[5] == 'i') && (p[6] == 's')) {
++            break;
++          }
++          run++;	p++;
++        }
++        pData[1] = p;
++        length[0] = run;
+ 
+-  /* some muxers put invalid bytestream stuff in h264 extra data */
+-  val = gst_structure_get_value (s, "codec_data");
+-  if (val && (buf = gst_value_get_buffer (val))) {
+-    guint8 *data;
+-    gint size;
+-    GstMapInfo map;
++        run = 7;
++        p += run;
++        exlen -= run;
++        while (run < exlen) {
++          if (((p[0]==1) || (p[0]==3) || (p[0]==5)) &&
++               (p[1] == 'v') && (p[2] == 'o') && (p[3] == 'r') && (p[4] == 'b') &&	(p[5] == 'i') && (p[6] == 's')) {
++            break;
++          }
++          run++;	p++;
++        }
++        pData[2] = p;
++        length[1] = run;
+ 
+-    gst_buffer_map (buf, &map, GST_MAP_READ);
+-    data = map.data;
+-    size = map.size;
+-    if (size >= 4) {
+-      guint32 h = GST_READ_UINT32_BE (data);
+-      gst_buffer_unmap (buf, &map);
+-      if (h == 0x01) {
+-        /* can hardly be valid AVC codec data */
+-        GST_DEBUG_OBJECT (avi,
+-            "discarding invalid codec_data containing byte-stream");
+-        /* so do not pretend to downstream that it is packetized avc */
+-        gst_structure_remove_field (s, "codec_data");
+-        /* ... but rather properly parsed bytestream */
+-        gst_structure_set (s, "stream-format", G_TYPE_STRING, "byte-stream",
+-            "alignment", G_TYPE_STRING, "au", NULL);
++        exlen -= run;
++        length[2] = exlen;
++
++        list = gst_buffer_list_new ();
++
++        for (i=0; i<3; i++) {
++          GstBuffer *hdr;
++          GST_DEBUG_OBJECT (avi,"buffer %d: %u bytes", i, (guint) length[i]);
++          hdr = gst_buffer_new_wrapped (g_memdup (pData[i], length[i]), length[i]);
++          gst_buffer_list_add (list, hdr);
++        }
++
++        g_value_init (&arr_val, GST_TYPE_ARRAY);
++        g_value_init (&buf_val, GST_TYPE_BUFFER);
++
++        num = gst_buffer_list_length (list);
++
++        for (i = 0; i < num; ++i) {
++          g_value_set_boxed (&buf_val, gst_buffer_list_get (list, i));
++          gst_value_array_append_value (&arr_val, &buf_val);
++        }
++
++        s = gst_caps_get_structure (caps, 0);
++        gst_structure_set_value (s, "streamheader", &arr_val);
++        g_value_unset (&buf_val);
++        g_value_unset (&arr_val);
++
++        if (list != NULL)
++          gst_buffer_list_unref (list);
+       }
+-    } else {
++
+       gst_buffer_unmap (buf, &map);
++      return caps;
+     }
+   }
+-
+-  return caps;
++  else
++    return caps;
+ }
+ 
+ /*
+@@ -2137,10 +2228,20 @@
+             sub = NULL;
+             if (!res)
+               break;
++
++            // ENFORCE VBR CASE. WHEN ulBlockAlign has big value. Not sure about this. I FOUND THAT AAC_VBR(ABR) HAS 4096 FOR THIS VALUE.
++            // SOMEONE SAID THAT MICROSOFT AVI USES nBlockAlign only to detect VBR AUDIO. SO, LET'S TRY IT.
++            if ((stream->strf.auds->blockalign >= 4096) ||
++                (stream->strf.auds->format == 0xff && (stream->strf.auds->blockalign >= 1024)) || //aac
++                ((stream->strf.auds->format >= 0x160) && (stream->strf.auds->format <= 0x163)) // wma
++            )
++              stream->strh->samplesize = 0;
++
+             stream->is_vbr = (stream->strh->samplesize == 0)
+-                && stream->strh->scale > 1
+-                && stream->strf.auds->blockalign != 1;
+-            GST_DEBUG_OBJECT (element, "marking audio as VBR:%d, res %d",
++                && stream->strh->scale
++                && stream->strf.auds->blockalign != 1
++                && ((stream->strh->rate/stream->strh->scale) != stream->strf.auds->av_bps);
++            GST_INFO_OBJECT (element, "marking audio as VBR:%d, res %d",
+                 stream->is_vbr, res);
+             /* we need these or we have no way to come up with timestamps */
+             if ((!stream->is_vbr && !stream->strf.auds->av_bps) ||
+@@ -2304,6 +2405,14 @@
+       caps = gst_riff_create_video_caps (fourcc, stream->strh,
+           stream->strf.vids, stream->extradata, stream->initdata, &codec_name);
+ 
++	  /* FIXME: Can you trust the fourcc data?*/
++      if (caps &&
++          ((fourcc == GST_MAKE_FOURCC ('a', 'v', 'c', '1')) ||
++           (fourcc == GST_MAKE_FOURCC ('A', 'V', 'C', '1')))) {
++        stream->is_avc = TRUE;
++      }
++	  else stream->is_avc = FALSE;
++
+       /* DXSB is XSUB, and it is placed inside a vids */
+       if (!caps || (fourcc != GST_MAKE_FOURCC ('D', 'X', 'S', 'B') &&
+               fourcc != GST_MAKE_FOURCC ('D', 'X', 'S', 'A'))) {
+@@ -2348,6 +2457,7 @@
+         caps = gst_caps_new_simple ("audio/x-avi-unknown", "codec_id",
+             G_TYPE_INT, stream->strf.auds->format, NULL);
+       }
++      caps = gst_avi_demux_check_caps (avi, stream, caps);
+       tag_name = GST_TAG_AUDIO_CODEC;
+       avi->num_a_streams++;
+       break;
+@@ -5297,6 +5407,13 @@
+     /* invert the picture if needed, and append palette for RGB8P */
+     buf = gst_avi_demux_invert (stream, buf);
+ 
++    if ((avi->bNeed_to_attach_codec_data) && (stream->strh->type == GST_RIFF_FCC_vids))
++    {
++        GstBuffer *codec_data = stream->extradata ? stream->extradata : stream->initdata;
++        buf = gst_buffer_append(gst_buffer_ref(codec_data),buf);
++        avi->bNeed_to_attach_codec_data = FALSE;
++    }
++
+     /* mark non-keyframes */
+     if (keyframe || stream->is_raw) {
+       GST_BUFFER_FLAG_UNSET (buf, GST_BUFFER_FLAG_DELTA_UNIT);
+@@ -5307,7 +5424,7 @@
+     }
+ 
+     GST_BUFFER_DTS (buf) = timestamp;
+-
++    GST_BUFFER_PTS (buf) = timestamp;
+     GST_BUFFER_DURATION (buf) = duration;
+     GST_BUFFER_OFFSET (buf) = out_offset;
+     GST_BUFFER_OFFSET_END (buf) = out_offset_end;
+@@ -5354,6 +5471,13 @@
+     /* move to next item */
+     ret = gst_avi_demux_advance (avi, stream, ret);
+ 
++	if((ret == GST_FLOW_EOS) && (stream->pad))
++	{
++		GstEvent *pstEvent = gst_event_new_eos();
++		GST_DEBUG_OBJECT(avi,"Set EOS to stream %d ",stream_num);
++		gst_pad_push_event (stream->pad, gst_event_ref(pstEvent));
++		gst_event_unref(pstEvent);
++	}
+     /* combine flows */
+     ret = gst_avi_demux_combine_flows (avi, stream, ret);
+   } while (!processed);
+@@ -5575,11 +5699,7 @@
+         stream->current_entry++;
+         /* as in pull mode, 'total' is either bytes (CBR) or frames (VBR) */
+         if (stream->strh->type == GST_RIFF_FCC_auds && stream->is_vbr) {
+-          gint blockalign = stream->strf.auds->blockalign;
+-          if (blockalign > 0)
+-            stream->current_total += DIV_ROUND_UP (size, blockalign);
+-          else
+-            stream->current_total++;
++          stream->current_total++;
+         } else {
+           stream->current_total += size;
+         }
+@@ -5780,6 +5900,38 @@
+       GST_ELEMENT_FLOW_ERROR (avi, res);
+       push_eos = TRUE;
+     }
++    else if(res == GST_FLOW_FLUSHING)
++    {
++      GstState state;
++      GstState pending;
++      GstStateChangeReturn ret;
++      ret = gst_element_get_state (GST_ELEMENT_CAST (avi), &state,&pending,0);
++      GST_INFO_OBJECT (avi, "\x1b[1;32m ret = %d, state = %d, pending = %d \x1b[1;0m", 
++                    ret, state,pending);
++    
++      if(ret == GST_STATE_CHANGE_SUCCESS &&
++        state == GST_STATE_PAUSED &&
++        pending == GST_STATE_VOID_PENDING)
++      {
++        // decodebin
++        GstElement *parentElement = gst_element_get_parent(GST_ELEMENT_CAST (avi));
++        if(parentElement != NULL)
++        {
++          ret = gst_element_get_state (GST_ELEMENT_CAST (parentElement), &state,&pending,0);
++          GST_ERROR_OBJECT (parentElement, "\x1b[1;33m ret = %d, state = %d, pending = %d \x1b[1;0m", ret, state,pending);
++  
++          if(ret == GST_STATE_CHANGE_ASYNC &&
++            state == GST_STATE_READY &&
++            pending == GST_STATE_PAUSED)
++          {
++            GST_ELEMENT_ERROR (avi, STREAM, FAILED,
++              (_("flushing.")),
++              ("streaming stopped, reason %s", gst_flow_get_name (res)));
++          }
++        }
++        gst_object_unref (parentElement);
++      }
++    }
+     if (push_eos) {
+       GstEvent *event;
+ 
+diff -Naur before/gst/avi/gstavidemux.h after/gst/avi/gstavidemux.h
+--- before/gst/avi/gstavidemux.h	2019-04-19 18:16:25.000000000 +0900
++++ after/gst/avi/gstavidemux.h	2020-05-12 14:41:25.438316046 +0900
+@@ -107,6 +107,9 @@
+   /* VBR indicator */
+   gboolean       is_vbr;
+ 
++  /* AVC indicator */
++  gboolean       is_avc;
++
+   /* openDML support (for files >4GB) */
+   gboolean       superindex;
+   guint64       *indexes;
+@@ -208,6 +211,7 @@
+   guint64       *odml_subidxs;
+ 
+   guint64        seek_kf_offset; /* offset of the keyframe to which we want to seek */
++  gboolean       bNeed_to_attach_codec_data;
+ } GstAviDemux;
+ 
+ typedef struct _GstAviDemuxClass {

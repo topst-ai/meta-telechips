@@ -1,0 +1,142 @@
+From fb947ba728fbca1266b59fe13ba79cb9a8e62709 Mon Sep 17 00:00:00 2001
+From: Jay Jeon <inbest@telechips.com>
+Date: Thu, 21 Jan 2021 21:11:11 +0900
+Subject: [PATCH] [upg] Update qtwayland to prevent null pointer exception
+
+- Update qtwayland to prevent null pointer exception,
+	when showing and hiding qml application.
+
+Change-Id: I6157d77e804b245871876a93d12faeb539d74c67
+---
+ .../client/wayland-egl/qwaylandeglwindow.cpp       | 10 ++-
+ .../client/wayland-egl/qwaylandglcontext.cpp       | 90 +++++++++++-----------
+ 2 files changed, 53 insertions(+), 47 deletions(-)
+
+diff --git a/src/hardwareintegration/client/wayland-egl/qwaylandeglwindow.cpp b/src/hardwareintegration/client/wayland-egl/qwaylandeglwindow.cpp
+index bbcbb19..def7558 100644
+--- a/src/hardwareintegration/client/wayland-egl/qwaylandeglwindow.cpp
++++ b/src/hardwareintegration/client/wayland-egl/qwaylandeglwindow.cpp
+@@ -127,12 +127,16 @@ void QWaylandEglWindow::updateSurface(bool create)
+                 m_resize = true;
+             }
+         } else if (create) {
+-            m_waylandEglWindow = wl_egl_window_create(object(), sizeWithMargins.width(), sizeWithMargins.height());
++			if(object() != NULL) {
++				m_waylandEglWindow = wl_egl_window_create(object(), sizeWithMargins.width(), sizeWithMargins.height());
++			}
+         }
+ 
+         if (!m_eglSurface && create) {
+-            EGLNativeWindowType eglw = (EGLNativeWindowType) m_waylandEglWindow;
+-            m_eglSurface = eglCreateWindowSurface(m_clientBufferIntegration->eglDisplay(), m_eglConfig, eglw, 0);
++			if(m_waylandEglWindow != NULL) {
++				EGLNativeWindowType eglw = (EGLNativeWindowType) m_waylandEglWindow;
++				m_eglSurface = eglCreateWindowSurface(m_clientBufferIntegration->eglDisplay(), m_eglConfig, eglw, 0);
++			}
+         }
+     }
+ }
+diff --git a/src/hardwareintegration/client/wayland-egl/qwaylandglcontext.cpp b/src/hardwareintegration/client/wayland-egl/qwaylandglcontext.cpp
+index 4599fa4..c4bb418 100644
+--- a/src/hardwareintegration/client/wayland-egl/qwaylandglcontext.cpp
++++ b/src/hardwareintegration/client/wayland-egl/qwaylandglcontext.cpp
+@@ -305,50 +305,52 @@ void QWaylandGLContext::updateGLFormat()
+     EGLSurface prevSurfaceRead = eglGetCurrentSurface(EGL_READ);
+ 
+     wl_surface *wlSurface = m_display->createSurface(Q_NULLPTR);
+-    wl_egl_window *eglWindow = wl_egl_window_create(wlSurface, 1, 1);
+-    EGLSurface eglSurface = eglCreateWindowSurface(m_eglDisplay, m_config, eglWindow, 0);
+-
+-    if (eglMakeCurrent(m_eglDisplay, eglSurface, eglSurface, m_context)) {
+-        if (m_format.renderableType() == QSurfaceFormat::OpenGL
+-            || m_format.renderableType() == QSurfaceFormat::OpenGLES) {
+-            const GLubyte *s = glGetString(GL_VERSION);
+-            if (s) {
+-                QByteArray version = QByteArray(reinterpret_cast<const char *>(s));
+-                int major, minor;
+-                if (QPlatformOpenGLContext::parseOpenGLVersion(version, major, minor)) {
+-                    m_format.setMajorVersion(major);
+-                    m_format.setMinorVersion(minor);
+-                }
+-            }
+-            m_format.setProfile(QSurfaceFormat::NoProfile);
+-            m_format.setOptions(QSurfaceFormat::FormatOptions());
+-            if (m_format.renderableType() == QSurfaceFormat::OpenGL) {
+-                // Check profile and options.
+-                if (m_format.majorVersion() < 3) {
+-                    m_format.setOption(QSurfaceFormat::DeprecatedFunctions);
+-                } else {
+-                    GLint value = 0;
+-                    glGetIntegerv(GL_CONTEXT_FLAGS, &value);
+-                    if (!(value & GL_CONTEXT_FLAG_FORWARD_COMPATIBLE_BIT))
+-                        m_format.setOption(QSurfaceFormat::DeprecatedFunctions);
+-                    if (value & GL_CONTEXT_FLAG_DEBUG_BIT)
+-                        m_format.setOption(QSurfaceFormat::DebugContext);
+-                    if (m_format.version() >= qMakePair(3, 2)) {
+-                        value = 0;
+-                        glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &value);
+-                        if (value & GL_CONTEXT_CORE_PROFILE_BIT)
+-                            m_format.setProfile(QSurfaceFormat::CoreProfile);
+-                        else if (value & GL_CONTEXT_COMPATIBILITY_PROFILE_BIT)
+-                            m_format.setProfile(QSurfaceFormat::CompatibilityProfile);
+-                    }
+-                }
+-            }
+-        }
+-        eglMakeCurrent(prevDisplay, prevSurfaceDraw, prevSurfaceRead, prevContext);
+-    }
+-    eglDestroySurface(m_eglDisplay, eglSurface);
+-    wl_egl_window_destroy(eglWindow);
+-    wl_surface_destroy(wlSurface);
++	if(wlSurface != NULL) {
++		wl_egl_window *eglWindow = wl_egl_window_create(wlSurface, 1, 1);
++		EGLSurface eglSurface = eglCreateWindowSurface(m_eglDisplay, m_config, eglWindow, 0);
++
++		if (eglMakeCurrent(m_eglDisplay, eglSurface, eglSurface, m_context)) {
++			if (m_format.renderableType() == QSurfaceFormat::OpenGL
++					|| m_format.renderableType() == QSurfaceFormat::OpenGLES) {
++				const GLubyte *s = glGetString(GL_VERSION);
++				if (s) {
++					QByteArray version = QByteArray(reinterpret_cast<const char *>(s));
++					int major, minor;
++					if (QPlatformOpenGLContext::parseOpenGLVersion(version, major, minor)) {
++						m_format.setMajorVersion(major);
++						m_format.setMinorVersion(minor);
++					}
++				}
++				m_format.setProfile(QSurfaceFormat::NoProfile);
++				m_format.setOptions(QSurfaceFormat::FormatOptions());
++				if (m_format.renderableType() == QSurfaceFormat::OpenGL) {
++					// Check profile and options.
++					if (m_format.majorVersion() < 3) {
++						m_format.setOption(QSurfaceFormat::DeprecatedFunctions);
++					} else {
++						GLint value = 0;
++						glGetIntegerv(GL_CONTEXT_FLAGS, &value);
++						if (!(value & GL_CONTEXT_FLAG_FORWARD_COMPATIBLE_BIT))
++							m_format.setOption(QSurfaceFormat::DeprecatedFunctions);
++						if (value & GL_CONTEXT_FLAG_DEBUG_BIT)
++							m_format.setOption(QSurfaceFormat::DebugContext);
++						if (m_format.version() >= qMakePair(3, 2)) {
++							value = 0;
++							glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &value);
++							if (value & GL_CONTEXT_CORE_PROFILE_BIT)
++								m_format.setProfile(QSurfaceFormat::CoreProfile);
++							else if (value & GL_CONTEXT_COMPATIBILITY_PROFILE_BIT)
++								m_format.setProfile(QSurfaceFormat::CompatibilityProfile);
++						}
++					}
++				}
++			}
++			eglMakeCurrent(prevDisplay, prevSurfaceDraw, prevSurfaceRead, prevContext);
++		}
++		eglDestroySurface(m_eglDisplay, eglSurface);
++		wl_egl_window_destroy(eglWindow);
++		wl_surface_destroy(wlSurface);
++	}
+ }
+ 
+ QWaylandGLContext::~QWaylandGLContext()
+-- 
+1.9.3
+

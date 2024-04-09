@@ -1,0 +1,1100 @@
+diff -Naur before/sys/v4l2/ext/videodev2.h 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/ext/videodev2.h
+--- before/sys/v4l2/ext/videodev2.h	2019-04-19 18:16:25.000000000 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/ext/videodev2.h	2020-06-16 17:09:18.590913272 +0900
+@@ -919,7 +919,7 @@
+ 		__s32		fd;
+ 	} m;
+ 	__u32			data_offset;
+-	__u32			reserved[11];
++	__u32			reserved[64];
+ };
+ 
+ /**
+diff -Naur before/sys/v4l2/gstv4l2allocator.c 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2allocator.c
+--- before/sys/v4l2/gstv4l2allocator.c	2019-04-19 18:16:25.000000000 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2allocator.c	2020-06-16 17:22:49.930397445 +0900
+@@ -229,6 +229,14 @@
+ {
+   gint i;
+ 
++#if TCC_V4L2SINK_DRIVER_USE
++  if ( group->buffer.m.planes != NULL )
++  {
++    free(group->buffer.m.planes);
++    group->buffer.m.planes = NULL;
++  }
++#endif
++
+   for (i = 0; i < group->n_mem; i++) {
+     GstMemory *mem = group->mem[i];
+     group->mem[i] = NULL;
+@@ -238,7 +246,7 @@
+ 
+   g_slice_free (GstV4l2MemoryGroup, group);
+ }
+-
++#define GST_VIDEO_TCC_MAX_PLANES 2
+ static GstV4l2MemoryGroup *
+ gst_v4l2_memory_group_new (GstV4l2Allocator * allocator, guint32 index)
+ {
+@@ -249,6 +257,8 @@
+   gsize img_size, buf_size;
+ 
+   group = g_slice_new0 (GstV4l2MemoryGroup);
++
++  memset(&group->buffer, 0x0, sizeof(struct v4l2_buffer));
+ 
+   group->buffer.type = format->type;
+   group->buffer.index = index;
+@@ -260,7 +270,13 @@
+   } else {
+     group->n_mem = 1;
+   }
+-
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  if (memory == V4L2_MEMORY_MMAP)
++  {
++    group->buffer.m.planes = malloc(sizeof(struct v4l2_plane) * GST_VIDEO_TCC_MAX_PLANES);
++    memset(group->buffer.m.planes, 0x00, sizeof(struct v4l2_plane) * GST_VIDEO_TCC_MAX_PLANES);
++  }
++#endif
+   if (obj->ioctl (obj->video_fd, VIDIOC_QUERYBUF, &group->buffer) < 0)
+     goto querybuf_failed;
+ 
+@@ -429,6 +445,7 @@
+ 
+   GST_LOG_OBJECT (obj, "called");
+ 
++  //v4l2_close (allocator->video_fd); ????????? need it???
+   gst_atomic_queue_unref (allocator->free_queue);
+   gst_object_unref (allocator->obj->element);
+ 
+@@ -498,9 +515,10 @@
+ 
+     bcreate.memory = memory;
+     bcreate.format = obj->format;
+-
++#ifdef VIDIOC_CREATE_BUFS
+     if ((obj->ioctl (obj->video_fd, VIDIOC_CREATE_BUFS, &bcreate) == 0))
+       flags |= bcreate_flag;
++#endif
+   }
+ 
+   if (breq.capabilities & V4L2_BUF_CAP_SUPPORTS_ORPHANED_BUFS)
+@@ -530,10 +548,10 @@
+ 
+   if (!allocator->can_allocate)
+     goto done;
+-
++#ifdef VIDIOC_CREATE_BUFS
+   if (obj->ioctl (obj->video_fd, VIDIOC_CREATE_BUFS, &bcreate) < 0)
+     goto create_bufs_failed;
+-
++#endif
+   if (allocator->groups[bcreate.index] != NULL)
+     goto create_bufs_bug;
+ 
+@@ -579,6 +597,7 @@
+ 
+   group = gst_atomic_queue_pop (allocator->free_queue);
+ 
++#ifdef VIDIOC_CREATE_BUFS
+   if (group == NULL) {
+     if (allocator->can_allocate) {
+       group = gst_v4l2_allocator_create_buf (allocator);
+@@ -588,7 +607,7 @@
+         allocator->can_allocate = FALSE;
+     }
+   }
+-
++#endif
+   return group;
+ }
+ 
+@@ -838,12 +857,25 @@
+   for (i = 0; i < group->n_mem; i++) {
+     if (group->mem[i] == NULL) {
+       gpointer data;
++#if TCC_V4L2SINK_DRIVER_USE
++      data = obj->mmap (NULL, group->buffer.m.planes[0].length, PROT_READ | PROT_WRITE,
++          MAP_SHARED, obj->video_fd, group->buffer.m.planes[0].m.mem_offset);
++#else
+       data = obj->mmap (NULL, group->planes[i].length, PROT_READ | PROT_WRITE,
+           MAP_SHARED, obj->video_fd, group->planes[i].m.mem_offset);
+-
++#endif
+       if (data == MAP_FAILED)
+         goto mmap_failed;
+ 
++#if TCC_V4L2SINK_DRIVER_USE
++      GST_LOG_OBJECT (allocator,
++          "mmap buffer length %d, data offset %d, plane %d",
++          group->buffer.m.planes[0].length, group->buffer.m.planes[0].data_offset, i);
++
++      group->mem[i] = (GstMemory *) _v4l2mem_new (0, GST_ALLOCATOR (allocator),
++          NULL, group->planes[i].length, 0, 0, group->planes[i].length, i, data,
++          -1, group);
++#else
+       GST_LOG_OBJECT (allocator,
+           "mmap buffer length %d, data offset %d, plane %d",
+           group->planes[i].length, group->planes[i].data_offset, i);
+@@ -851,6 +883,7 @@
+       group->mem[i] = (GstMemory *) _v4l2mem_new (0, GST_ALLOCATOR (allocator),
+           NULL, group->planes[i].length, 0, 0, group->planes[i].length, i, data,
+           -1, group);
++#endif
+     } else {
+       /* Take back the allocator reference */
+       gst_object_ref (allocator);
+@@ -1253,6 +1286,7 @@
+   g_return_val_if_fail (g_atomic_int_get (&allocator->active), FALSE);
+ 
+   /* update sizes */
++#ifndef TCC_V4L2SINK_DRIVER_USE
+   if (V4L2_TYPE_IS_MULTIPLANAR (obj->type)) {
+     for (i = 0; i < group->n_mem; i++)
+       group->planes[i].bytesused =
+@@ -1260,6 +1294,7 @@
+   } else {
+     group->buffer.bytesused = gst_memory_get_sizes (group->mem[0], NULL, NULL);
+   }
++#endif
+ 
+   /* Ensure the memory will stay around and is RO */
+   for (i = 0; i < group->n_mem; i++)
+diff -Naur before/sys/v4l2/gstv4l2bufferpool.c 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2bufferpool.c
+--- before/sys/v4l2/gstv4l2bufferpool.c	2019-12-03 05:00:48.000000000 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2bufferpool.c	2020-06-16 17:46:27.022708531 +0900
+@@ -218,9 +218,13 @@
+     flags = GST_MAP_WRITE;
+ 
+   data = g_slice_new0 (struct UserPtrData);
+-
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  if(0)
++#else
+   if (finfo && (finfo->format != GST_VIDEO_FORMAT_UNKNOWN &&
+-          finfo->format != GST_VIDEO_FORMAT_ENCODED)) {
++          finfo->format != GST_VIDEO_FORMAT_ENCODED))
++#endif
++  {
+     gsize size[GST_VIDEO_MAX_PLANES] = { 0, };
+     gint i;
+ 
+@@ -821,9 +825,15 @@
+       can_allocate =
+           GST_V4L2_ALLOCATOR_CAN_ALLOCATE (pool->vallocator, USERPTR);
+ 
+-      GST_DEBUG_OBJECT (pool, "requesting %d USERPTR buffers", min_buffers);
++      guint32 num_buffer;
++#ifdef TCC_V4L2SINK_DRIVER_USE
++      num_buffer = GST_V4L2_MAX_BUFFERS;
++#else
++      num_buffer = min_buffers;
++#endif
++      GST_DEBUG_OBJECT (pool, "requesting__ %d USERPTR buffers", num_buffer);
+ 
+-      count = gst_v4l2_allocator_start (pool->vallocator, min_buffers,
++      count = gst_v4l2_allocator_start (pool->vallocator, num_buffer,
+           V4L2_MEMORY_USERPTR);
+ 
+       /* There is no rational to not get what we asked */
+@@ -1024,6 +1034,11 @@
+ {
+   GstV4l2BufferPool *pool = GST_V4L2_BUFFER_POOL (bpool);
+ 
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  GST_DEBUG_OBJECT (pool, "skip start flushing");
++  return;
++#endif
++
+   GST_DEBUG_OBJECT (pool, "start flushing");
+ 
+   gst_poll_set_flushing (pool->poll, TRUE);
+@@ -1042,6 +1057,10 @@
+ {
+   GstV4l2BufferPool *pool = GST_V4L2_BUFFER_POOL (bpool);
+ 
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  GST_DEBUG_OBJECT (pool, "skip stop flushing");
++  return;
++#endif
+   GST_DEBUG_OBJECT (pool, "stop flushing");
+ 
+   if (pool->other_pool)
+@@ -1131,6 +1150,203 @@
+   return GST_FLOW_CUSTOM_SUCCESS;
+ }
+ 
++static GstFlowReturn gst_v4l2_buffer_pool_qbuf_tc_process(GstV4l2BufferPool *pool, GstBuffer *buf, struct v4l2_buffer *vbuffer)
++{
++  GstV4l2Object *v4l2object = pool->obj;
++  GstMapInfo map = GST_MAP_INFO_INIT;
++  tcc_video_out_info tccvoutput;
++  GstClockTime timestamp;
++
++  if(!gst_buffer_map(buf, &map, GST_MAP_READ))
++    return GST_FLOW_ERROR;
++
++  memcpy(&tccvoutput, map.data, sizeof(tcc_video_out_info));
++
++  if(G_LIKELY(tccvoutput.mType == TYPE_VIDEO))
++  {
++    vbuffer->sequence = tccvoutput.mDispIdx;
++
++    if(tccvoutput.mFlags & (DEC_FLAGS_USE_10BIT_2BYTE | DEC_FLAGS_USE_10BIT_REAL))
++    {
++       vbuffer->flags |= (tccvoutput.mFlags & DEC_FLAGS_USE_10BIT_2BYTE)
++                ? DEC_FLAGS_USE_10BIT_2BYTE : DEC_FLAGS_USE_10BIT_REAL;
++    }
++
++    if(tccvoutput.mFlags & DEC_FLAGS_INTERLACED)
++    {
++      if(tccvoutput.mFlags & DEC_FLAGS_INTERLACED_ODD_FIRST)
++      {
++        vbuffer->field = V4L2_FIELD_INTERLACED_BT;
++      }
++      else
++      {
++        vbuffer->field = V4L2_FIELD_INTERLACED_TB;
++      }
++    }
++    else
++    {
++      vbuffer->field = V4L2_FIELD_ANY;
++    }
++
++  GST_INFO_OBJECT(pool, "map.data %p, v_out buf %p", map.data,tccvoutput.pCurrOut[0][0]);
++
++    vbuffer->m.planes[0].m.userptr = tccvoutput.pCurrOut[0][0];
++    vbuffer->m.planes[0].reserved[2] = tccvoutput.pCurrOut[0][1];
++    vbuffer->m.planes[0].reserved[3] = tccvoutput.pCurrOut[0][2];
++
++    vbuffer->m.planes[0].bytesused = tccvoutput.stStride.iY;
++
++    vbuffer->m.planes[0].reserved[4] = tccvoutput.mWidth;
++    vbuffer->m.planes[0].reserved[5] = tccvoutput.mHeight;
++
++    if ((v4l2object != NULL) &&
++       ( v4l2object->crop.c.top != 0   ||  v4l2object->crop.c.left != 0
++      || v4l2object->crop.c.width != 0 ||  v4l2object->crop.c.height != 0 ))
++    {
++      GST_DEBUG_OBJECT(pool, "v4l2bufferpool new crop top=%d, left=%d, width=%d, height=%d\n",
++        v4l2object->crop.c.top, v4l2object->crop.c.left, v4l2object->crop.c.width, v4l2object->crop.c.height);
++      vbuffer->m.planes[0].reserved[6] = v4l2object->crop.c.left;
++      vbuffer->m.planes[0].reserved[7] = v4l2object->crop.c.top;
++      vbuffer->m.planes[0].reserved[8] = v4l2object->crop.c.width;
++      vbuffer->m.planes[0].reserved[9] = v4l2object->crop.c.height;
++    }
++    else
++    {
++    vbuffer->m.planes[0].reserved[6] = tccvoutput.stCropInfo.iCropLeft;
++    vbuffer->m.planes[0].reserved[7] = tccvoutput.stCropInfo.iCropTop;
++    vbuffer->m.planes[0].reserved[8] = tccvoutput.stCropInfo.iCropWidth;
++    vbuffer->m.planes[0].reserved[9] = tccvoutput.stCropInfo.iCropHeight;
++    }
++
++#if defined(_MAP_COMP_SUPPORT_)
++    if(tccvoutput.mFlags & DEC_FLAGS_USE_MAP_CONV)
++    {
++      vbuffer->m.planes[0].reserved[10] = 1;
++#if 0
++        memcpy((void *)&vbuffer->m.planes[0].reserved[11], &tccvoutput.stHEVCMapConv, sizeof(hevc_dec_MapConv_info_t));
++#else
++        vbuffer->m.planes[0].reserved[11] = (unsigned int)tccvoutput.stHEVCMapConv.m_CompressedY[0];
++        vbuffer->m.planes[0].reserved[12] = 0;//(unsigned int)tccvoutput.stHEVCMapConv.m_CompressedY[1];
++        vbuffer->m.planes[0].reserved[13] = (unsigned int)tccvoutput.stHEVCMapConv.m_CompressedCb[0];
++        vbuffer->m.planes[0].reserved[14] = 0;//(unsigned int)tccvoutput.stHEVCMapConv.m_CompressedCb[1];
++
++        vbuffer->m.planes[0].reserved[15] = (unsigned int)tccvoutput.stHEVCMapConv.m_FbcYOffsetAddr[0];
++        vbuffer->m.planes[0].reserved[16] = 0;//(unsigned int)tccvoutput.stHEVCMapConv.m_FbcYOffsetAddr[1];
++        vbuffer->m.planes[0].reserved[17] = (unsigned int)tccvoutput.stHEVCMapConv.m_FbcCOffsetAddr[0];
++        vbuffer->m.planes[0].reserved[18] = 0;//(unsigned int)tccvoutput.stHEVCMapConv.m_FbcCOffsetAddr[1];
++
++        vbuffer->m.planes[0].reserved[19] = tccvoutput.stHEVCMapConv.m_uiLumaStride;
++        vbuffer->m.planes[0].reserved[20] = tccvoutput.stHEVCMapConv.m_uiChromaStride;
++        vbuffer->m.planes[0].reserved[21] = tccvoutput.stHEVCMapConv.m_uiLumaBitDepth;
++        vbuffer->m.planes[0].reserved[22] = tccvoutput.stHEVCMapConv.m_uiChromaBitDepth;
++        vbuffer->m.planes[0].reserved[23] = tccvoutput.stHEVCMapConv.m_uiFrameEndian;
++#endif
++        if (0)
++        {
++            LOGD("[V4L2][L:%5d] 0x%x 0x%x 0x%x 0x%x / 0x%x 0x%x 0x%x 0x%x / %u %u %u %u %u " \
++                    , __LINE__ \
++                    , vbuffer->m.planes[0].reserved[11] \
++                    , vbuffer->m.planes[0].reserved[12] \
++                    , vbuffer->m.planes[0].reserved[13] \
++                    , vbuffer->m.planes[0].reserved[14] \
++                    , vbuffer->m.planes[0].reserved[15] \
++                    , vbuffer->m.planes[0].reserved[16] \
++                    , vbuffer->m.planes[0].reserved[17] \
++                    , vbuffer->m.planes[0].reserved[18] \
++                    , vbuffer->m.planes[0].reserved[19] \
++                    , vbuffer->m.planes[0].reserved[20] \
++                    , vbuffer->m.planes[0].reserved[21] \
++                    , vbuffer->m.planes[0].reserved[22] \
++                    , vbuffer->m.planes[0].reserved[23] \
++                );
++        }
++    }
++    else
++#endif
++#if defined(_DTRC_COMP_SUPPORT_)
++    if(tccvoutput.mFlags & DEC_FLAGS_USE_DTRC)
++    {
++        vbuffer->m.planes[0].reserved[10] = 2;
++        memcpy(vbuffer->m.planes[0].reserved[11], &tccvoutput.stDTRCInfo, sizeof(vp9_compressed_info_t));
++    }
++    else
++#endif
++    {
++      vbuffer->m.planes[0].reserved[10] = 0;
++    }
++
++#if defined(_HEVC_USER_DATA_SUPPORT_)
++    if(tccvoutput.mHEVCUserDataEnalbe != 0)
++    {
++      memcpy(vbuffer->m.planes[0].reserved[26], &tccvoutput.stHEVCUserInfo, sizeof(hevc_userdata_output_t));
++    }
++#endif
++
++    vbuffer->m.planes[0].reserved[46] = tccvoutput.mColorFormat;
++    vbuffer->m.planes[0].reserved[64] = tccvoutput.mDolbyHDREnable;
++
++#if defined(_DOLBY_VISION_SUPPORT_)
++	//Dolby-Vision
++    if (tccvoutput.mDolbyHDREnable != 0)
++    {
++      vbuffer->m.planes[0].reserved[65] = tccvoutput.dolbyVision_info.reg_addr;
++      vbuffer->m.planes[0].reserved[66] = tccvoutput.dolbyVision_info.md_hdmi_addr;
++      vbuffer->m.planes[0].reserved[74] = tccvoutput.dolbyVision_info.reg_out_type;
++      vbuffer->m.planes[0].reserved[75] = tccvoutput.mContentType;
++    }
++#endif
++
++    if(tccvoutput.stSubTitileInfo.iSubEnable == 0)
++    {
++      vbuffer->m.planes[0].reserved[1] = 1;
++    }
++    else
++    {
++      vbuffer->m.planes[0].reserved[1] = 2;
++      vbuffer->m.planes[1].reserved[0] = 0x1;
++
++      vbuffer->m.planes[1].reserved[1] = tccvoutput.stSubTitileInfo.iSubEnable;
++      vbuffer->m.planes[1].m.userptr = tccvoutput.stSubTitileInfo.iSubAddr;
++      vbuffer->m.planes[1].reserved[2] = tccvoutput.stSubTitileInfo.iSubIdx;
++
++      vbuffer->m.planes[1].reserved[3] = V4L2_PIX_FMT_RGB32;
++
++      vbuffer->m.planes[1].reserved[4] = tccvoutput.stSubTitileInfo.iSubWidth;
++      vbuffer->m.planes[1].reserved[5] = tccvoutput.stSubTitileInfo.iSubHeight;
++      vbuffer->m.planes[1].reserved[6] = tccvoutput.stSubTitileInfo.iSuboffset_x;
++      vbuffer->m.planes[1].reserved[7] = tccvoutput.stSubTitileInfo.iSuboffset_y;
++    }
++  }
++  else if(tccvoutput.mType == TYPE_IMAGE)
++  {
++    vbuffer->m.planes[0].m.userptr = tccvoutput.pCurrOut[0][0];
++
++    vbuffer->m.planes[0].reserved[1] = 1;
++    vbuffer->m.planes[0].reserved[2] = 0;
++    vbuffer->m.planes[0].reserved[3] = 0;
++
++    vbuffer->timecode.type = 0xFF00;  /* To inform the kernel driver of this is image frame */
++
++    vbuffer->m.planes[0].bytesused = 0;
++
++    vbuffer->m.planes[0].reserved[4] = GST_V4L2_WIDTH(v4l2object);
++    vbuffer->m.planes[0].reserved[5] = GST_V4L2_HEIGHT(v4l2object);
++
++    vbuffer->m.planes[0].reserved[6] = 0;
++    vbuffer->m.planes[0].reserved[7] = 0;
++    vbuffer->m.planes[0].reserved[8] = GST_V4L2_WIDTH(v4l2object);
++    vbuffer->m.planes[0].reserved[9] = GST_V4L2_HEIGHT(v4l2object);
++  }
++  else
++  {
++    GST_INFO_OBJECT(pool, "[%s:%d] Invalid type:%d\n", __FUNCTION__, __LINE__, tccvoutput.mType);
++    gst_buffer_unmap(buf, &map);
++    return GST_FLOW_ERROR;
++  }
++
++  gst_buffer_unmap(buf, &map);
++  return GST_FLOW_OK;
++}
+ static GstFlowReturn
+ gst_v4l2_buffer_pool_qbuf (GstV4l2BufferPool * pool, GstBuffer * buf,
+     GstV4l2MemoryGroup * group)
+@@ -1173,6 +1389,27 @@
+     GST_TIME_TO_TIMEVAL (timestamp, group->buffer.timestamp);
+   }
+ 
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  if(obj->mode == GST_V4L2_IO_USERPTR)
++  {
++    gst_v4l2_buffer_pool_qbuf_tc_process(pool, buf, &group->buffer);
++  }
++  else
++  {
++    group->buffer.field = V4L2_FIELD_ANY;
++
++    memset(group->buffer.m.planes, 0x00, sizeof(struct v4l2_plane) * GST_VIDEO_TCC_MAX_PLANES);
++
++    group->buffer.m.planes[0].reserved[4]   = GST_V4L2_WIDTH(obj);
++    group->buffer.m.planes[0].reserved[5]   = GST_V4L2_HEIGHT(obj);
++    group->buffer.m.planes[0].reserved[6]   = 0;
++    group->buffer.m.planes[0].reserved[7]   = 0;
++    group->buffer.m.planes[0].reserved[8]   = GST_V4L2_WIDTH(obj);
++    group->buffer.m.planes[0].reserved[9]   = GST_ROUND_DOWN_4(GST_V4L2_HEIGHT(obj));
++    group->buffer.m.planes[0].bytesused     = 0;
++  }
++#endif
++
+   GST_OBJECT_LOCK (pool);
+   g_atomic_int_inc (&pool->num_queued);
+   pool->buffers[index] = buf;
+diff -Naur before/sys/v4l2/gstv4l2bufferpool.h 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2bufferpool.h
+--- before/sys/v4l2/gstv4l2bufferpool.h	2019-12-03 05:00:48.000000000 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2bufferpool.h	2020-06-16 17:49:49.090570177 +0900
+@@ -114,6 +114,7 @@
+ 
+ gboolean            gst_v4l2_buffer_pool_orphan  (GstBufferPool ** pool);
+ 
++GstFlowReturn gst_v4l2_buffer_pool_preroll_process(GstV4l2BufferPool *pool, GstBuffer **buf);
+ G_END_DECLS
+ 
+ #endif /*__GST_V4L2_BUFFER_POOL_H__ */
+diff -Naur before/sys/v4l2/gstv4l2object.c 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2object.c
+--- before/sys/v4l2/gstv4l2object.c	2019-12-03 05:00:48.000000000 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2object.c	2020-06-17 10:09:42.114630006 +0900
+@@ -193,6 +193,27 @@
+ 
+ #define GST_V4L2_FORMAT_COUNT (G_N_ELEMENTS (gst_v4l2_formats))
+ 
++#if defined(TCC_V4L2SINK_DRIVER_USE)
++static const GstV4L2FormatDesc gst_v4l2_tc_formats[] = {
++    /* from Linux 2.6.15 videodev2.h */
++    {V4L2_PIX_FMT_YVU420, TRUE},
++    {V4L2_PIX_FMT_YUV422P, TRUE},
++
++    /* two planes -- one Y, one Cr + Cb interleaved  */
++    {V4L2_PIX_FMT_NV12, TRUE},
++    {V4L2_PIX_FMT_YUV420, TRUE},
++
++    {V4L2_PIX_FMT_RGB555, TRUE},
++    {V4L2_PIX_FMT_RGB565, TRUE},
++    {V4L2_PIX_FMT_BGR24, TRUE},
++    {V4L2_PIX_FMT_RGB24, TRUE},
++    {V4L2_PIX_FMT_BGR32, TRUE},
++    {V4L2_PIX_FMT_RGB32, TRUE},
++};
++
++#define GST_V4L2_FORMAT_TC_COUNT (G_N_ELEMENTS (gst_v4l2_tc_formats))
++#endif //#if defined(TCC_V4L2SINK_DRIVER_USE)
++
+ static GSList *gst_v4l2_object_get_format_list (GstV4l2Object * v4l2object);
+ 
+ 
+@@ -507,7 +528,11 @@
+   v4l2object->channels = NULL;
+   v4l2object->colors = NULL;
+ 
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  v4l2object->keep_aspect = FALSE;
++#else
+   v4l2object->keep_aspect = TRUE;
++#endif
+ 
+   v4l2object->n_v4l2_planes = 0;
+ 
+@@ -534,7 +559,6 @@
+     v4l2object->mmap = mmap;
+     v4l2object->munmap = munmap;
+   }
+-
+   return v4l2object;
+ }
+ 
+@@ -1589,6 +1613,87 @@
+   return template;
+ }
+ 
++#if defined(TCC_V4L2SINK_DRIVER_USE)
++static GstVideoFormat
++gst_v4l2_object_v4l2fourcc_to_video_tc_format (guint32 fourcc)
++{
++    GstVideoFormat format;
++
++    switch (fourcc) {
++        case V4L2_PIX_FMT_NV12:
++            format = GST_VIDEO_FORMAT_NV12_TC;
++            break;
++        case V4L2_PIX_FMT_YUV420:
++        case V4L2_PIX_FMT_YVU420:
++        case V4L2_PIX_FMT_YUV422P:
++            format = GST_VIDEO_FORMAT_I420_TC;
++            break;
++        case V4L2_PIX_FMT_RGB555:
++            format = GST_VIDEO_FORMAT_RGB15;
++            break;
++        case V4L2_PIX_FMT_RGB565:
++            format = GST_VIDEO_FORMAT_RGB16;
++            break;
++        case V4L2_PIX_FMT_RGB24:
++            format = GST_VIDEO_FORMAT_RGB;
++            break;
++        case V4L2_PIX_FMT_BGR24:
++            format = GST_VIDEO_FORMAT_BGR;
++            break;
++        case V4L2_PIX_FMT_RGB32:
++            format = GST_VIDEO_FORMAT_xRGB;
++            break;
++        case V4L2_PIX_FMT_BGR32:
++            format = GST_VIDEO_FORMAT_BGRx;
++            break;
++        default:
++            format = GST_VIDEO_FORMAT_UNKNOWN;
++            break;
++    }
++
++    return format;
++}
++
++GstStructure *gst_v4l2_object_v4l2fourcc_to_structure_for_tc (guint32 fourcc)
++{
++    GstStructure *structure = NULL;
++
++    switch (fourcc)
++    {
++        case V4L2_PIX_FMT_YUV420:  /* I420/IYUV */
++        case V4L2_PIX_FMT_NV12:    /* 12  Y/CbCr 4:2:0  */
++        case V4L2_PIX_FMT_YVU420:
++        case V4L2_PIX_FMT_YUV422P:
++        {
++            GstVideoFormat format;
++            format = gst_v4l2_object_v4l2fourcc_to_video_tc_format (fourcc);
++            if (format != GST_VIDEO_FORMAT_UNKNOWN)
++                structure = gst_structure_new ("video/x-tc-raw",
++                        "format", G_TYPE_STRING, gst_video_format_to_string (format), NULL);
++            break;
++        }
++        case V4L2_PIX_FMT_RGB555:
++        case V4L2_PIX_FMT_RGB565:
++        case V4L2_PIX_FMT_RGB24:
++        case V4L2_PIX_FMT_BGR24:
++        case V4L2_PIX_FMT_RGB32:
++        case V4L2_PIX_FMT_BGR32:
++        {
++            GstVideoFormat format;
++            format = gst_v4l2_object_v4l2fourcc_to_video_tc_format (fourcc);
++            if (format != GST_VIDEO_FORMAT_UNKNOWN)
++                structure = gst_structure_new ("video/x-tc-raw",
++                        "format", G_TYPE_STRING, gst_video_format_to_string (format), NULL);
++            break;
++        }
++        default:
++        GST_DEBUG ("Unknown fourcc 0x%08x %" GST_FOURCC_FORMAT, fourcc, GST_FOURCC_ARGS (fourcc));
++        break;
++    }
++
++    return structure;
++}
++#endif //#if defined(TCC_V4L2SINK_DRIVER_USE)
+ 
+ static GstCaps *
+ gst_v4l2_object_get_caps_helper (GstV4L2FormatFlags flags)
+@@ -1635,6 +1740,24 @@
+     }
+   }
+ 
++#if defined(TCC_V4L2SINK_DRIVER_USE)
++  for ( i = 0 ; i < GST_V4L2_FORMAT_TC_COUNT; i++)
++  {
++    GstStructure *template;
++    template = gst_v4l2_object_v4l2fourcc_to_structure_for_tc (gst_v4l2_tc_formats[i].format);
++    if(template) {
++      if (gst_v4l2_tc_formats[i].dimensions) {
++        gst_structure_set (template,
++           "width", GST_TYPE_INT_RANGE, 1, GST_V4L2_MAX_SIZE,
++           "height", GST_TYPE_INT_RANGE, 1, GST_V4L2_MAX_SIZE,
++           "framerate", GST_TYPE_FRACTION_RANGE, 0, 1, G_MAXINT, 1, NULL);
++      }
++      gst_caps_append_structure (caps, template);
++    }
++  }
++#endif //#if defined(TCC_V4L2SINK_DRIVER_USE)
++
++
+   return gst_caps_simplify (caps);
+ }
+ 
+@@ -1703,6 +1826,42 @@
+   if (!gst_video_info_from_caps (info, caps))
+     goto invalid_format;
+ 
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  if (g_str_equal (mimetype, "video/x-tc-raw")) {
++    switch (GST_VIDEO_INFO_FORMAT (info)) {
++      case GST_VIDEO_FORMAT_I420_TC:
++        fourcc = V4L2_PIX_FMT_YUV420;
++        break;
++      case GST_VIDEO_FORMAT_NV12_TC:
++        fourcc = V4L2_PIX_FMT_NV12;
++        break;
++      case GST_VIDEO_FORMAT_RGB15:
++        fourcc = V4L2_PIX_FMT_RGB555;
++        break;
++      case GST_VIDEO_FORMAT_RGB16:
++        fourcc = V4L2_PIX_FMT_RGB565;
++        break;
++      case GST_VIDEO_FORMAT_RGB:
++        fourcc = V4L2_PIX_FMT_RGB24;
++        break;
++      case GST_VIDEO_FORMAT_BGR:
++        fourcc = V4L2_PIX_FMT_BGR24;
++        break;
++      case GST_VIDEO_FORMAT_xRGB:
++      case GST_VIDEO_FORMAT_ARGB:
++        fourcc = V4L2_PIX_FMT_RGB32;
++        break;
++      case GST_VIDEO_FORMAT_BGRx:
++      case GST_VIDEO_FORMAT_BGRA:
++        fourcc = V4L2_PIX_FMT_BGR32;
++        break;
++      default:
++        printf("%s %d %d\n",__func__,__LINE__, GST_VIDEO_INFO_FORMAT (info));
++        break;
++    }
++  }
++  else
++#endif //#ifdef TCC_V4L2SINK_DRIVER_USE
+   if (g_str_equal (mimetype, "video/x-raw")) {
+     switch (GST_VIDEO_INFO_FORMAT (info)) {
+       case GST_VIDEO_FORMAT_I420:
+@@ -2478,7 +2637,12 @@
+   gst_structure_set (s, "width", G_TYPE_INT, (gint) width,
+       "height", G_TYPE_INT, (gint) height, NULL);
+ 
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  gst_structure_set (s, "pixel-aspect-ratio", GST_TYPE_FRACTION_RANGE, 0, 1,
++    G_MAXINT, 1, NULL);
++#else
+   gst_v4l2_object_add_aspect_ratio (v4l2object, s);
++#endif
+ 
+   if (!v4l2object->skip_try_fmt_probes) {
+     gst_v4l2_object_add_interlace_mode (v4l2object, s, width, height,
+@@ -2787,8 +2951,14 @@
+     if (fix_num) {
+       gst_structure_set (tmp, "framerate", GST_TYPE_FRACTION, fix_num,
+           fix_denom, NULL);
+-    } else if (v4l2object->type == V4L2_BUF_TYPE_VIDEO_CAPTURE ||
+-        v4l2object->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
++    } 
++#ifdef TCC_V4L2SINK_DRIVER_USE
++    else
++#else
++    else if (v4l2object->type == V4L2_BUF_TYPE_VIDEO_CAPTURE ||
++      v4l2object->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
++#endif
++    {
+       /* if norm can't be used, copy the template framerate */
+       gst_structure_set (tmp, "framerate", GST_TYPE_FRACTION_RANGE, 0, 1,
+           G_MAXINT, 1, NULL);
+@@ -2804,16 +2974,22 @@
+     else
+       gst_structure_set (tmp, "height", GST_TYPE_INT_RANGE, min_h, max_h, NULL);
+ 
++#ifdef TCC_V4L2SINK_DRIVER_USE
++    gst_structure_set (tmp, "pixel-aspect-ratio", GST_TYPE_FRACTION_RANGE, 0, 1,
++      G_MAXINT, 1, NULL);
++#else
+     gst_v4l2_object_add_aspect_ratio (v4l2object, tmp);
+-
++#endif
+     if (!v4l2object->skip_try_fmt_probes) {
+       /* We could consider setting interlace mode from min and max. */
+       gst_v4l2_object_add_interlace_mode (v4l2object, tmp, max_w, max_h,
+           pixelformat);
+       /* We could consider to check colorspace for min too, in case it depends on
+        * the size. But in this case, min and max could not be enough */
++#ifndef TCC_V4L2SINK_DRIVER_USE
+       gst_v4l2_object_add_colorspace (v4l2object, tmp, max_w, max_h,
+           pixelformat);
++#endif
+     }
+ 
+     gst_v4l2_object_update_and_append (v4l2object, pixelformat, ret, tmp);
+@@ -2924,7 +3100,22 @@
+           gst_v4l2_object_is_dmabuf_supported (v4l2object)) {
+         mode = GST_V4L2_IO_DMABUF;
+       } else {
++#ifdef TCC_V4L2SINK_DRIVER_USE
++        GstStructure *s;
++        const gchar *mimetype;
++
++        s = gst_caps_get_structure(caps, 0);
++        mimetype = gst_structure_get_name(s);
++
++        if(g_str_equal(mimetype, "video/x-tc-raw"))
++          mode = GST_V4L2_IO_USERPTR;
++        else
++          mode = GST_V4L2_IO_MMAP;
++
++        printf("%s %d mimetype = %s, mode = %d ( USERPTR=3/MMAP=2)\n",__func__,__LINE__, mimetype, mode);
++#else
+         mode = GST_V4L2_IO_MMAP;
++#endif
+       }
+     }
+   } else if (v4l2object->req_mode == GST_V4L2_IO_MMAP ||
+@@ -3280,6 +3471,22 @@
+   if (!n_v4l_planes || !v4l2object->prefered_non_contiguous)
+     n_v4l_planes = 1;
+ 
++  if(pixelformat == V4L2_PIX_FMT_YUV420) {
++    if(width % 4 != 0 || height % 4 != 0) {
++      width   = GST_ROUND_UP_4(width);
++      height  = GST_ROUND_UP_4(height);
++
++      GST_VIDEO_INFO_WIDTH(&info)     = width;
++      GST_VIDEO_INFO_HEIGHT(&info)    = height;
++    }
++  }
++  else if(pixelformat == V4L2_PIX_FMT_RGB24) {
++    if(width % 2 != 0) {
++      width 	= GST_ROUND_UP_2(width);
++      GST_VIDEO_INFO_WIDTH(&info) 	= width;
++    }
++  }
++
+   if (GST_VIDEO_INFO_IS_INTERLACED (&info)) {
+     GST_DEBUG_OBJECT (v4l2object->dbg_obj, "interlaced video");
+     /* ideally we would differentiate between types of interlaced video
+@@ -4249,6 +4456,26 @@
+     gst_structure_free (template);
+   }
+ 
++#if defined(TCC_V4L2SINK_DRIVER_USE)
++  {
++    int i = 0;
++    for ( i = 0 ; i < GST_V4L2_FORMAT_TC_COUNT; i++) {
++      GstStructure *template;
++      template = gst_v4l2_object_v4l2fourcc_to_structure_for_tc (gst_v4l2_tc_formats[i].format);
++      if(template) {
++        GstCaps *tmp;
++        tmp = gst_v4l2_object_probe_caps_for_format(v4l2object,
++              gst_v4l2_tc_formats[i].format, template);
++
++        if (tmp)
++          gst_caps_append (ret, tmp);
++
++        gst_structure_free (template);
++     }
++    }
++  }
++#endif //#if defined(TCC_V4L2SINK_DRIVER_USE)
++
+   if (filter) {
+     GstCaps *tmp;
+ 
+@@ -4569,7 +4796,9 @@
+   size = obj->info.size;
+   min = GST_V4L2_MIN_BUFFERS;
+   max = VIDEO_MAX_FRAME;
+-
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  max = GST_V4L2_MAX_BUFFERS;
++#endif
+   gst_query_parse_allocation (query, &caps, &need_pool);
+ 
+   if (caps == NULL)
+@@ -4578,6 +4807,7 @@
+   switch (obj->mode) {
+     case GST_V4L2_IO_MMAP:
+     case GST_V4L2_IO_DMABUF:
++    case GST_V4L2_IO_USERPTR:
+       if ((pool = obj->pool))
+         gst_object_ref (pool);
+       break;
+diff -Naur before/sys/v4l2/gstv4l2object.h 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2object.h
+--- before/sys/v4l2/gstv4l2object.h	2019-04-19 18:16:25.000000000 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2object.h	2020-06-17 09:51:10.407815478 +0900
+@@ -24,6 +24,7 @@
+ #ifndef __GST_V4L2_OBJECT_H__
+ #define __GST_V4L2_OBJECT_H__
+ 
++#include <mach/tcc_video_private.h>
+ #include "ext/videodev2.h"
+ #ifdef HAVE_LIBV4L2
+ #  include <libv4l2.h>
+@@ -42,11 +43,46 @@
+ 
+ #include <gstv4l2bufferpool.h>
+ 
++#include <stdio.h>
++#include "tcc_video_common.h"
++
++#ifdef TCC_V4L2SINK_DRIVER_USE
++#undef VIDIOC_CREATE_BUFS
++#undef HAVE_DECL_V4L2_MEMORY_DMABUF
++#define GST_VIDEO_TCC_MAX_PLANES  2
++
++#define fourcc2char(fourcc) \
++        ((char) ((fourcc)     &0xff)), \
++        ((char) (((fourcc)>>8 )&0xff)), \
++        ((char) (((fourcc)>>16)&0xff)), \
++        ((char) (((fourcc)>>24)&0xff))
++#endif
++
++#ifdef TCC_V4L2SINK_DRIVER_USE
++#define GST_V4L2_BUFFER_FLAG_INTERLACE_TB 		0x00000001
++#define GST_V4L2_BUFFER_FLAG_INTERLACE_BT 		0x00000002
++#define GST_V4L2_BUFFER_FLAG_RESOLUTION_CHANGE 	0x00000004
++#define GST_V4L2_BUFFER_FLAG_MAP_CONVERTER 		0x00000008
++
++#define GST_V4L2_BUFFER_FLAG_DTRC               0x00000080
++#define GST_V4L2_BUFFER_FLAG_YUV_10BIT_MODE1    0x10000000 // 16bit format type
++#define GST_V4L2_BUFFER_FLAG_YUV_10BIT_MODE2    0x20000000 // 10bit format type
++#define OMX_VIDEO_OUT_FLAG_YUV_10BIT_MODE1      0x00000100 // 16bit format type
++#define OMX_VIDEO_OUT_FLAG_YUV_10BIT_MODE2      0x00000200 // 10bit format type
++
++#endif
+ /* size of v4l2 buffer pool in streaming case */
++#ifdef TCC_V4L2SINK_DRIVER_USE
++#define GST_V4L2_MAX_BUFFERS 12
+ #define GST_V4L2_MIN_BUFFERS 2
++#else
++#define GST_V4L2_MAX_BUFFERS 16
++#define GST_V4L2_MIN_BUFFERS 1
++#endif
+ 
+ /* max frame width/height */
+-#define GST_V4L2_MAX_SIZE (1<<15) /* 2^15 == 32768 */
++//#define GST_V4L2_MAX_SIZE (1<<15) /* 2^15 == 32768 */
++#define GST_V4L2_MAX_SIZE (5000) /* 2^15 == 32768 */
+ 
+ G_BEGIN_DECLS
+ 
+@@ -174,10 +210,18 @@
+   /* opened device specific capabilities */
+   guint32 device_caps;
+ 
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  /* to set format */
++  gboolean change_overlay_size;
++  int vout_mode;
++#endif
+   /* lists... */
+   GSList *formats;              /* list of available capture formats */
+   GstCaps *probed_caps;
+ 
++  /* for crop source img */
++  struct v4l2_crop crop;
++
+   GList *colors;
+   GList *norms;
+   GList *channels;
+diff -Naur before/sys/v4l2/gstv4l2sink.c 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2sink.c
+--- before/sys/v4l2/gstv4l2sink.c	2019-04-19 18:16:25.000000000 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2sink.c	2020-06-16 18:11:39.969310192 +0900
+@@ -77,12 +77,42 @@
+   PROP_OVERLAY_LEFT,
+   PROP_OVERLAY_WIDTH,
+   PROP_OVERLAY_HEIGHT,
++#if defined(TCC_V4L2SINK_DRIVER_USE)
++  PROP_OVERLAY_SET_TOP,
++  PROP_OVERLAY_SET_LEFT,
++  PROP_OVERLAY_SET_WIDTH,
++  PROP_OVERLAY_SET_HEIGHT,
++  PROP_OVERLAY_SET_UPDATE,
++#endif
+   PROP_CROP_TOP,
+   PROP_CROP_LEFT,
+   PROP_CROP_WIDTH,
+   PROP_CROP_HEIGHT,
++#if defined(TCC_V4L2SINK_DRIVER_USE)
++  PROP_CROP_SET_TOP,
++  PROP_CROP_SET_LEFT,
++  PROP_CROP_SET_WIDTH,
++  PROP_CROP_SET_HEIGHT,
++  PROP_CROP_SET_UPDATE,
++#endif
++#if defined(TCC_V4L2SINK_DRIVER_USE)
++  PROP_SET_DELAY,
++  PROP_ASPECT_RATIO,
++#endif
+ };
+ 
++#if defined(TCC_V4L2SINK_DRIVER_USE)
++enum
++{
++    ASPECT_MODE_INIT = 0,
++    ASPECT_MODE_STANDARD,
++    ASPECT_MODE_FULL,
++    ASPECT_MODE_ORIGINAL,
++    ASPECT_MODE_16_9,
++    ASPECT_MODE_4_3,
++    ASPECT_MODE_END
++};
++#endif
+ 
+ GST_IMPLEMENT_V4L2_COLOR_BALANCE_METHODS (GstV4l2Sink, gst_v4l2sink);
+ GST_IMPLEMENT_V4L2_TUNER_METHODS (GstV4l2Sink, gst_v4l2sink);
+@@ -119,6 +149,7 @@
+ static gboolean gst_v4l2sink_unlock (GstBaseSink * sink);
+ static gboolean gst_v4l2sink_unlock_stop (GstBaseSink * sink);
+ 
++static GstFlowReturn  gst_v4l2sink_preroll_show_frame(GstBaseSink *bsink, GstBuffer *buf);
+ static void
+ gst_v4l2sink_class_init (GstV4l2SinkClass * klass)
+ {
+@@ -158,6 +189,39 @@
+           "The height of the video overlay; default is equal to negotiated image height",
+           0, G_MAXUINT, 0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+ 
++#if defined(TCC_V4L2SINK_DRIVER_USE)
++  g_object_class_install_property(
++          gobject_class,
++          PROP_OVERLAY_SET_TOP,
++          g_param_spec_int("overlay-set-top", "Overlay Setting top", "The topmost (y) coordinate of the video overlay; top left corner of screen is 0,0",
++              G_MININT, G_MAXINT, 0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
++  g_object_class_install_property(
++          gobject_class,
++          PROP_OVERLAY_SET_LEFT,
++          g_param_spec_int("overlay-set-left", "Overlay Setting left", "The leftmost (x) coordinate of the video overlay; top left corner of screen is 0,0",
++              G_MININT, G_MAXINT, 0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
++  g_object_class_install_property(
++          gobject_class,
++          PROP_OVERLAY_SET_WIDTH,
++          g_param_spec_uint("overlay-set-width", "Overlay Setting width", "The width of the video overlay; default is equal to negotiated image width",
++              0, G_MAXUINT, 0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
++  g_object_class_install_property(
++          gobject_class,
++          PROP_OVERLAY_SET_HEIGHT,
++          g_param_spec_uint("overlay-set-height", "Overlay Setting height", "The height of the video overlay; default is equal to negotiated image height",
++              0, G_MAXUINT, 0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
++  g_object_class_install_property(
++          gobject_class,
++          PROP_OVERLAY_SET_UPDATE,
++          g_param_spec_uint("overlay-set-update", "Overlay Setting values Update", "The update of video overlay values; default is equal to 1",
++              0, G_MAXUINT, 0, G_PARAM_WRITABLE));
++#endif
++
++
+   g_object_class_install_property (gobject_class, PROP_CROP_TOP,
+       g_param_spec_int ("crop-top", "Crop top",
+           "The topmost (y) coordinate of the video crop; top left corner of image is 0,0",
+@@ -175,6 +239,52 @@
+           "The height of the video crop; default is equal to negotiated image height",
+           0, 0xffffffff, 0, G_PARAM_READWRITE));
+ 
++#if defined(TCC_V4L2SINK_DRIVER_USE)
++  g_object_class_install_property(
++          gobject_class,
++          PROP_CROP_SET_TOP,
++          g_param_spec_int("crop-set-top", "Crop Setting top", "The topmost (y) coordinate of the video crop; top left corner of image is 0,0",
++              0x80000000, 0x7fffffff, 0, G_PARAM_WRITABLE));
++
++  g_object_class_install_property(
++          gobject_class,
++          PROP_CROP_SET_LEFT,
++          g_param_spec_int("crop-set-left", "Crop Setting left", "The leftmost (x) coordinate of the video crop; top left corner of image is 0,0",
++              0x80000000, 0x7fffffff, 0, G_PARAM_WRITABLE));
++
++  g_object_class_install_property(
++          gobject_class,
++          PROP_CROP_SET_WIDTH,
++          g_param_spec_uint("crop-set-width", "Crop Setting width", "The width of the video crop; default is equal to negotiated image width",
++              0, 0xffffffff, 0, G_PARAM_WRITABLE));
++
++  g_object_class_install_property(
++          gobject_class,
++          PROP_CROP_SET_HEIGHT,
++          g_param_spec_uint("crop-set-height", "Crop Setting height", "The height of the video crop; default is equal to negotiated image height",
++              0, 0xffffffff, 0, G_PARAM_WRITABLE));
++
++  g_object_class_install_property(
++          gobject_class,
++          PROP_CROP_SET_UPDATE,
++          g_param_spec_uint("crop-set-update", "Crop Setting values Update", "The update of the video crop values; default is equal to 1",
++              0, 0xffffffff, 0, G_PARAM_WRITABLE));
++#endif
++
++#if defined(TCC_V4L2SINK_DRIVER_USE)
++  g_object_class_install_property(
++          gobject_class,
++          PROP_SET_DELAY,
++          g_param_spec_uint("delay", "show frame delay", "keep the time during input delay time after showing every frame",
++              0, 0xffffffff, 0, G_PARAM_WRITABLE));
++
++  g_object_class_install_property(
++          gobject_class,
++          PROP_ASPECT_RATIO,
++          g_param_spec_uint("aspectratio", "set aspect ratio", "set aspect ratio type values : default is equal to 0",
++              ASPECT_MODE_INIT, ASPECT_MODE_END, 0, G_PARAM_WRITABLE));
++#endif
++
+   gst_element_class_set_static_metadata (element_class,
+       "Video (video4linux2) Sink", "Sink/Video",
+       "Displays frames on a video4linux2 device", "Rob Clark <rob@ti.com>,");
+@@ -210,10 +320,24 @@
+    * (which can be overridden by the one creating the v4l2sink
+    * after the constructor returns)
+    */
+-  g_object_set (v4l2sink, "device", "/dev/video1", NULL);
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  g_object_set(v4l2sink, "device", "/dev/video10", NULL);
++#else
++  g_object_set(v4l2sink, "device", "/dev/video1", NULL);
++#endif
+ 
+   v4l2sink->overlay_fields_set = 0;
+   v4l2sink->crop_fields_set = 0;
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  v4l2sink->useroverlay.left      = 0;
++  v4l2sink->useroverlay.top       = 0;
++  v4l2sink->useroverlay.width     = 0;
++  v4l2sink->useroverlay.height    = 0;
++  v4l2sink->delay                 = 0;
++  v4l2sink->aspectratio           = 0;
++  v4l2sink->oldaspectratio        = 0;
++  v4l2sink->lastbuffer            = NULL;
++#endif
+ }
+ 
+ 
+@@ -255,6 +379,9 @@
+     else
+       format.type = V4L2_BUF_TYPE_VIDEO_OVERLAY;
+ 
++#ifdef TCC_V4L2SINK_DRIVER_USE
++    format.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_OVERLAY;
++#endif
+     if (obj->ioctl (obj->video_fd, VIDIOC_G_FMT, &format) < 0) {
+       GST_WARNING_OBJECT (v4l2sink, "VIDIOC_G_FMT failed");
+       return;
+diff -Naur before/sys/v4l2/gstv4l2sink.h 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2sink.h
+--- before/sys/v4l2/gstv4l2sink.h	2019-04-19 18:16:25.000000000 +0900
++++ 1.16.2-r0/gst-plugins-good-1.16.2/sys/v4l2/gstv4l2sink.h	2020-06-16 18:11:55.602176970 +0900
+@@ -65,6 +65,15 @@
+    * setting properties:
+    */
+   guint8 overlay_fields_set, crop_fields_set;
++#ifdef TCC_V4L2SINK_DRIVER_USE
++  struct v4l2_rect useroverlay;
++  guint8 isImageCaps;
++  guint32 delay;
++  gint aspectratio;
++  gint oldaspectratio;
++  GstBuffer *lastbuffer;
++
++#endif
+ };
+ 
+ struct _GstV4l2SinkClass {
